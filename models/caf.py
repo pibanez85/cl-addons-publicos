@@ -86,17 +86,17 @@ FROM ({union}) AS combined'''.format(
                 return folio_check
             folio = check_anulado(folio)
             if folio > self.final_nm:
-                self.sudo().write({"state": 'spent'})
+                self.write({"state": 'spent', 'qty_available': 0})
                 return self.final_nm
             if self.document_class_id.es_factura_afecta() or self.document_class_id.es_nc() or self.document_class_id.es_nd():
                 folios_vencidos = ast.literal_eval(self.folios_vencidos or '[]')
                 tz = pytz.timezone("America/Santiago")
                 if folio in folios_vencidos or fields.Date.context_today(self.with_context(tz=tz)) >= self.expiration_date:
-                    self.sudo().write({"state": 'spent'})
+                    self.write({"state": 'spent', 'qty_available': 0})
                     return self.final_nm
             return folio
         if folio > 0:
-            self.sudo().write({"state": 'spent'})
+            self.write({"state": 'spent'})
             return self.final_nm
         return self.start_nm
 

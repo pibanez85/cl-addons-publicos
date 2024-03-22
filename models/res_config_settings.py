@@ -28,6 +28,7 @@ class ResConfigSettings(models.TransientModel):
         related="company_id.medios_de_pago_electronico",
         string="Medios de pago Electrónico",
     )
+    dte_receipt_method = fields.Selection([('manual', 'Manual'), ('create_move', 'Crear Factura Solamente'), ('create_po', 'Crear Orden Compra'), ('both', 'Ambas (Factura y OC)')], default='both', string="Método Recepción DTE")
 
     @api.model
     def get_values(self):
@@ -37,12 +38,14 @@ class ResConfigSettings(models.TransientModel):
         account_auto_send_dte = int(ICPSudo.get_param("account.auto_send_dte", default=1))
         account_auto_send_email = ICPSudo.get_param("account.auto_send_email", default=True)
         account_auto_send_persistencia = int(ICPSudo.get_param("account.auto_send_persistencia", default=24))
+        dte_receipt_method = ICPSudo.get_param("account.dte_receipt_method", default='both')
         res.update(
             send_dte_method=account_send_dte_method,
             auto_send_email=account_auto_send_email,
             auto_send_dte=account_auto_send_dte,
             auto_send_persistencia=account_auto_send_persistencia,
             fe_version=__version__,
+            dte_receipt_method=dte_receipt_method
         )
         return res
 
@@ -55,3 +58,4 @@ class ResConfigSettings(models.TransientModel):
         ICPSudo.set_param("account.auto_send_dte", self.auto_send_dte)
         ICPSudo.set_param("account.auto_send_email", self.auto_send_email)
         ICPSudo.set_param("account.auto_send_peresistencia", self.auto_send_persistencia)
+        ICPSudo.set_param("account.dte_receipt_method", self.dte_receipt_method)

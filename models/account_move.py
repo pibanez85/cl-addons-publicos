@@ -218,13 +218,6 @@ class AccountMove(models.Model):
         copy=False,
     )
     claim_description = fields.Char(string="Detalle Reclamo", readonly=True,)
-    purchase_to_done = fields.Many2many(
-        "purchase.order",
-        string="Ordenes de Compra a validar",
-        domain=[("state", "not in", ["done", "cancel"])],
-        readonly=True,
-        states={"draft": [("readonly", False)]},
-    )
     activity_description = fields.Many2one(
         "sii.activity.description", string="Giro", related="commercial_partner_id.activity_description", readonly=True,
     )
@@ -638,7 +631,7 @@ class AccountMove(models.Model):
         self.ensure_one()
         if self.use_documents:
             if not (self.journal_id.restore_mode or self._context.get("restore_mode", False)):
-                self.sii_document_number = self.journal_document_class_id.sequence_id.number_next_actual
+                self.sii_document_number = self.journal_document_class_id.sequence_id.next_by_id()
             self[self._sequence_field] = '%s%s' % (self.document_class_id.doc_code_prefix, self.sii_document_number)
         else:
             super(AccountMove, self)._set_next_sequence()
@@ -646,9 +639,6 @@ class AccountMove(models.Model):
     def _post(self, soft=True):
         to_post = super(AccountMove, self)._post(soft=soft)
         for inv in to_post:
-            if inv.purchase_to_done:
-                for ptd in inv.purchase_to_done:
-                    ptd.write({"state": "done"})
             if not inv.is_invoice() or not inv.journal_document_class_id or not inv.use_documents:
                 continue
             inv.sii_result = "NoEnviado"
@@ -683,6 +673,10 @@ class AccountMove(models.Model):
                         else True,
                     }
                 )
+            po = self.env['purchase.order'].browse(
+                inv._context.get('purchase_to_done', False))
+            if po:
+                po.write({"state": "done"})
         return to_post
 
     @contextmanager

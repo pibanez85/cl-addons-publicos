@@ -44,6 +44,7 @@
                 <field name="currency_id" optional="show"/>
                 <field name="invoice_line_ids" optional="show"/>
                 <field name="company_id" optional="show"/>
+                <field name="action" />
                 <field name="state" optional="show"/>
                 <field name="create_date" optional="hide"/>
                 <field name="create_uid" optional="hide"/>
@@ -84,11 +85,13 @@
                         <field name="name" />
                         <field name="mail_id" />
                         <field name="company_id" />
+                        <field name="xml_id" />
                     </group>
                     <notebook>
                         <page string="Documentos">
                             <field name="document_ids" editable="bottom" widget="one2many">
                                 <tree editable="top/bottom">
+                                    <field name="id_dte" optional="show"/>
                                     <field name="date" />
                                     <field name="document_class_id" />
                                     <field name="number" />
@@ -120,6 +123,12 @@
                 <header>
                     <field name='state' widget="statusbar" />
                     <button
+                        name="process_document"
+                        string="Procesar Documento"
+                        type="object"
+                        attrs="{'invisible':[('state', '=', 'draft')]}"
+                    />
+                    <button
                         name="accept_document"
                         string="Aceptar"
                         type="object"
@@ -136,6 +145,7 @@
                     <group>
                         <group>
                             <field name="dte_id" />
+                            <field name="id_dte" />
                             <field name="date" />
                             <field name="new_partner" />
                             <field name="partner_id" />
@@ -144,18 +154,21 @@
                             <field name="journal_id" />
                         </group>
                         <group>
+                           <field name="action" />
                             <field name="amount" />
                             <field name="monto_no_facturable" />
                             <field name="currency_id" />
                             <field name="move_id" />
                             <field name="company_id" />
-                            <field name="purchase_to_done" widget="many2many_tags" options="{'no_create': True}" />
+                            <field name="purchase_to_done" options="{'no_create': True}" />
                         </group>
                     </group>
                     <notebook>
                         <page string="Líneas del documento">
-                            <field name="invoice_line_ids" editable="bottom" widget="one2many">
-                                <tree editable="top/bottom">
+                            <field name="invoice_line_ids"
+                              widget="one2many"
+                              mode="tree">
+                                <tree editable="bottom">
                                     <field name="sequence" />
                                     <field name="document_id" invisible="True" />
                                     <field name="product_id" />
@@ -163,9 +176,11 @@
                                     <field name="quantity" />
                                     <field name="price_unit" />
                                     <field name="price_subtotal" />
-                                    <field name="tax_ids" />
-                                    <field name="ind_exe" />
+                                    <field name="tax_ids" widget="many2many_tags" />
+                                    <field name="ind_exe" optional="hide"/>
                                     <field name="purchase_line_id" />
+                                    <field name="create_pol" />
+                                    <field name="create_move_line" />
                                     <field name="currency_id" invisible="True" />
                                 </tree>
                             </field>

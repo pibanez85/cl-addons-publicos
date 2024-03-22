@@ -96,7 +96,7 @@ FROM ({union}) AS combined'''.format(
                     return self.final_nm
             return folio
         if folio > 0:
-            self.write({"state": 'spent'})
+            self.write({"state": 'spent', 'qty_available': 0})
             return self.final_nm
         return self.start_nm
 

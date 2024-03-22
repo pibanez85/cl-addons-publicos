@@ -150,11 +150,11 @@ class ProcessMails(models.Model):
 
     def _process_xml(self, att):
         el = self._parse_xml(att.datas)
-        data = {
-            "mail_id": self.id,
-            "name": att.name,
-        }
         if el.tag == "EnvioDTE":
+            data = {
+                "mail_id": self.id,
+                "name": att.name,
+            }
             val = self.env["mail.message.dte"].sudo().create(data)
             val.pre_process()
         elif el.tag in ["RespuestaDTE", "EnvioRecibos"]:

@@ -5,12 +5,14 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.safe_eval import safe_eval
 from odoo.tools.translate import _
+from base64 import b64encode
 import logging
 
 
 _logger = logging.getLogger(__name__)
 try:
     from facturacion_electronica import facturacion_electronica as fe
+    from facturacion_electronica import clase_util as fe_util
 except ImportError:
     _logger.warning("No se ha podido cargar fe")
 
@@ -20,18 +22,35 @@ class ProcessMailsDocument(models.Model):
     _description = "Pre Documento Recibido"
     _inherit = ["mail.thread"]
 
+    def _get_dtes(self, xml):
+        if xml.tag == "SetDTE":
+            return xml.findall("DTE")
+        envio = xml.find("SetDTE")
+        if envio is None:
+            if xml.tag == "DTE":
+                return [xml]
+            return []
+        return envio.findall("DTE")
+
+    def _get_xml(self):
+        xml = self.dte_id._parse_xml(self.dte_xml)
+        for dte in self._get_dtes(xml):
+            Documento = dte.find("Documento")
+            if Documento.get("ID") == self.id_dte:
+                return fe_util.xml_to_string(dte)
+
     dte_id = fields.Many2one("mail.message.dte", string="DTE", readonly=True, ondelete="cascade",)
     new_partner = fields.Char(string="Proveedor Nuevo", readonly=True,)
     partner_id = fields.Many2one("res.partner", string="Proveedor",)
     date = fields.Date(string="Fecha Emsisión", readonly=True,)
     number = fields.Char(string="Folio", readonly=True,)
     document_class_id = fields.Many2one(
-        "sii.document_class", string="Tipo de Documento", readonly=True, oldname="sii_document_class_id",
-    )
+        "sii.document_class", string="Tipo de Documento", readonly=True,)
     amount = fields.Monetary(string="Monto", readonly=True,)
     monto_no_facturable = fields.Monetary(string="Monto no Facturable", readonly=True,)
     currency_id = fields.Many2one(
-        "res.currency", string="Moneda", readonly=True, default=lambda self: self.env.user.company_id.currency_id,
+        "res.currency", string="Moneda", readonly=True,
+        default=lambda self: self.env.user.company_id.currency_id,
     )
     invoice_line_ids = fields.One2many("mail.message.dte.document.line", "document_id", string="Líneas del Documento",)
     global_descuentos_recargos = fields.One2many("mail.message.dte.document.gdr", "document_id", string="Líneas GDR",)
@@ -40,8 +59,10 @@ class ProcessMailsDocument(models.Model):
         [("draft", "Recibido"), ("accepted", "Aceptado"), ("rejected", "Rechazado"),], default="draft",
     )
     move_id = fields.Many2one("account.move", string="Factura", readonly=True,)
-    xml = fields.Text(string="XML Documento", readonly=True,)
-    purchase_to_done = fields.Many2many(
+    id_dte = fields.Char(string="ID DTE")
+    dte_xml = fields.Binary(related="dte_id.xml_id.datas")
+    xml = fields.Text(string="XML Documento")
+    purchase_to_done = fields.Many2one(
         "purchase.order", string="Ordenes de Compra a validar", domain=[("state", "not in", ["accepted", "rejected"])],
     )
     claim = fields.Selection(
@@ -66,7 +87,15 @@ class ProcessMailsDocument(models.Model):
         string="Respuesta SII"
     )
     journal_id = fields.Many2one('account.journal', string="Journal Destino")
-
+    action = fields.Selection([
+            ('create_po', 'Crear Orden de Compra'),
+            ('create_move', 'Crear Factura'),
+            ('both', 'Crear Ambas')
+        ],
+        string="Acción al aceptar",
+        default='both',
+        required=True
+    )
     _order = "create_date DESC"
 
     @api.onchange('purchase_to_done')
@@ -77,7 +106,7 @@ class ProcessMailsDocument(models.Model):
             for line in self.invoice_line_ids:
                 line.purchase_line_id = False
             return
-        lines = self.purchase_to_done[0].order_line
+        lines = self.purchase_to_done.order_line
         tot_lines = len(lines)
         for line in self.invoice_line_ids:
             i = line.sequence
@@ -188,6 +217,26 @@ class ProcessMailsDocument(models.Model):
         )
         self.browse([line.get("id") for line in self.env.cr.dictfetchall()]).accept_document()
 
+    def _process_document(self):
+        xml = self.xml
+        filename = self.dte_id.name
+        if self.dte_xml:
+            xml = self._get_xml()
+        vals = {
+            "xml_file": b64encode(xml.encode("ISO-8859-1")),
+            "filename": filename,
+            "pre_process": False,
+            "document_id": self.id,
+            "option": "accept",
+            "action": self.action,
+        }
+        val = self.env["sii.dte.upload_xml.wizard"].sudo().create(vals)
+        return val.confirm(ret=True)
+
+    def process_document(self):
+        if self.action in ["both", "create_po"] and not any(aml.purchase_line_id or aml.create_pol for aml in self.invoice_line_ids):
+            raise UserError("Debe marcar almenos una línea de pedido para crear")
+        self._process_document()
 
     def accept_document(self):
         created = []
@@ -201,15 +250,7 @@ class ProcessMailsDocument(models.Model):
             if r.move_id:
                 resp = r.move_id.ids
             else:
-                vals = {
-                    "xml_file": r.xml.encode("ISO-8859-1"),
-                    "filename": r.dte_id.name,
-                    "pre_process": False,
-                    "document_id": r.id,
-                    "option": "accept",
-                }
-                val = self.env["sii.dte.upload_xml.wizard"].sudo().create(vals)
-                resp = val.confirm(ret=True)
+                resp = r._process_document()
             created.extend(resp)
             if r.company_id.dte_service_provider == "SIICERT":
                 r.state = "accepted"
@@ -320,7 +361,7 @@ class ProcessMailsDocumentLines(models.Model):
 
     name = fields.Char(string="Nombre en xml")
     document_id = fields.Many2one("mail.message.dte.document", string="Documento", ondelete="cascade",)
-    sequence = fields.Integer(string="Número de línea", default=1)
+    sequence = fields.Integer(string="Número de línea", default=1, readonly=True)
     product_id = fields.Many2one("product.product", string="Producto",)
     new_product = fields.Char(string="Nuevo Producto", readonly=True,)
     description = fields.Char(string="Descripción", readonly=True,)
@@ -354,7 +395,18 @@ class ProcessMailsDocumentLines(models.Model):
         context={'active_test': False},
         check_company=True,
     )
-    purchase_line_id = fields.Many2one('purchase.order.line', string="Línea de Órden de Compra")
+    purchase_line_id = fields.Many2one('purchase.order.line', string="Línea de Orden de Compra")
+    create_pol = fields.Boolean(
+        string="Crear Línea Orden de Compra",
+    )
+    create_move_line = fields.Boolean(
+        string="Crear Línea de Movimiento",
+    )
+
+    @api.onchange('purchase_line_id')
+    def _onchange_purchase_line_id(self):
+        if self.purchase_line_id:
+            self.product_id = self.purchase_line_id.product_id
 
 class MMDTEDGlobalDescuentoRecargo(models.Model):
     _name = "mail.message.dte.document.gdr"

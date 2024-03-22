@@ -703,7 +703,7 @@ class UploadXMLWizard(models.TransientModel):
             if RznSoc is None:
                 RznSoc = Emisor.find("RznSocEmisor")
             monto_no_facturable = Encabezado.find("Totales/MontoNF").text if Encabezado.find("Totales/MontoNF") is not None else 0
-            action "both" if self.action == "manual" else self.action
+            action = "both" if self.action == "manual" else self.action
             data.update(
                 {
                     "number": Folio,

@@ -64,13 +64,17 @@ class UploadXMLWizard(models.TransientModel):
                 return
             if not self.document_id:
                 self.pre_process = True
+                self.crear_po = False
                 created_pre = self.do_create_pre()
             if self.action != 'manual':
+                self.pre_process = False
                 if self.action in ["create_po", "both"]:
+                    self.crear_po = True
                     created = self.do_create_po()
                     xml_id = "purchase.purchase_order_tree"
                     target_model = "purchase.order"
                 if self.action in ["create_move", "both"]:
+                    self.crear_po = False
                     created = self.do_create_inv()
                     xml_id = "account.view_invoice_tree"
                     target_model = "account.move"

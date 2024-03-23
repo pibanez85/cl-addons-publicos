@@ -151,9 +151,16 @@ class ProcessMails(models.Model):
     def _process_xml(self, att):
         el = self._parse_xml(att.datas)
         if el.tag == "EnvioDTE":
+            if self.model == "mail.message.dte":
+                '''Se asume un .xml por correo, @TODO casos en que hay más '''
+                dte = self.env[self.model].sudo().browse(self.res_id)
+                dte.dte_id = att
+                dte.process_message(pre=True)
+                return
             data = {
                 "mail_id": self.id,
                 "name": att.name,
+                "xml_id": att.id,
             }
             val = self.env["mail.message.dte"].sudo().create(data)
             val.pre_process()
@@ -162,10 +169,6 @@ class ProcessMails(models.Model):
 
 
     def process_mess(self):
-        if self.model == "mail.message.dte":
-            dte = self.env[self.model].sudo().browse(self.res_id)
-            dte.process_message(pre=True)
-            return
         for att in self.attachment_ids:
             if not att.name:
                 continue

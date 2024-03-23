@@ -687,14 +687,15 @@ class UploadXMLWizard(models.TransientModel):
             })
         if journal_id:
             data["journal_id"] = journal_id.id
-        DscRcgGlobal = documento.findall("DscRcgGlobal")
-        if DscRcgGlobal:
-            drs = [(5,)]
-            for dr in DscRcgGlobal:
-                drs.append((0, 0, self.process_dr(dr, journal_id)))
-            data.update(
-                {"global_descuentos_recargos": drs,}
-            )
+        if not self.create_po:
+            DscRcgGlobal = documento.findall("DscRcgGlobal")
+            if DscRcgGlobal:
+                drs = [(5,)]
+                for dr in DscRcgGlobal:
+                    drs.append((0, 0, self.process_dr(dr, journal_id)))
+                data.update(
+                    {"global_descuentos_recargos": drs,}
+                )
         Folio = IdDoc.find("Folio").text
         if self.crear_po:
             data["partner_ref"] = self._purchase_partner_ref(dc_id, Folio)

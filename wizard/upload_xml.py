@@ -1083,6 +1083,8 @@ class UploadXMLWizard(models.TransientModel):
                 except Exception as e:
                     msg = "Error en procesar PO: %s" % str(e)
                     _logger.warning(msg, exc_info=True)
+                    if self.document_id:
+                        self.document_id.message_post(body=msg)
                     continue
                 if self.action == "both" and not dc_id.es_guia():
                     self.purchase_to_done = po

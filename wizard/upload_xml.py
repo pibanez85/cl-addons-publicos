@@ -949,7 +949,10 @@ class UploadXMLWizard(models.TransientModel):
                     )
                     created.append(pre.id)
             except Exception as e:
-                _logger.warning("Error en 1 pre con error:  %s" % str(e), exc_info=True)
+                msg = "Error en 1 pre con error:  %s" % str(e)
+                _logger.warning(msg, exc_info=True)
+                if self.dte_id:
+                    self.dte_id.message_post(body=msg)
         return created
 
     def do_create_inv(self):

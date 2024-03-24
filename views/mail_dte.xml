@@ -85,7 +85,7 @@
                         <field name="name" />
                         <field name="mail_id" />
                         <field name="company_id" />
-                        <field name="xml_id" />
+                        <field name="xml_id" domain="[('res_model', '=', active_id), ('res_model', '=', 'mail.message.dte')]"/>
                     </group>
                     <notebook>
                         <page string="Documentos">

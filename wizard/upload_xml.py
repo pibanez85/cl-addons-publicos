@@ -687,7 +687,7 @@ class UploadXMLWizard(models.TransientModel):
             })
         if journal_id:
             data["journal_id"] = journal_id.id
-        if not self.create_po:
+        if not self.crear_po:
             DscRcgGlobal = documento.findall("DscRcgGlobal")
             if DscRcgGlobal:
                 drs = [(5,)]

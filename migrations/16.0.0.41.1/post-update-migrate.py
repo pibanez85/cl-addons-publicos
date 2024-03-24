@@ -11,7 +11,7 @@ def migrate(cr, installed_version):
     env = api.Environment(cr, SUPERUSER_ID, {})
     def detect(self, att):
         name = att.name.upper()
-        if att.mimetype not in ["text/plain"] or name.find(".XML") == -1:
+        if att.mimetype not in ["text/plain"] or name.find(".XML") == -1 or not att.datas:
             return
         xml = self._parse_xml(att.datas)
         for dte in env['mail.message.dte.document']._get_dtes(xml):

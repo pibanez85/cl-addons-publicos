@@ -154,7 +154,7 @@ class ProcessMails(models.Model):
             if self.model == "mail.message.dte":
                 '''Se asume un .xml por correo, @TODO casos en que hay más '''
                 dte = self.env[self.model].sudo().browse(self.res_id)
-                dte.dte_id = att
+                dte.xml_id = att
                 dte.process_message(pre=True)
                 return
             data = {

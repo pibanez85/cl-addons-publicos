@@ -41,7 +41,7 @@ class ProccessMail(models.Model):
         created = []
         if not dte_receipt_method:
             ICPSudo = self.env["ir.config_parameter"].sudo()
-            dte_receipt_method = ICPSudo.get_param("account.dte_receipt_method", default='both')
+            dte_receipt_method = ICPSudo.get_param("account.dte_receipt_method", default='manual')
         for r in self:
             if r.xml_id:
                 vals = {

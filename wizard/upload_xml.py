@@ -972,6 +972,8 @@ class UploadXMLWizard(models.TransientModel):
                 company_id = self.env["res.company"].search(
                     [("vat", "=", self.format_rut(documento.find(path_rut).text)),], limit=1,
                 )
+                if not company_id:
+                    raise UserError(_(f"No existe compañia para el rut {rut}"))
                 inv = self._create_inv(documento, company_id,)
                 if self.document_id:
                     self.document_id.move_id = inv.id

@@ -30,7 +30,7 @@ class SIIXMLEnvio(models.Model):
     _description = "XML de envío DTE"
 
     name = fields.Char(string="Nombre de envío", required=True, readonly=True, states={"draft": [("readonly", False)]},)
-    xml_envio = fields.Text(string="XML Envío", required=True, readonly=True, states={"draft": [("readonly", False)]},)
+    xml_envio = fields.Text(string="XML Envío", readonly=True, states={"draft": [("readonly", False)]},)
     state = fields.Selection(
         [
             ("draft", "Borrador"),
@@ -116,13 +116,25 @@ class SIIXMLEnvio(models.Model):
             "firma_electronica": signature_id.parametros_firma(),
         }
 
+    def get_doc(self):
+        for r in self.move_ids:
+            return r
+        return self.move_ids
+
+    def es_api(self, set_pruebas=False):
+        if set_pruebas and self._context.get("set_pruebas", False):
+            return True
+        doc = self.get_doc()
+        return doc.document_class_id.es_boleta()
+
     def send_xml(self):
         if self.sii_send_ident:
             _logger.warning("XML %s ya enviado" % self.name)
             return
         datos = self._get_datos_empresa(self.company_id)
+        api = self.es_api()
         datos.update(
-            {"sii_xml_request": self.xml_envio, "filename": self.name, "api": "EnvioBOLETA" in self.xml_envio,}
+            {"sii_xml_request": self.xml_envio, "filename": self.name, "api": api,}
         )
         res = fe.enviar_xml(datos)
         self.write(
@@ -148,9 +160,7 @@ class SIIXMLEnvio(models.Model):
 
     def get_send_status(self, user_id=False):
         datos = self._get_datos_empresa(self.company_id)
-        api = "EnvioBOLETA" in self.xml_envio
-        if self._context.get("set_pruebas", False):
-            api = False
+        api = self.es_api(True)
         datos.update(
             {"codigo_envio": self.sii_send_ident, "api": api,}
         )
@@ -165,6 +175,7 @@ class SIIXMLEnvio(models.Model):
 
     def solicitar_reenvio_email(self):
         datos = self._get_datos_empresa(self.company_id)
+        api = self.es_api()
         datos.update(
             {"codigo_envio": self.sii_send_ident, "api": api,}
         )
@@ -196,11 +207,20 @@ class SIIXMLEnvio(models.Model):
                 if not receipt.get('estadistica'):
                     state = 'Aceptado'
                 detalle_rep_rech = []
-                if receipt.get('detalle_rep_rech', '{}') and '"detalle_rep_rech":null' not in receipt.get('detalle_rep_rech', '{}'):
+                if receipt.get('detalle_rep_rech', []) and '"detalle_rep_rech":null' not in receipt.get('detalle_rep_rech', '{}'):
                     if type(receipt['detalle_rep_rech']) is list:
                         detalle_rep_rech = receipt['detalle_rep_rech']
                     else:
                         detalle_rep_rech = json.loads(receipt.get('detalle_rep_rech', '{}'))
+                if receipt['detalle_rep_rech'] is None and receipt['estadistica'] is None:
+                    state = 'NoEnviado'
+                    self.state = state
+                    self.sii_send_ident = ''
+                    self.sii_xml_response = ''
+                    self.sii_receipt = ''
+
             elif receipt.find("RESP_HDR") is not None:
                 state = "Aceptado"
         self.set_childs(state, detalle_rep_rech)
+        if self.sii_send_ident and state in ("EnProceso", "Aceptado"):
+            self.xml_envio = ""

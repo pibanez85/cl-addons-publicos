@@ -34,7 +34,7 @@
                         <field name="sii_receipt" />
                         <field name="user_id" />
                         <field name="company_id" />
-                        <field name="xml_envio" />
+                        <field name="xml_envio" attrs="{'required': [('sii_send_ident', '=', False)]}"/>
                         <field name="move_ids" readonly="True" />
                     </group>
                     <notebook attrs="{'invisible': [('state', 'not in', ['Enviado', 'Aceptado'])]}">

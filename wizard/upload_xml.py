@@ -101,7 +101,10 @@ class UploadXMLWizard(models.TransientModel):
         return rut
 
     def _get_xml(self):
-        return base64.b64decode(self.xml_file).decode("ISO-8859-1")
+        return base64.b64decode(self.xml_file).decode("ISO-8859-1")\
+        .replace('<ds:','<')\
+        .replace('</ds:','</')\
+        .replace(':ds', '')
 
     def _get_xml_name(self):
         return self.filename or self.dte_id.name
@@ -173,6 +176,11 @@ class UploadXMLWizard(models.TransientModel):
             }
         )
         respuesta = fe.recepcion_xml(vals)
+        if type(respuesta) is dict:
+            if self.dte_id:
+                self.dte_id.message_post(body=respuesta['error'])
+            else:
+                raise UserError(respuesta['error'])
         if self.dte_id:
             for r in respuesta:
                 att = self._create_attachment(r["respuesta_xml"], r["nombre_xml"], self.dte_id.id, "mail.message.dte")

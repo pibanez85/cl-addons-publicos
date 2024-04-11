@@ -44,19 +44,19 @@
                         <p style="text-align:left; font-size:10px;color:black; text-transform:uppercase; word-wrap: break-word">
                             <span t-field="company.activity_description.name" style="color:black; text-align:center;"/><br/>
                             <!-- domicilios -->
-                            <span>Casa Matriz: </span><span t-field="company.street"/>, <span t-field="company.city_id.name"/>, <span t-field="company.city"/>
-                          <t t-if="o.company_id.sucursal_ids and o.use_documents">
+                            <span>Casa Matriz: </span><span t-field="o.company_id.street"/>, <span t-field="o.company_id.city_id.name"/>, <span t-field="o.company_id.city"/>
+                            <t t-if="o.company_id.sucursal_ids and o.use_documents">
                               <t t-if="len(o.company_id.sucursal_ids) == 1">
                                <span>Sucursal: </span><span t-field="o.company_id.sucursal_ids[0].partner_id.street"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city_id.name"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city"/>
+                              </t>
+                              <t t-else="">
+                                <span>Sucursales: </span>
+                                  <t t-foreach="o.company_id.sucursal_ids" t-as="sucursal">
+                                    <span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/>/
+                                  </t>
+                              </t>
                             </t>
-                            <t t-else="">
-                              <span>Sucursales: </span>
-                                <t t-foreach="o.company_id.sucursal_ids" t-as="sucursal">
-                                  <span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/>/
-                                </t>
-                            </t>
-                          </t>
-                          <br/>
+                            <br/>
                             <span> Teléfono: <span t-field="company.phone"/></span><br/>
                             <span>E-Mail: <span t-field="company.email"/></span><br/>
                             <span t-field="company.website"/>
@@ -632,7 +632,7 @@
              <div class="page" style="width: 320px; font-size: 12px;">
                 <div class="row">
                   <div class="col-12" style="text-align: center;">
-                    <img style="width: auto; height: 100px; margin: 0 auto;" t-att-src="'data:image/png;base64,%s' % o.sii_header()"/>
+                    <img style="width: auto; height: 100px; margin: 0 auto;" t-att-src="image_data_uri(o.sii_header())"/>
                   </div>
                 </div>
                 <div class="row">
@@ -647,15 +647,17 @@
                 </div>
                 <div class="row">
                     <div class="col-12">
-                        <span>Casa Matriz:
-                            <t t-esc="o.company_id.partner_id.street"/>
-                            <t t-esc="o.company_id.partner_id.city"/>
-                          <br/>
-                        </span>
                         <span>Giro: <span t-field="o.company_id.activity_description"/><br/></span>
-                        <t t-if="o.company_id.sucursal_ids and o.type in ['out_invoice', 'out_refund']">
-                          <t t-foreach="o.company_id.sucursal_ids" t-as="sucursal">
-                            <span>Sucursal: </span><span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/><br/>
+                        <span>Casa Matriz: </span><span t-field="company.street"/>, <span t-field="company.city_id.name"/>, <span t-field="company.city"/>
+                        <t t-if="o.company_id.sucursal_ids and o.use_documents">
+                          <t t-if="len(o.company_id.sucursal_ids) == 1">
+                           <span>Sucursal: </span><span t-field="o.company_id.sucursal_ids[0].partner_id.street"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city_id.name"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city"/>
+                          </t>
+                          <t t-else="">
+                            <span>Sucursales: </span>
+                              <t t-foreach="o.company_id.sucursal_ids" t-as="sucursal">
+                                <span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/>/
+                              </t>
                           </t>
                         </t>
                         <span>Cajero: <t t-esc="o.user_id.name"/><br/></span>
@@ -750,27 +752,89 @@
                   </table>
                   <div class="row">
                       <div class="col-12 pull-right">
-                          <table class="table table-condensed" style="border-top: 1px solid black; width: 100%; line-height:1!important;">
-                              <t t-foreach="o.invoice_line_ids.filtered(lambda line: line.sudo().account_id and line.product_id).sorted(key=lambda l: (l.sequence))"
-                              t-as="t">
-                                  <tr class="border-black" t-if="not o.es_boleta() or (o.es_boleta() and ( t.tax_id.amount == 0 or t.tax_id.sii_code in [14, 15, 17]))">
-                                      <td>
-                                          <t t-esc="t.tax_line_id.description if t.tax_repartition_line_id.sii_type not in ['R', 'A'] else t.tax_line_id.name"/>
-                                      </td>
-                                      <td class="text-right">
-                                          <span t-esc="t.debit or t.credit" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                        <table class="table table-sm">
+                            <t t-if="o.global_descuentos_recargos">
+                                <tr
+                                    t-foreach="o.global_descuentos_recargos"
+                                    t-as="gdr"
+                                    class="border-black"
+                                    style="max-height:11px; font-size:12px !important;"
+                                >
+                                    <td>
+                                        <strong>Descuento o Recargo Global</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        <span
+                                            t-esc="gdr.valor if gdr.gdr_type=='amount' else gdr.amount_untaxed"
+                                            t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
+                                        />
+                                    </td>
+                                </tr>
+                            </t>
+                            <tr
+                                style="max-height:11px; font-size:12px !important;"
+                                name="subtotal"
+                                t-if="not price_included"
+                            >
+                                <td>
+                                    <strong>Subtotal</strong>
+                                </td>
+                                <td class="text-end">
+                                    <span
+                                        t-field="o.amount_untaxed"
+                                        t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
+                                    />
+                                </td>
+                            </tr>
+                            <tr t-if="display_liquidacion" class="border-black" style="max-height:12px; font-size:12px !important;">
+                                <td>Comisiones y Otros Cargos</td>
+                                <td class="text-right">
+                                    <span t-esc="o.comisiones()"/>
+                                </td>
+                            </tr>
+                            <tr
+                                name="discount"
+                                t-if="display_discount"
+                                class="border-black"
+                                style="max-height:11px; font-size:12px !important;"
+                            >
+                                <td>
+                                    <strong>Descuento</strong>
+                                </td>
+                                <td class="text-end">
+                                    <span
+                                        t-esc="o.getTotalDiscount()"
+                                        t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
+                                    />
+                                </td>
+                            </tr>
+                            <t t-set="tax_totals" t-value="o.tax_totals"/>
+                            <t t-foreach="tax_totals['subtotals']" t-as="subtotal">
+                              <t t-set="subtotal_to_show" t-value="subtotal['name']"/>
+                              <t t-foreach="tax_totals['groups_by_subtotal'][subtotal_to_show]" t-as="amount_by_group">
+                                  <tr>
+                                      <td><span class="text-nowrap" t-esc="amount_by_group['tax_group_name']"/></td>
+                                      <td class="text-end o_price_total">
+                                          <span class="text-nowrap" t-esc="amount_by_group['formatted_tax_group_amount']" />
                                       </td>
                                   </tr>
                               </t>
-                              <tr>
-                                  <td class="text-right">
-                                      <strong>MONTO TOTAL</strong>
-                                  </td>
-                                  <td class="text-right">
-                                      <span t-esc="o.amount_total" t-options="{&quot;widget&quot;: &quot;monetary&quot;, &quot;display_currency&quot;: o.currency_id}"/>
-                                  </td>
-                              </tr>
-                          </table>
+                            </t>
+                            <t t-set="has_rounding" t-value="'formatted_amount_total_rounded' in tax_totals"/>
+                            <tr class="border-black" style="max-height:12px; font-size:12px !important;">
+                                <t t-if="has_rounding"><td>Total</td></t>
+                                <t t-else=""><td><strong>Total</strong></td></t>
+                                <td class="text-end">
+                                    <span t-esc="tax_totals['formatted_amount_total']"/>
+                                </td>
+                            </tr>
+                            <tr t-if="has_rounding">
+                                <td><strong>Total Redondeado</strong></td>
+                                <td class="text-end">
+                                    <span t-esc="tax_totals['formatted_amount_total_rounded']"/>
+                                </td>
+                            </tr>
+                        </table>
                       </div>
                   </div>
                   <table class="table table-condensed pull-right" style="border-top: 1px solid black; width: 100%;">

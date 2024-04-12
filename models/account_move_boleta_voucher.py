@@ -247,9 +247,9 @@ class SIIResumenBoletaVoucher(models.Model):
             query = [
                 ('sii_document_number', '=', r.sii_document_number),
                 ('document_class_id', '=', r.document_class_id.id),
-                ('type', '=', 'out_invoice'),
+                ('move_type', '=', 'out_invoice'),
             ]
-            ref = self.env['account.invoice'].search(query)
+            ref = self.env['account.move'].search(query)
             recs.append(ref)
         return recs
 
@@ -280,29 +280,29 @@ class SIIResumenBoletaVoucher(models.Model):
         query = [
             ('sii_referencia_TpoDocRef.sii_code', 'in', [39, 41]),
             ('sii_referencia_CodRef', 'in', ['1', '3']),
-            ('invoice_id.date_invoice' , '>=', current),
-            ('invoice_id.date_invoice' , '<=', next_month),
-            ('invoice_id.journal_id', 'in', self.medios_de_pago.ids),
-            ('invoice_id.company_id', '=', self.company_id.id),
+            ('move_id.invoice_date' , '>=', current),
+            ('move_id.invoice_date' , '<=', next_month),
+            ('move_id.journal_id', 'in', self.medios_de_pago.ids),
+            ('move_id.company_id', '=', self.company_id.id),
         ]
-        ncs = self.env['account.invoice.referencias'].search(query)
+        ncs = self.env['account.move.referencias'].search(query)
         query = [
             ('reconciled_line_ids.company_id', '=', self.company_id.id),
-            ('reconciled_line_ids.invoice_id.date_invoice' , '>=', current),
-            ('reconciled_line_ids.invoice_id.date_invoice' , '<=', next_month),
+            ('reconciled_line_ids.move_id.invoice_date' , '>=', current),
+            ('reconciled_line_ids.move_id.invoice_date' , '<=', next_month),
             ('reconciled_line_ids.journal_id', 'in', self.medios_de_pago.ids),
-            ('reconciled_line_ids.invoice_id.document_class_id.sii_code', 'in', [39, 41]),
-            ('reconciled_line_ids.invoice_id.type', '=', 'out_invoice'),
+            ('reconciled_line_ids.move_id.document_class_id.sii_code', 'in', [39, 41]),
+            ('reconciled_line_ids.move_id.move_type', '=', 'out_invoice'),
         ]
-        nc_invs = self.env['account.invoice']
+        nc_invs = self.env['account.move']
         for nc in ncs:
-            o = self.env['account.invoice.referencias'].search([
+            o = self.env['account.move.referencias'].search([
                 ('sii_document_number', '=', nc.origen),
                 ('document_class_id', '=', nc.sii_referencia_TpoDocRef.id),
             ])
             nc_invs += o
         if nc_invs:
-            query.append(('reconciled_line_ids.invoice_id.id', 'not in', nc_invs.ids))
+            query.append(('reconciled_line_ids.move_id.id', 'not in', nc_invs.ids))
         moves = self.env['account.move']
         for r in self.env['account.full.reconcile'].search(query):
             for aml in r.reconciled_line_ids:

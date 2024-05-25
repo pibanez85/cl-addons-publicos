@@ -2689,7 +2689,7 @@
             <field name="provincia_id" ref="state_cl_11200" />
         </record>
         <record model="res.city" id="CL11201">
-            <field name="name">Aisén</field>
+            <field name="name">Aysén</field>
             <field name="code">11201</field>
             <field name="country_id" ref="base.cl" />
             <field name="state_id" ref="base.state_cl_11" />

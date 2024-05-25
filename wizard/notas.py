@@ -18,7 +18,7 @@ class AccountMoveReversal(models.TransientModel):
         move_ids = self.env['account.move'].browse(self.env.context['active_ids']) if self.env.context.get('active_model') == 'account.move' else self.env['account.move']
         docs = []
         for doc in move_ids:
-            if doc.document_class_id.sii_code in [110]:
+            if doc.document_class_id.es_exportacion():
                 if doc.move_type in ['out_invoice', 'in_invoice']:
                     docs.append(112)
                 docs.append(111)

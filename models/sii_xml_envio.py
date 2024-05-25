@@ -122,10 +122,11 @@ class SIIXMLEnvio(models.Model):
         return self.move_ids
 
     def es_api(self, set_pruebas=False):
-        if set_pruebas and self._context.get("set_pruebas", False):
-            return True
         doc = self.get_doc()
-        return doc.document_class_id.es_boleta()
+        doc.document_class_id.es_boleta()
+        if set_pruebas and self._context.get("set_pruebas", False):
+            api = False
+        return api
 
     def send_xml(self):
         if self.sii_send_ident:

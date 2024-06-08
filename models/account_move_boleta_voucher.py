@@ -478,6 +478,7 @@ class SIIResumenBoletaVoucher(models.Model):
                 'DscItem': 'Anula ventas con comprobante electrónico',
                 'QtyItem': 1,
                 'MontoItem': self.total,
+                'IndExe': 1,
             }
         ]
 

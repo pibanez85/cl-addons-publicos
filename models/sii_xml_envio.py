@@ -76,6 +76,9 @@ class SIIXMLEnvio(models.Model):
     email_respuesta = fields.Text(string="Email SII", readonly=True,)
     email_estado = fields.Selection(status_dte, string="Respuesta Envío", readonly=True,)
     email_glosa = fields.Text(string="Glosa Recepción", readonly=True,)
+    boleta_voucher_ids = fields.One2many(
+        "account.move.boleta_voucher", "sii_xml_request", string="NC Vouchers Boletas", readonly=True, states={"draft": [("readonly", False)]},
+    )
 
 
     def name_get(self):
@@ -123,7 +126,7 @@ class SIIXMLEnvio(models.Model):
 
     def es_api(self, set_pruebas=False):
         doc = self.get_doc()
-        doc.document_class_id.es_boleta()
+        api = doc.document_class_id.es_boleta()
         if set_pruebas and self._context.get("set_pruebas", False):
             api = False
         return api

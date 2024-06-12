@@ -114,43 +114,16 @@ class ResPartner(models.Model):
     def set_temporal_email_cambiar_a_related(self):
         """ Esto eliminar en la versión siguiente, es solamente para evitar
             problemas al actualizar """
-        if not self.is_company and not self.dte_email or (not self.email and not self.dte_email):
-            if self.dte_email_id:
-                self.dte_email_id.unlink()
-            return
         if self.dte_email == self.email:
             self.send_dte = True
             self.principal = True
             return
-        if not self.dte_email_id:
-            partners = []
-            for rec in self.child_ids:
-                partners.append((4, rec.id, False))
-            partners.append(
-                (
-                    0,
-                    0,
-                    {
-                        "type": "dte",
-                        "name": self.dte_email,
-                        "email": self.dte_email,
-                        "send_dte": True,
-                        "principal": True,
-                    },
-                )
-            )
-            self.child_ids = partners
-        elif self.dte_email_id and self.dte_email_id.email != self.dte_email:
+        if self.dte_email_id and self.dte_email_id.email != self.dte_email:
             __name = self.dte_email_id.name
             if __name == self.dte_email_id.email:
                 __name = self.dte_email
             self.dte_email_id.name = __name
             self.dte_email_id.email = self.dte_email
-        else:
-            for r in self.child_ids:
-                if r.type == "dte":
-                    r.email = self.dte_email
-                    r.name = self.dte_email
 
     @api.onchange("principal")
     def verify_principal(self):

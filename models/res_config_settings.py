@@ -10,7 +10,7 @@ except ImportError:
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-    send_dte_method = fields.Selection([('manual', 'Manual'), ('imediato', 'Inmediato'), ('diferido', 'Diferido')], string="Tiempo de Espera para Enviar DTE automático al SII (en horas)", default='diferido',)
+    send_dte_method = fields.Selection([('manual', 'Manual'), ('inmediato', 'Inmediato'), ('diferido', 'Diferido')], string="Tiempo de Espera para Enviar DTE automático al SII (en horas)", default='diferido',)
     auto_send_dte = fields.Integer(string="Tiempo de Espera para Enviar DTE automático al SII (en horas)", default=1,)
     auto_send_email = fields.Boolean(string="Enviar Email automático al Auto Enviar DTE al SII", default=True,)
     auto_send_persistencia = fields.Integer(string="Enviar Email automático al Cliente cada  n horas", default=24,)

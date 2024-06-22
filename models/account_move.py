@@ -1535,8 +1535,11 @@ class AccountMove(models.Model):
                 self.invoice_date)
         Totales["MntTotal"] = currency_id.round(MntTotal)
         if totales['MontoNF']:
-            Totales['MontoNF'] = totales['MontoNF']
-            Totales['TotalPeriodo'] = MntTotal + totales['MontoNF']
+            Totales['MontoNF'] = currency.round(totales['MontoNF'])
+            if Totales.get('TotalPeriodo'):
+                Totales['TotalPeriodo'] = Totales['TotalPeriodo']
+            else:
+                Totales['MontoPeriodo'] = Totales['MontoPeriodo']
         # Totales['SaldoAnterior']
         VlrPagar = totales.get('VlrPagar', 0)
         if currency_id != self.currency_id:
@@ -1559,6 +1562,7 @@ class AccountMove(models.Model):
                        CredEC=0)
         if not resumen['product']:
             return totales
+        totales["MontoNF"] = resumen['MontoNF']
         totales['MntExe'] = resumen['MntExe']
         if self.move_type == 'entry' or self.is_outbound():
             sign = 1
@@ -1570,6 +1574,8 @@ class AccountMove(models.Model):
                 raise UserError("NO pueden ir productos afectos en documentos exentos")
         elif self.amount_untaxed and self.amount_untaxed != 0:
             for t in self.line_ids:
+                if t.display_type == 'rounding' or t.ind_exe:
+                    continue
                 balance = sign * t.balance
                 sii_code = t.tax_line_id.sii_code
                 es_retencion = t.tax_repartition_line_id.sii_type in ['R', 'A']
@@ -1581,7 +1587,7 @@ class AccountMove(models.Model):
                         totales['CredEC'] += balance
                     elif es_retencion:
                         totales['MntRet'] += balance
-                elif not t.tax_line_id.ind_exe and sii_code != 0:
+                else:
                     totales['OtrosImp'] += balance
                 for tl in t.tax_ids:
                     if tl.sii_code in [14, 15]:
@@ -1620,9 +1626,14 @@ class AccountMove(models.Model):
             totales['ValComIVA'] = val_com_iva
             totales['MntIVA'] += val_com_iva
         totales['MntTotal'] = totales['MntNeto'] + totales['MntExe'] + \
-            totales['MntIVA'] + totales['OtrosImp'] + totales['MontoNF'] - \
-            totales['CredEC'] - totales['MntRet'] - val_com_neto - val_com_exe \
-            - val_com_iva
+            totales['MntIVA'] + totales['OtrosImp'] - totales['CredEC'] \
+            - totales['MntRet']  - val_com_neto \
+            - val_com_exe - val_com_iva
+        if totales['MontoNF']:
+            if self.es_boleta():
+                Totales['TotalPeriodo'] = totales['MntTotal'] + totales['MontoNF']
+            else:
+                Totales['MontoPeriodo'] = totales['MntTotal'] + totales['MontoNF']
         if not self.document_class_id.es_exportacion():
             totales['VlrPagar'] = totales['MntTotal']
         return totales
@@ -1714,12 +1725,12 @@ class AccountMove(models.Model):
                     raise UserError("Con impuestos adicionales, la configuración impuesto incluído debe llevar marcado desglose de impuesto en la ficha del impuesto por obligación")
             if line.tpo_doc_liq:
                 lines['TpoDocLiq'] = line.tpo_doc_liq.sii_code
-            if details.get('IndExe'):
+            if details['IndExe']:
                 lines['IndExe'] = details['IndExe']
-                if details['IndExe'] not in [2, 6]:
+                if details['IndExe'] not in ['2', '6']:
                     MntExe += details['MntExe']
-                elif details['IndExe'] in [2, 6]:
-                    if details['IndExe'] == 2:
+                else:
+                    if details['IndExe'] == "2":
                         MontoNF += details['MntExe']
                     else:
                         MontoNF -= details['MntExe']
@@ -1821,7 +1832,7 @@ class AccountMove(models.Model):
             if cash_rounding:
                 sign = self.direction_sign
                 MontoItem = cash_rounding.balance * sign
-                MontoNF += MontoItem
+                MontoNF -= MontoItem
                 invoice_lines.append({
                     'NroLinDet': len(self.invoice_line_ids) +1,
                     'NmbItem': cash_rounding.name,

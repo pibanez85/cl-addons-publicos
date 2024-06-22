@@ -1682,21 +1682,25 @@ class AccountMove(models.Model):
             return True
         return False
 
-    def _invoice_lines(self):
-        invoice_lines = []
+    def _get_lineas(self):
+        return self.with_context(lang="es_CL").invoice_line_ids
+
+    def _detalle(self):
+        detalle = []
         product = True
         MntExe = 0
         MontoNF = 0
         currency_base = self.currency_base()
         currency_id = self.currency_target()
-        taxInclude = self.document_class_id.es_boleta()
+        taxInclude = False
         #if (
         #    self.env["account.move.line"]
         #    .with_context(lang="es_CL")
         #    .search(["|", ("sequence", "=", -1), ("sequence", "=", 0), ("move_id", "=", self.id)])
         #):
         #    self._onchange_invoice_line_ids()
-        for line in self.with_context(lang="es_CL").invoice_line_ids:
+        desglose = self._context.get('force_desglose', False)
+        for line in self._get_lineas():
             if not line.tpo_doc_liq and (not line.account_id or not line.product_id):
                 continue
             if not line.name and not line.product_id:
@@ -1716,13 +1720,15 @@ class AccountMove(models.Model):
                         "TpoCodigo": "EAN13",
                         "VlrCodigo": line.product_id.barcode
                     })
-            details = line.get_tax_detail()
+            details = line.get_tax_detail(desglose)
+            if len(detalle) > 0 and not desglose and details['desglose']:
+                """ Fuerzo desglose para todo el contexto """
+                return self.with_context(force_desglose=True)._detalle()
+            desglose = desglose or details['desglose']
             lines["Impuesto"] = details['impuestos']
             taxInclude = details['taxInclude']
             if details.get('cod_imp_adic'):
                 lines['CodImpAdic'] = details['cod_imp_adic']
-                if taxInclude and not details['desglose']:
-                    raise UserError("Con impuestos adicionales, la configuración impuesto incluído debe llevar marcado desglose de impuesto en la ficha del impuesto por obligación")
             if line.tpo_doc_liq:
                 lines['TpoDocLiq'] = line.tpo_doc_liq.sii_code
             if details['IndExe']:
@@ -1778,7 +1784,7 @@ class AccountMove(models.Model):
                 if line.discount > 0:
                     lines["DescuentoPct"] = line.discount
                     DescMonto = line.discount_amount
-                    if details['desglose']:
+                    if desglose:
                         taxes_res = line._get_price_total_and_subtotal_model(
                             DescMonto,
                             1,
@@ -1798,7 +1804,7 @@ class AccountMove(models.Model):
                 if line.discount < 0:
                     lines["RecargoPct"] = line.discount * -1
                     RecargoMonto = line.discount_amount * -1
-                    if details['desglose']:
+                    if desglose:
                         taxes_res = line._get_price_total_and_subtotal_model(
                             RecargoMonto,
                             1,
@@ -1818,22 +1824,20 @@ class AccountMove(models.Model):
                     lines["OtrMnda"]["MontoItemOtrMnda"] = currency_base._convert(
                         MontoItem, currency_id, self.company_id, self.invoice_date
                     )
-                if taxInclude and details['desglose']:
-                    taxInclude = False
             lines["QtyItem"] = qty
             lines["MontoItem"] = MontoItem
             if MontoItem < 0 and not self.document_class_id.es_liquidacion():
                 raise UserError(_("No pueden ir valores negativos en las líneas de detalle"))
             if lines.get("PrcItem", 1) == 0:
                 del lines["PrcItem"]
-            invoice_lines.append(lines)
+            detalle.append(lines)
         if self.invoice_cash_rounding_id:
             cash_rounding = self.line_ids.filtered(lambda l: l.display_type=='rounding')
             if cash_rounding:
                 sign = self.direction_sign
                 MontoItem = cash_rounding.balance * sign
                 MontoNF -= MontoItem
-                invoice_lines.append({
+                detalle.append({
                     'NroLinDet': len(self.invoice_line_ids) +1,
                     'NmbItem': cash_rounding.name,
                     'QtyItem': 1,
@@ -1841,7 +1845,7 @@ class AccountMove(models.Model):
                     'IndExe': 2 if MontoItem > 0 else 6
                 })
         return {
-            "Detalle": invoice_lines,
+            "Detalle": detalle,
             "MntExe": MntExe,
             "product": product,
             "tax_include": taxInclude,
@@ -1878,7 +1882,7 @@ class AccountMove(models.Model):
 
     def _dte(self, n_atencion=None):
         dte = {}
-        resumen = self._invoice_lines()
+        resumen = self._detalle()
         dte["Encabezado"] = self._encabezado(resumen)
         lin_ref = 1
         ref_lines = []

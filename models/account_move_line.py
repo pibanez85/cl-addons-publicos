@@ -189,7 +189,7 @@ class AccountInvoiceLine(models.Model):
             res = {k: currency.round(v) for k, v in res.items()}
         return res
 
-    def get_tax_detail(self):
+    def get_tax_detail(self, force_desglose=False):
         boleta = self.move_id.document_class_id.es_boleta()
         nc_boleta = self.move_id.es_nc_boleta()
         details = dict(
@@ -197,9 +197,12 @@ class AccountInvoiceLine(models.Model):
             taxInclude=False,
             MntExe=0,
             price_unit=self.price_unit,
-            desglose=False,
+            desglose=force_desglose,
+            IndExe=False,
         )
+        force_precio_neto = False
         currency_base = self.move_id.currency_base()
+        i = 0
         for t in self.tax_ids:
             if self.move_id.use_documents and not self.move_id.es_nc() and \
             not self.move_id.es_nd() and self.move_id.document_class_id.sii_code \
@@ -209,17 +212,26 @@ class AccountInvoiceLine(models.Model):
                     t.sii_code,
                     t.name
                 ))
+            i += 1
+            taxInclude = t.price_include
+            details['taxInclude'] = taxInclude
+            if taxInclude:
+                details['desglose'] = t.sii_detailed or details['desglose']
+            if taxInclude and details['desglose']:
+                if i > 1 and not details['desglose'] and not force_precio_neto:
+                    return self.get_tax_detail(force_desglose=True)
+                force_precio_neto = True
             if t.es_adicional() or t.es_especifico():
                 if boleta or nc_boleta:
+                    if i > 1 and not details['desglose'] and not force_precio_neto:
+                        return self.get_tax_detail(force_desglose=True)
+                    force_precio_neto = True
                     continue
                 details['cod_imp_adic'] = t.sii_code
-            taxInclude = t.price_include and not t.sii_detailed or boleta or nc_boleta
-            if len(details['impuestos']) > 0 and details['taxInclude'] != taxInclude:
-                raise UserError("No puede mezclar Impuesto Incluído sin desglose e impuesto sin incluir")
-            details['taxInclude'] = taxInclude
-            details['desglose'] = t.sii_detailed and not boleta and not nc_boleta
             if self.ind_exe or t.ind_exe or t.amount == 0 or t.sii_code in [0]:
                 details['IndExe'] = self.ind_exe or t.ind_exe or 1
+                if not self.ind_exe:
+                    self.ind_exe = details['IndExe']
                 details['MntExe'] += currency_base.round(self.price_subtotal)
             else:
                 amount = t.amount
@@ -232,7 +244,9 @@ class AccountInvoiceLine(models.Model):
                             'mepco': t.mepco,
                         }
                 )
-        if details['desglose']:
+
+        if force_precio_neto:
+            details['taxInclude'] = False
             taxes_res = self._get_price_total_and_subtotal_model(
                     self.price_unit,
                     1,

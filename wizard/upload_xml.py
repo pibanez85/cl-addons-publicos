@@ -97,8 +97,9 @@ class UploadXMLWizard(models.TransientModel):
 
     def format_rut(self, RUTEmisor=None):
         rut = RUTEmisor.replace("-", "")
-        rut = "CL" + rut
-        return rut
+        if len(rut) < 9:
+            return "CL0" + rut
+        return "CL" + rut
 
     def _get_xml(self):
         return base64.b64decode(self.xml_file).decode("ISO-8859-1")\

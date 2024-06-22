@@ -15,6 +15,7 @@
                     <field name="send_email" />
                     <field name="active" />
                     <field name="set_pruebas"/>
+                    <field name="intento" />
                 </group>
             </form>
         </field>
@@ -31,6 +32,7 @@
                 <field name="date_time" />
                 <field name="send_email" />
                 <field name="active" />
+                <field name="intento" />
             </tree>
         </field>
     </record>

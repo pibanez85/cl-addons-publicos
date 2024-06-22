@@ -30,6 +30,7 @@ class ColaEnvio(models.Model):
     date_time = fields.Datetime(string="Auto Envío al SII",)
     send_email = fields.Boolean(string="Auto Enviar Email", default=False,)
     company_id = fields.Many2one("res.company", string="Company")
+    intento = fields.Integer(string="Intento", default=0, readonly=True)
 
     def enviar_email(self, doc):
         doc.send_exchange()
@@ -40,6 +41,7 @@ class ColaEnvio(models.Model):
         return True
 
     def _procesar_tipo_trabajo(self):
+        self.intento += 1
         admin = self.env.ref("base.user_admin")
         if self.user_id.id == SUPERUSER_ID:
             self.user_id = admin.id
@@ -88,13 +90,12 @@ class ColaEnvio(models.Model):
             ]:
                 self.unlink()
                 return
-            if self.date_time and datetime.now() >= self.date_time:
-                try:
-                    envio_id = docs.do_dte_send(self.n_atencion)
-                    if envio_id.sii_send_ident:
-                        self.tipo_trabajo = "consulta"
-                except Exception as e:
-                    _logger.warning("Error en Envío automático %s" % str(e), exc_info=True)
+            try:
+                envio_id = docs.do_dte_send(self.n_atencion)
+                if envio_id.sii_send_ident:
+                    self.tipo_trabajo = "consulta"
+            except Exception as e:
+                _logger.warning("Error en Envío automático %s" % str(e), exc_info=True)
             return
         if self._es_doc(docs[0]) and docs[0].sii_result in ["Proceso", "Reparo", "Rechazado", "Anulado"]:
             if self.send_email and docs[0].sii_result in ["Proceso", "Reparo"]:
@@ -145,31 +146,37 @@ class ColaEnvio(models.Model):
 
     @api.model
     def _cron_procesar_cola(self):
-        ids = self.search([("active", "=", True), ('tipo_trabajo', '=', 'envio')], limit=20)
+        query = [
+            ("active", "=", True),
+            ('intento', '<=', 10),
+        ]
+        ids = self.search(query + [('tipo_trabajo', '=', 'envio'),], limit=20)
         if ids:
             for c in ids:
                 try:
                     c._procesar_tipo_trabajo()
                 except Exception as e:
-                    _logger.warning("error al procesartipo trabajo %s"%str(e), exc_info=True)
-        ids = self.search([("active", "=", True), ('tipo_trabajo', '=', 'pasivo')], limit=20)
+                    _logger.warning(f"error al procesartipo trabajo envio: {e}", exc_info=True)
+        ids = self.search(query + [
+            ('tipo_trabajo', '=', 'pasivo'),
+            ('date_time', '<=', datetime.now())], limit=20)
         if ids:
             for c in ids:
                 try:
                     c._procesar_tipo_trabajo()
                 except Exception as e:
-                    _logger.warning("error al procesartipo trabajo %s"%str(e), exc_info=True)
-        ids = self.search([("active", "=", True), ('tipo_trabajo', '=', 'consulta')], limit=20)
+                    _logger.warning(f"error al procesartipo trabajo pasivo {e}", exc_info=True)
+        ids = self.search(query + [('tipo_trabajo', '=', 'consulta')], limit=20)
         if ids:
             for c in ids:
                 try:
                     c._procesar_tipo_trabajo()
                 except Exception as e:
-                    _logger.warning("error al procesar tipo trabajo %s"%str(e), exc_info=True)
-        ids = self.search([("active", "=", True), ('tipo_trabajo', '=', 'persistencia')], limit=20)
+                    _logger.warning(f"error al procesar tipo trabajo consulta {e}", exc_info=True)
+        ids = self.search(query + [('tipo_trabajo', '=', 'persistencia')], limit=20)
         if ids:
             for c in ids:
                 try:
                     c._procesar_tipo_trabajo()
                 except Exception as e:
-                    _logger.warning("error al procesartipo trabajo %s"%str(e), exc_info=True)
+                    _logger.warning(f"error al procesartipo trabajo persistencia {e}", exc_info=True)

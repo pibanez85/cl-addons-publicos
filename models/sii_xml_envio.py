@@ -216,12 +216,6 @@ class SIIXMLEnvio(models.Model):
                         detalle_rep_rech = receipt['detalle_rep_rech']
                     else:
                         detalle_rep_rech = json.loads(receipt.get('detalle_rep_rech', '{}'))
-                if receipt['detalle_rep_rech'] is None and receipt['estadistica'] is None:
-                    state = 'NoEnviado'
-                    self.state = state
-                    self.sii_send_ident = ''
-                    self.sii_xml_response = ''
-                    self.sii_receipt = ''
 
             elif receipt.find("RESP_HDR") is not None:
                 state = "Aceptado"

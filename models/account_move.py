@@ -1587,7 +1587,7 @@ class AccountMove(models.Model):
                         totales['CredEC'] += balance
                     elif es_retencion:
                         totales['MntRet'] += balance
-                else:
+                elif sii_code:
                     totales['OtrosImp'] += balance
                 for tl in t.tax_ids:
                     if tl.sii_code in [14, 15]:

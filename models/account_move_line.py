@@ -229,7 +229,7 @@ class AccountInvoiceLine(models.Model):
                     continue
                 details['cod_imp_adic'] = t.sii_code
             if self.ind_exe or t.ind_exe or t.amount == 0 or t.sii_code in [0]:
-                details['IndExe'] = self.ind_exe or t.ind_exe or 1
+                details['IndExe'] = self.ind_exe or t.ind_exe or "1"
                 if not self.ind_exe:
                     self.ind_exe = details['IndExe']
                 details['MntExe'] += currency_base.round(self.price_subtotal)

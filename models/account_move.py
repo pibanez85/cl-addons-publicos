@@ -1842,7 +1842,7 @@ class AccountMove(models.Model):
                     'NmbItem': cash_rounding.name,
                     'QtyItem': 1,
                     'MontoItem': MontoItem if MontoItem > 0 else MontoItem * -1,
-                    'IndExe': 2 if MontoItem > 0 else 6
+                    'IndExe': "2" if MontoItem > 0 else "6"
                 })
         return {
             "Detalle": detalle,

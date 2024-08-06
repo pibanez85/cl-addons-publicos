@@ -1568,6 +1568,8 @@ class AccountMove(models.Model):
             sign = 1
         else:
             sign = -1
+        currency_base = self.currency_base()
+        another_currency_id = self.currency_target()
         if self._es_exento():
             totales['MntExe'] = self.amount_total
             if self.amount_tax > 0:
@@ -1576,7 +1578,10 @@ class AccountMove(models.Model):
             for t in self.line_ids:
                 if t.display_type == 'rounding' or t.ind_exe:
                     continue
-                balance = sign * t.balance
+                if currency_base != another_currency_id:
+                    balance = sign * t.amount_currency
+                else:
+                    balance = sign * t.balance
                 sii_code = t.tax_line_id.sii_code
                 es_retencion = t.tax_repartition_line_id.sii_type in ['R', 'A']
                 if sii_code in [14, 15]:

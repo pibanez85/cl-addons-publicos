@@ -1578,7 +1578,7 @@ class AccountMove(models.Model):
             for t in self.line_ids:
                 if t.display_type == 'rounding' or t.ind_exe:
                     continue
-                if currency_base != another_currency_id:
+                if another_currency_id and currency_base != another_currency_id:
                     balance = sign * t.amount_currency
                 else:
                     balance = sign * t.balance

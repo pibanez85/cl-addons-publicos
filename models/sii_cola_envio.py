@@ -144,8 +144,18 @@ class ColaEnvio(models.Model):
         ):
             self.tipo_trabajo = "consulta"
 
+    def reset_intentos(self):
+        query = """
+            UPDATE sii_cola_envio
+            SET intento = 0
+            WHERE intento >= 10
+            AND create_date <= (NOW() - INTERVAL '1 day')
+        """
+        self.env.cr.execute(query)
+
     @api.model
     def _cron_procesar_cola(self):
+        self.reset_intentos()
         query = [
             ("active", "=", True),
             ('intento', '<=', 10),

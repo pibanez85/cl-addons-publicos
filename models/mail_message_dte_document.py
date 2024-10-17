@@ -82,7 +82,7 @@ class ProcessMailsDocument(models.Model):
         default="N/D",
     )
     claim_description = fields.Char(string="Detalle Reclamo",)
-    claim_ids = fields.One2many("sii.dte.claim", "document_id", strign="Historial de Reclamos")
+    claim_ids = fields.One2many("sii.dte.claim", "document_id", string="Historial de Reclamos")
     sii_message = fields.Text(
         string="Respuesta SII"
     )

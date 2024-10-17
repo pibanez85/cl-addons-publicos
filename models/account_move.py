@@ -257,7 +257,7 @@ class AccountMove(models.Model):
             ('5', "5.- Servicio de Transporte Terrestre Internacional"),
         ]
     )
-    claim_ids = fields.One2many("sii.dte.claim", "move_id", strign="Historial de Reclamos")
+    claim_ids = fields.One2many("sii.dte.claim", "move_id", string="Historial de Reclamos")
     amount_tax_retencion = fields.Monetary(string='Monto Retención', store=True, readonly=True,
         compute='_compute_amount',
         inverse='_inverse_amount_total',

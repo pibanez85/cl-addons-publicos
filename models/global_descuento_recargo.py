@@ -47,8 +47,7 @@ class GlobalDescuentoRecargo(models.Model):
         required=True,
     )
     gdr_detail = fields.Char(
-        string="Razón del descuento",
-        oldname="gdr_dtail",)
+        string="Razón del descuento",)
     aplicacion = fields.Selection(
         [
             ("flete", "Flete"),

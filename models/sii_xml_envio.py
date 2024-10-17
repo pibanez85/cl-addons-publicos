@@ -65,7 +65,7 @@ class SIIXMLEnvio(models.Model):
     user_id = fields.Many2one(
         "res.users",
         string="Usuario",
-        helps="Usuario que envía el XML",
+        help="Usuario que envía el XML",
         readonly=True,
         states={"draft": [("readonly", False)]},
     )

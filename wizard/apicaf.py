@@ -39,12 +39,12 @@ class APICAFDocs(models.TransientModel):
         'dte.caf',
         string="CAF en Odoo")
 
-    @api.onchange("selected")
-    def selected_caf(self):
-        if self.selected and self.sequence != 1:
-            self.sequence = -1
-        elif not self.selected and self.sequence == 1:
-            self.sequence = 0
+    @api.onchange('selected')
+    def _onchange_selected(self):
+        if self.selected:
+            for line in self.apicaf_id.lineas_disponibles:
+                if line != self:
+                    line.selected = False
 
 
 class APICAF(models.TransientModel):
@@ -179,9 +179,6 @@ class APICAF(models.TransientModel):
     firma = fields.Many2one("sii.firma", string="Firma Electrónica")
     id_peticion = fields.Integer(string="ID Petición", default=0,)
     lineas_disponibles = fields.One2many("dte.caf.apicaf.docs", "apicaf_id", string="CAF disponibles",)
-    linea_disponible_seleccionada = fields.Many2one(
-        "dte.caf.apicaf.docs",
-        string="Línea de CAF Seleccionada")
     form_name = fields.Char(string="Form Name",)
     folio_ini = fields.Integer(string="Folio inicial Anular",)
     folio_fin = fields.Integer(string="Folio Final Anular",)
@@ -192,15 +189,7 @@ class APICAF(models.TransientModel):
 
     @api.onchange("lineas_disponibles")
     def selected_caf(self):
-        for r in self.lineas_disponibles:
-            if r.sequence != -1:
-                r.selected = False
-                r.sequence = 0
-            else:
-                r.sequence = 1
-            if r.selected:
-                self.linea_disponible_seleccionada = r
-        if not self.linea_disponible_seleccionada or not self.id_peticion or self.operacion != "anular":
+        if not self.lineas_disponibles.filtered('selected') or not self.id_peticion or self.operacion != "anular":
             return
         self.an_etapa = "an_confirmar"
         return self.obtener_caf()
@@ -345,6 +334,7 @@ class APICAF(models.TransientModel):
             "id_peticion": self.id_peticion,
         }
         etapa = "confirmar"
+        caf_line = self.lineas_disponibles.filtered('selected')
         if self.operacion == "obtener":
             peticion.update(
                 id_peticion=self.id_peticion, cant_doctos=self.cant_doctos,
@@ -357,9 +347,9 @@ class APICAF(models.TransientModel):
             etapa = "reob_confirmar"
             if self.operacion == "anular":
                 etapa = "an_confirmar"
-            if not self.linea_disponible_seleccionada:
+            if not caf_line:
                 raise UserError("Debe seleccionar Uno")
-            peticion.update(form_name=self.linea_disponible_seleccionada.form_name)
+            peticion.update(form_name=caf_line.form_name)
         #   obtener
         peticion["etapa"] = etapa
         resp = pool.request("POST", url, body=json.dumps(peticion))
@@ -435,7 +425,7 @@ class APICAF(models.TransientModel):
             return
 
         #  archivo
-
+        caf_line = self.lineas_disponibles.filtered('selected')
         data = json.loads(resp.data.decode("ISO-8859-1"))
         nombre = data.get("nombre")
         peticion2 = {
@@ -449,8 +439,8 @@ class APICAF(models.TransientModel):
             self.reob_etapa = data["etapa"]
         elif self.operacion == "anular":
             self.an_etapa = data["etapa"]
-            if self.linea_disponible_seleccionada.caf_id:
-                self.linea_disponible_seleccionada.caf_id.after_anular_folios(
+            if caf_line.caf_id:
+                caf_line.caf_id.after_anular_folios(
                     self.folio_ini,
                     self.folio_fin
                 )

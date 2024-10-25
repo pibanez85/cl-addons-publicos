@@ -94,7 +94,6 @@
                                   <field name="caf_id" invisible="1" />
                               </tree>
                           </field>
-                          <field name="linea_disponible_seleccionada"/>
                       </group>
                       <div attrs="{'invisible': ['|', ('id_peticion', '=', 0), ('an_etapa', '!=', 'an_motivo')]}">
                         <group

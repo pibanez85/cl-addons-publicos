@@ -1,7 +1,8 @@
+# -*- coding: utf-8 -*-
 from base64 import b64decode
 from werkzeug.exceptions import InternalServerError
 from odoo import http
-from odoo.http import content_disposition, request
+from odoo.http import request, content_disposition
 
 
 class Binary(http.Controller):
@@ -13,7 +14,7 @@ class Binary(http.Controller):
             ("Content-Disposition", content_disposition(filename)),
             ("charset", "utf-8"),
         ]
-        return request.make_response(filecontent, headers=headers, cookies=None)
+        return request.make_response(filecontent, headers=headers)
 
     @http.route(["/download/xml/invoice/<model('account.move'):document_id>"], type="http", auth="user")
     def download_document(self, document_id, **post):

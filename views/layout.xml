@@ -29,8 +29,8 @@
             </t>
             <div class="header">
                 <div class="row">
-                    <div class="col-xs-6">
-                        <p style="text-align:left;text-transform:uppercase;font-weight:900;font-size:20px;color:black;">
+                    <div class="col-6">
+                        <p style="text-align:left;text-transform:uppercase;font-weight:900;font-size:20px;color:black !important;">
                             <span t-field="o.company_id.partner_id.ref" />
                         </p>
                     </div>
@@ -38,11 +38,11 @@
                 <div class="row">
                     <div class="col-7" style="text-align: center">
                         <img t-if="logo" t-att-src="image_data_uri(logo)" style="max-height: 45px;"/>
-                        <h4 style="text-transform:uppercase;font-weight:900;font-size:18px;color:black;">
+                        <h4 style="text-transform:uppercase;font-weight:900;font-size:18px;color:black !important;">
                             <span t-field="company.name"/>
                         </h4>
-                        <p style="text-align:left; font-size:10px;color:black; text-transform:uppercase; word-wrap: break-word">
-                            <span t-field="company.activity_description.name" style="color:black; text-align:center;"/><br/>
+                        <p style="text-align: left; font-size: 10px; color:black !important; text-transform: uppercase; word-wrap: break-word">
+                            <span t-field="company.activity_description.name"/><br/>
                             <!-- domicilios -->
                             <span>Casa Matriz: </span><span t-field="o.company_id.street"/>, <span t-field="o.company_id.city_id.name"/>, <span t-field="o.company_id.city"/>
                             <t t-if="o.company_id.sucursal_ids and o.use_documents">
@@ -365,12 +365,10 @@
                                     <span
                                         t-if="not price_included"
                                         t-field="l.price_subtotal"
-                                        t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
                                     />
                                     <span
                                         t-if="price_included"
                                         t-field="l.price_total"
-                                        t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
                                     />
                                 </td>
                             </tr>
@@ -416,12 +414,11 @@
                                         t-foreach="o.global_descuentos_recargos"
                                         t-as="gdr"
                                         class="border-black"
-                                        style="max-height:11px; font-size:12px !important;"
                                     >
                                         <td>
                                             <strong>Descuento o Recargo Global</strong>
                                         </td>
-                                        <td class="text-right">
+                                        <td class="text-end">
                                             <span
                                                 t-esc="gdr.valor if gdr.gdr_type=='amount' else gdr.amount_untaxed"
                                                 t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
@@ -430,23 +427,22 @@
                                     </tr>
                                 </t>
                                 <tr
-                                    style="max-height:11px; font-size:12px !important;"
                                     name="subtotal"
                                     t-if="not price_included"
                                 >
                                     <td>
                                         <strong>Subtotal</strong>
                                     </td>
-                                    <td class="text-right">
+                                    <td class="text-end">
                                         <span
                                             t-field="o.amount_untaxed"
                                             t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
                                         />
                                     </td>
                                 </tr>
-                                <tr t-if="display_liquidacion" class="border-black" style="max-height:12px; font-size:12px !important;">
+                                <tr t-if="display_liquidacion" class="border-black">
                                     <td>Comisiones y Otros Cargos</td>
-                                    <td class="text-right">
+                                    <td class="text-end">
                                         <span t-esc="o.comisiones()"/>
                                     </td>
                                 </tr>
@@ -454,12 +450,11 @@
                                     name="discount"
                                     t-if="display_discount"
                                     class="border-black"
-                                    style="max-height:11px; font-size:12px !important;"
                                 >
                                     <td>
                                         <strong>Descuento</strong>
                                     </td>
-                                    <td class="text-right">
+                                    <td class="text-end">
                                         <span
                                             t-esc="o.getTotalDiscount()"
                                             t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
@@ -479,10 +474,10 @@
                                   </t>
                                 </t>
                                 <t t-set="has_rounding" t-value="'formatted_amount_total_rounded' in tax_totals"/>
-                                <tr class="border-black" style="max-height:12px; font-size:12px !important;">
+                                <tr class="border-black">
                                     <t t-if="has_rounding"><td>Total</td></t>
                                     <t t-else=""><td><strong>Total</strong></td></t>
-                                    <td class="text-right">
+                                    <td class="text-end">
                                         <span t-esc="tax_totals['formatted_amount_total']"/>
                                     </td>
                                 </tr>
@@ -742,10 +737,10 @@
                                   <span t-field="line.quantity"/>
                               </td>
                               <td class="text-right">
-                                  <span t-field="line.price_unit" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-field="line.price_unit" />
                               </td>
                               <td class="text-right">
-                                  <span t-field="line.price_total" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-field="line.price_total" />
                               </td>
                           </tr>
                       </tbody>
@@ -850,7 +845,7 @@
                               Efectivo
                           </td>
                               <td class="text-right">
-                                  <span t-field="o.amount_total" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-field="o.amount_total" />
                               </td>
                           </tr>
                       </tbody>

@@ -18,7 +18,7 @@ class SO(models.Model):
     @api.depends('journal_id')
     def _get_dc_ids(self):
         for r in self:
-            r.document_class_ids = [j.sii_document_class_id.id for j in r.journal_id.journal_document_class_ids.filtered(lambda x: x.sii_document_class_id.document_type == 'invoice')]
+            r.document_class_ids = r.journal_id.journal_document_class_ids.filtered(lambda x: x.sii_document_class_id.document_type == 'invoice').ids
 
     acteco_ids = fields.Many2many("partner.activities", related="partner_invoice_id.acteco_ids",)
     acteco_id = fields.Many2one("partner.activities", string="Partner Activity",)
@@ -48,7 +48,7 @@ class SO(models.Model):
 
     @api.onchange("journal_id")
     def _default_use_documents(self):
-        self.use_documents =  bool(self.journal_document_class_id)
+        self.use_documents = bool(self.journal_document_class_id)
 
     def _prepare_invoice(self):
         self.ensure_one()

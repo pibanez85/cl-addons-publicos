@@ -237,6 +237,8 @@ has been exhausted.""",
         if not self.sequence_id:
             context = dict(self._context or {})
             self.sequence_id = context.get("default_sequence_id", False)
+        if not self.caf_file:
+            self.caf_file = base64.b64encode(self.caf_string.encode('ISO-8859-1'))
         if not self.caf_string:
             self.caf_string = base64.b64decode(self.caf_file).decode("ISO-8859-1")
         result = self.decode_caf().find("CAF/DA")

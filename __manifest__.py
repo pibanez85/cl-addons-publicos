@@ -2,7 +2,8 @@
     "name": """Facturación Electrónica para Chile\
     """,
     "version": "0.42.5",
-    "category": "Localization/Chile",
+    "countries": ["cl"],
+    "category": "Accounting/Localizations",
     "sequence": 12,
     "author": "Daniel Santibáñez Polanco, Cooperativa OdooCoop",
     "website": "https://globalresponse.cl",

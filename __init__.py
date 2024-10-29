@@ -16,7 +16,7 @@ def _check_pre_init(cr):
         _logger.warning("Existen módulos incompatibles")
         cr.execute("""
             UPDATE ir_model_data set module = 'l10n_cl_fe'
-            WHERE name IN ('UF', 'UTM', 'OTR') AND module = 'l10n_cl'
+            WHERE name IN ('UF', 'UTM', 'OTR') AND module = 'l10n_cl' AND model='res.currency'
             """)
 
 def _set_default_configs(cr, registry):

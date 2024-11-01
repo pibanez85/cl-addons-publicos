@@ -641,6 +641,8 @@ class AccountMove(models.Model):
         for inv in to_post:
             if not inv.is_invoice() or not inv.journal_document_class_id or not inv.use_documents:
                 continue
+            if not inv.sii_document_number:
+                inv._set_next_sequence()
             inv.sii_result = "NoEnviado"
             if inv.journal_id.restore_mode or self._context.get("restore_mode", False):
                 inv.sii_result = "Proceso"

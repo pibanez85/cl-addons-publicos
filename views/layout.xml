@@ -27,7 +27,7 @@
                 <t t-set="company" t-value="o.partner_id" />
                 <t t-set="logo" t-value="o.partner_id.image_128" />
             </t>
-            <div t-attf-class="header o_company_#{company.id}_layout" t-att-style="report_header_style">
+            <div class="header" t-att-style="report_header_style">
               <div class="o_clean_header">
                 <div class="row">
                     <div class="col-6">

@@ -231,6 +231,14 @@ class ResPartner(models.Model):
         except IndexError:
             return False
 
+    @api.onchange('vat', 'document_number')
+    def restrict_vat(self):
+        if self._origin.vat != self.vat and self.env['account.move'].search([
+            ('commercial_partner_id', '=', self.id),
+            ('sii_xml_dte', '!=', False),
+        ]):
+            raise UserError("No se puede editar un RUT de este partner ya que tiene DTE emitidos. Por favor crear otra ficha de partner para este RUT")
+
     def _process_data(self, data=None):
         if data is None:
             data = {}

@@ -824,7 +824,7 @@ class AccountMove(models.Model):
     @api.returns('self', lambda value: value.id)
     def copy(self, default=None):
         copied_am = super().copy(default)
-        if default != None and default["referencias"]:
+        if default is not None and default["referencias"]:
             if default["referencias"][0][2].get('sii_referencia_CodRef') == '2':
                 copied_am.invoice_line_ids.unlink()
                 prod = self.env['product.product'].search(

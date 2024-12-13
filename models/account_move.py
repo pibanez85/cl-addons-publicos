@@ -629,7 +629,7 @@ class AccountMove(models.Model):
 
     def _set_next_sequence(self):
         self.ensure_one()
-        if self.use_documents:
+        if self.use_documents and self.journal_document_class_id.sequence_id:
             if not (self.journal_id.restore_mode or self._context.get("restore_mode", False)):
                 self.sii_document_number = self.journal_document_class_id.sequence_id.next_by_id()
             self[self._sequence_field] = '%s%s' % (self.document_class_id.doc_code_prefix, self.sii_document_number)
@@ -639,7 +639,7 @@ class AccountMove(models.Model):
     def _post(self, soft=True):
         to_post = super(AccountMove, self)._post(soft=soft)
         for inv in to_post:
-            if not inv.is_invoice() or not inv.journal_document_class_id or not inv.use_documents:
+            if not inv.is_invoice() or not inv.journal_document_class_id.sequence_id or not inv.use_documents:
                 continue
             if not inv.sii_document_number:
                 inv._set_next_sequence()
@@ -761,8 +761,8 @@ class AccountMove(models.Model):
     @api.depends("state", "journal_id", "journal_document_class_id")
     def _get_sequence_number_next(self):
         for invoice in self:
-            invoice.sequence_number_next = 0
-            if invoice.journal_document_class_id:
+            invoice.sequence_number_next = -1
+            if invoice.journal_document_class_id and invoice.journal_document_class_id.sequence_id:
                 invoice.sequence_number_next = invoice.journal_document_class_id.sequence_id.number_next_actual
 
     @contextmanager

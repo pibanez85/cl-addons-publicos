@@ -81,8 +81,17 @@
                               class="oe_inline"
                           />
                       </div>
+                      <div attrs="{
+                      'invisible':[('use_documents', '=', True), ('state', '=', 'draft'), ('sequence_number_next', '&gt;', -1)]}">
+                        <field
+                            name="journal_document_class_id"
+                            options="{'no_create': True}"
+                            domain="[('is_dte', '=', False), ('journal_id', '=', journal_id)]"
+                            style="width: 100%"
+                        />
+                      </div>
                       <div
-                        attrs="{'invisible': ['|', ('state', '!=', 'draft'), ('use_documents', '=', False)]}"
+                        attrs="{'invisible': ['|', '|', ('state', '!=', 'draft'), ('use_documents', '=', False), ('sequence_number_next', '=', -1)]}"
                         >
                           <span class="o_form_label" attrs="{'invisible': [('state','!=','draft')]}">Siguiente</span>
                           <field

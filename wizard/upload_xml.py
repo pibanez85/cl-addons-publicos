@@ -410,9 +410,18 @@ class UploadXMLWizard(models.TransientModel):
                     code = ""
                     coma = ""
                     for c in line.findall("CdgItem"):
-                        code += coma + c.find("TpoCodigo").text + " " + c.find("VlrCodigo").text
+                        if c.find("TpoCodigo").text:
+                            code += coma + c.find("TpoCodigo").text + " "
+
+                        if c.find("VlrCodigo").text:
+                            code += c.find("VlrCodigo").text
                         coma = ", "
-                    return NmbItem + "" + code
+                        
+                    if code != "":
+                        return NmbItem + "" + code
+                    else:
+                        return NmbItem
+
         elif self.type == "ventas" and not product_id:
             product_id = self._create_prod(line, company_id, price_included,
                                            exenta, refund)

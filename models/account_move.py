@@ -638,8 +638,9 @@ class AccountMove(models.Model):
 
     def _post(self, soft=True):
         to_post = super(AccountMove, self)._post(soft=soft)
+        to_send = {}
         for inv in to_post:
-            if not inv.is_invoice() or not inv.journal_document_class_id.sequence_id or not inv.use_documents:
+            if not inv.is_invoice() or not inv.journal_document_class_id.sequence_id or not inv.use_documents or inv.state != 'posted':
                 continue
             if not inv.sii_document_number:
                 inv._set_next_sequence()
@@ -649,36 +650,39 @@ class AccountMove(models.Model):
             else:
                 inv._validaciones_uso_dte()
                 inv._timbrar()
-                ISCP = self.env["ir.config_parameter"].sudo()
-                metodo = ISCP.get_param("account.send_dte_method", default='diferido')
-                if metodo == 'manual':
-                    continue
-                tiempo_pasivo = datetime.now()
-                if metodo == 'diferido':
-                    tipo_trabajo = 'pasivo'
-                    tiempo_pasivo += timedelta(
-                        hours=int(ISCP.get_param("account.auto_send_dte", default=1))
-                    )
-                elif metodo == 'inmediato':
-                    tipo_trabajo = 'envio'
-                self.env["sii.cola_envio"].create(
-                    {
-                        "company_id": inv.company_id.id,
-                        "doc_ids": [inv.id],
-                        "model": "account.move",
-                        "user_id": self.env.uid,
-                        "tipo_trabajo": tipo_trabajo,
-                        "date_time": tiempo_pasivo,
-                        "send_email": False
-                        if inv.company_id.dte_service_provider == "SIICERT"
-                        or not ISCP.get_param("account.auto_send_email", default=True)
-                        else True,
-                    }
-                )
+                to_send.setdefault(inv.company_id, self.env['account.move'])
+                to_send[inv.company_id] += inv
             po = self.env['purchase.order'].browse(
                 inv._context.get('purchase_to_done', False))
             if po:
                 po.write({"state": "done"})
+        for company, invoices in to_send.items():
+            ISCP = self.env["ir.config_parameter"].sudo()
+            metodo = ISCP.get_param("account.send_dte_method", default='diferido')
+            if metodo == 'manual':
+                continue
+            tiempo_pasivo = datetime.now()
+            if metodo == 'diferido':
+                tipo_trabajo = 'pasivo'
+                tiempo_pasivo += timedelta(
+                    hours=int(ISCP.get_param("account.auto_send_dte", default=1))
+                )
+            elif metodo == 'inmediato':
+                tipo_trabajo = 'envio'
+            self.env["sii.cola_envio"].create(
+                {
+                    "company_id": company.id,
+                    "doc_ids": invoices.ids,
+                    "model": "account.move",
+                    "user_id": self.env.uid,
+                    "tipo_trabajo": tipo_trabajo,
+                    "date_time": tiempo_pasivo,
+                    "send_email": False
+                    if company.dte_service_provider == "SIICERT"
+                    or not ISCP.get_param("account.auto_send_email", default=True)
+                    else True,
+                }
+            )
         return to_post
 
     @contextmanager

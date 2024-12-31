@@ -1,7 +1,7 @@
 {
     "name": """Facturación Electrónica para Chile\
     """,
-    "version": "0.43.2",
+    "version": "0.43.3",
     "countries": ["cl"],
     "category": "Accounting/Localizations",
     "sequence": 12,

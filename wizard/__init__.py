@@ -1,3 +1,4 @@
+from . import account_move_convert_dte
 from . import apicaf
 from . import journal_config_wizard
 from . import masive_send_dte

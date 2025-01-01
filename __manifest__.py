@@ -1,7 +1,7 @@
 {
     "name": """Facturación Electrónica para Chile\
     """,
-    "version": "0.43.3",
+    "version": "0.44.0",
     "countries": ["cl"],
     "category": "Accounting/Localizations",
     "sequence": 12,
@@ -48,6 +48,7 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "wizard/validar.xml",
         "wizard/sale_make_invoice_advance.xml",
         "wizard/journal_config_wizard_view.xml",
+        "wizard/account_move_convert_dte.xml",
         "views/account_tax_mepco.xml",
         "views/account_tax.xml",
         "views/consumo_folios.xml",

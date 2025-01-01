@@ -61,6 +61,9 @@
                     <button name="action_reverse" string='Agregar Nota de Débito'
                             type='object' groups="account.group_account_invoice"
                             attrs="{'invisible': ['|', ('move_type', 'not in', ('out_refund', 'in_refund')), ('state', '!=', 'posted')]}"/>
+                            <button name="action_convert_to_dte" string='Convert To DTE'
+                                        type='object' groups="account.group_account_invoice"
+                                        attrs="{'invisible': ['|', '|', ('move_type', 'not in', ('out_invoice', 'out_refund')), ('state', '!=', 'posted'), ('sequence_number_next', '&gt;', -1)]}"/>
                 </button>
                 <field name="discount" position="after">
                     <field name="discount_amount" invisible="1" />

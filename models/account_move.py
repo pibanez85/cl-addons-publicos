@@ -946,6 +946,10 @@ class AccountMove(models.Model):
             to_unlink += r
         return super(AccountMove, to_unlink).unlink()
 
+    def action_convert_to_dte(self):
+        action = self.env["ir.actions.actions"]._for_xml_id("l10n_cl_fe.action_convert_to_dte")
+        return action
+
     @api.constrains("ref", "partner_id", "company_id", "move_type", "journal_document_class_id")
     def _check_reference_in_invoice(self):
         moves = self.filtered(lambda move: move.is_purchase_document() and move.ref)

@@ -987,8 +987,9 @@ class UploadXMLWizard(models.TransientModel):
                 path_rut = "Encabezado/Receptor/RUTRecep"
                 if self.type == "ventas":
                     path_rut = "Encabezado/Emisor/RUTEmisor"
+                rut = documento.find(path_rut).text
                 company_id = self.env["res.company"].search(
-                    [("vat", "=", self.format_rut(documento.find(path_rut).text)),], limit=1,
+                    [("vat", "=", self.format_rut(rut)),], limit=1,
                 )
                 if not company_id:
                     raise UserError(_(f"No existe compañia para el rut {rut}"))

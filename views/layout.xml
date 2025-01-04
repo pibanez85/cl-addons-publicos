@@ -21,7 +21,7 @@
             <t t-set="partner_id" t-value="o.partner_id" />
             <t t-set="commercial_partner_id" t-value="o.partner_id.commercial_partner_id" />
             <t t-set="logo" t-value="company.logo_web" />
-            <t t-if="o.move_type in ['in_invoice', 'in_refund']">
+            <t t-if="o.move_type in ['in_invoice', 'in_refund'] and not o.document_class_id.es_factura_compra()">
                 <t t-set="partner_id" t-value="company.partner_id" />
                 <t t-set="commercial_partner_id" t-value="company.partner_id" />
                 <t t-set="company" t-value="o.partner_id" />

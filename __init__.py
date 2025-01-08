@@ -28,7 +28,8 @@ def _set_default_configs(cr, registry):
 
     #Eliminar incompatibilidad con l10n_cl
     modules = env["ir.module.module"].sudo().search([
-        ('name', 'in', incompatible_modules)
+        ('name', 'in', incompatible_modules),
+        ('state', '!=', 'uninstalled'),
     ])
 
     if modules:

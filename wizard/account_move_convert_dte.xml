@@ -10,7 +10,7 @@
                     <field name="move_ids" invisible="1"/>
                     <group>
                         <field name="journal_id"/>
-                        <field name="jdc_id" 
+                        <field name="jdc_id"
                             domain="[('journal_id', '=', journal_id)]"/>
                     </group>
                     <footer>

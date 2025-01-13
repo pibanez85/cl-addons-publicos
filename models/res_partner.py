@@ -80,6 +80,16 @@ class ResPartner(models.Model):
             rut = str(int(d[0])) + "-" + d[1]
         return rut
 
+    def _address_fields(self):
+        vals = super()._address_fields()
+        vals.append('city_id')
+        return vals
+
+    def _prepare_display_address(self, without_company=False):
+        address_format, args = super()._prepare_display_address(without_company=without_company)
+        args['comuna_name'] = self.city_id.name or ''
+        return address_format, args
+
     def write(self, vals):
         result = super(ResPartner, self).write(vals)
         if not vals.get("sync", False):

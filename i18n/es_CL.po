@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Odoo Server 16.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-18 16:44+0000\n"
-"PO-Revision-Date: 2024-04-18 16:44+0000\n"
+"POT-Creation-Date: 2025-01-13 06:46+0000\n"
+"PO-Revision-Date: 2025-01-13 06:46+0000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
@@ -21,6 +21,8 @@ msgid ""
 "\n"
 "Include unusual taxes documents, as transfer invoice, and reissue\n"
 msgstr ""
+"\n"
+"Incluye documentos de impuestos inusuales, como factura de transferencia y reemisión\n"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_account_move_boleta_voucher__sii_result
@@ -36,6 +38,11 @@ msgid ""
 " * The 'Paid' status is set automatically when the invoice is paid. Its related journal entries may or may not be reconciled.\n"
 " * The 'Cancelled' status is used when user cancel invoice."
 msgstr ""
+"* El estado 'Borrador' se usa cuando un usuario está introduciendo una nueva factura no confirmada.\n"
+"* El estado 'Pro-forma' se usa cuando la factura no tiene un número asignado.\n"
+"* El estado 'Abierta' se usa cuando el usuario crea la factura y la confirma. Se genera un número de factura y su estado permanecerá así hasta que el usuario pague la factura.\n"
+"* El estado 'Pagada' se establece automáticamente cuando se paga la factura. Sus correspondientes asientos pueden o no estar conciliados.\n"
+"* El estado 'Cancelada' se usa cuando el usuario cancela la factura."
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move__claim__erm
@@ -218,6 +225,7 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<span>Sucursales: </span>"
 msgstr ""
 
@@ -281,11 +289,13 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<strong>Descuento o Recargo Global</strong>"
 msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<strong>Descuento</strong>"
 msgstr ""
 
@@ -331,11 +341,6 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
 msgid "<strong>Glosa</strong>"
-msgstr ""
-
-#. module: l10n_cl_fe
-#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
-msgid "<strong>MONTO TOTAL</strong>"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -389,6 +394,7 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<strong>Subtotal</strong>"
 msgstr ""
 
@@ -409,11 +415,13 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<strong>Total Redondeado</strong>"
 msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<strong>Total</strong>"
 msgstr ""
 
@@ -575,7 +583,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_optional_type__active
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_responsability__active
 msgid "Active"
-msgstr ""
+msgstr "Activo"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_900002
@@ -788,7 +796,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_702000
 msgid "Actividades de consultoría de gestión"
-msgstr "Corredores de Propiedades"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_620200
@@ -967,7 +975,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_990000
 msgid "Actividades de organizaciones y órganos extraterritoriales"
-msgstr "Organizaciones y Órganos Extraterritoriales"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_949909
@@ -1113,12 +1121,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_users__acteco_ids
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sale_order__acteco_ids
 msgid "Activities Names"
-msgstr ""
+msgstr "Nombres de Actividades"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_partner_activities__code
 msgid "Activity Code"
-msgstr ""
+msgstr "Código de Actividad"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_view_tree
@@ -1212,11 +1220,6 @@ msgid "Agregar Nota de Débito"
 msgstr ""
 
 #. module: l10n_cl_fe
-#: model:res.city,name:l10n_cl_fe.CL11201
-msgid "Aisén"
-msgstr ""
-
-#. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move_book__tipo_envio__ajuste
 msgid "Ajuste"
 msgstr ""
@@ -1235,7 +1238,7 @@ msgstr ""
 #: model:ir.model.fields,help:l10n_cl_fe.field_partner_activities__active
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_activity_description__active
 msgid "Allows you to hide the activity without removing it."
-msgstr ""
+msgstr "Le permite ocultar la actividad sin eliminarla."
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_681011
@@ -1298,7 +1301,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL03302
 msgid "Alto Del Carmen"
-msgstr "Alto del Carmen"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL01107
@@ -1354,7 +1357,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL12202
 msgid "Antártica"
-msgstr "ANTÁRTICA"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move_book_honorarios__tipo_libro__anual
@@ -1422,7 +1425,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_optional_type__apply_rule
 msgid "Apply rule"
-msgstr ""
+msgstr "Aplicar regla"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__sii_dte_validar_wizard__action__validate
@@ -1607,12 +1610,17 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_partner_activities__internet_available
 msgid "Available at Internet"
+msgstr "Disponible en Internet"
+
+#. module: l10n_cl_fe
+#: model:res.city,name:l10n_cl_fe.CL11201
+msgid "Aysén"
 msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_641100
 msgid "Banca central"
-msgstr "Actividades Postales Nacionales"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax__include_base_amount_cl
@@ -1671,7 +1679,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_book_boletas__book_id
 msgid "Book"
-msgstr ""
+msgstr "Libro"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move__sii_result__draft
@@ -1720,7 +1728,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_dte_caf__final_nm
 msgid "CAF Ends to this number"
-msgstr ""
+msgstr "Ultimo número del CAF"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_dte_caf_tree
@@ -1731,12 +1739,12 @@ msgstr "Archivos CAF"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_dte_caf__start_nm
 msgid "CAF Starts from this number"
-msgstr ""
+msgstr "CAF inicia desde el número"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__caf_file
 msgid "CAF XML File"
-msgstr "Archivo XML CAF"
+msgstr "Archivos XML CAF"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_dte_caf_apicaf
@@ -1772,6 +1780,11 @@ msgid "CEDIBLE"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_convert_to_dte
+msgid "COnvert To DTE"
+msgstr ""
+
+#. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL05402
 msgid "Cabildo"
 msgstr ""
@@ -1779,7 +1792,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL12201
 msgid "Cabo De Hornos"
-msgstr "Cabo de Hornos"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL08303
@@ -1819,7 +1832,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL13403
 msgid "Calera De Tango"
-msgstr "Calera de Tango"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL05302
@@ -1845,9 +1858,10 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.sii_masive_dte_process_wizard_form
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_account_journal_document_config_form
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_account_move_reversal
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_convert_to_dte
 #, python-format
 msgid "Cancel"
-msgstr ""
+msgstr "Cancelar"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_dte_caf_apicaf
@@ -1859,7 +1873,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move__canceled
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_payment__canceled
 msgid "Canceled?"
-msgstr ""
+msgstr "¿Cancelada?"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL04202
@@ -1963,7 +1977,6 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.invoice_thermal
-#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "Casa Matriz:"
 msgstr ""
 
@@ -2032,7 +2045,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__cert
 msgid "Certificate"
-msgstr ""
+msgstr "Certificado"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_firma_form
@@ -2105,8 +2118,8 @@ msgid ""
 "Choose how you want to credit this invoice. You cannot \"modify\" nor "
 "\"cancel\" if the invoice is already reconciled."
 msgstr ""
-"Escoja cómo quiere rectificar esta factura. No puede modificar ni cancelar "
-"la factura una vez conciliada."
+"Elija cómo quiere acreditar esta factura. No puede modificar ni cancelar la "
+"factura una vez conciliada."
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL06302
@@ -2128,20 +2141,12 @@ msgstr "Ciudad"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_city__code
 msgid "City Code"
-msgstr ""
+msgstr "Código de la ciudad"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_regional_offices__city_ids
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_regional_offices_form
 msgid "Ciudades"
-msgstr ""
-
-#. module: l10n_cl_fe
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_bank_statement_line__claim_ids
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move__claim_ids
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_payment__claim_ids
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document__claim_ids
-msgid "Claim"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -2191,12 +2196,12 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_type__code
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_responsability__code
 msgid "Code"
-msgstr ""
+msgstr "Código"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_class__code_template
 msgid "Code Template for Journal"
-msgstr ""
+msgstr "Plantilla de código para el diario"
 
 #. module: l10n_cl_fe
 #: model:ir.model.constraint,message:l10n_cl_fe.constraint_sii_responsability_code
@@ -2273,6 +2278,7 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "Comisiones y Otros Cargos"
 msgstr ""
 
@@ -2291,13 +2297,14 @@ msgstr "Compañías"
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_boleta_voucher__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_comision__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__company_id
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_cola_envio__company_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_sucursal__company_id
 msgid "Company"
-msgstr ""
+msgstr "Compañía"
 
 #. module: l10n_cl_fe
 #. odoo-python
@@ -2381,7 +2388,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_res_config_settings
 msgid "Config Settings"
-msgstr "Opciones de configuración"
+msgstr "Ajustes de configuración"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.action_dte_config
@@ -2487,7 +2494,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_consumo_folios
 msgid "Consumo Diario de Folios"
-msgstr ""
+msgstr "Consumo de Folios SII"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.action_move_consumo_folios
@@ -2511,7 +2518,7 @@ msgstr "Contacto"
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_partner_activity_inherit_form
 msgid "Contact Name"
-msgstr ""
+msgstr "Nombre del contacto"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_bank_statement_line__contact_id
@@ -2533,6 +2540,17 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL08204
 msgid "Contulmo"
+msgstr ""
+
+#. module: l10n_cl_fe
+#: model:ir.actions.act_window,name:l10n_cl_fe.action_convert_to_dte
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_invoice_form
+msgid "Convert To DTE"
+msgstr "Convertir a DTE"
+
+#. module: l10n_cl_fe
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_convert_to_dte
+msgid "Convertir"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -2709,6 +2727,7 @@ msgstr "Crear Documentos para el Diario"
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones__create_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles__create_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos__create_uid
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__create_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__create_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__create_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__create_uid
@@ -2742,7 +2761,7 @@ msgstr "Crear Documentos para el Diario"
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_sucursal__create_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__create_uid
 msgid "Created by"
-msgstr ""
+msgstr "Creado por"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__create_date
@@ -2758,6 +2777,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones__create_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles__create_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos__create_date
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__create_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__create_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__create_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__create_date
@@ -2791,7 +2811,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_sucursal__create_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__create_date
 msgid "Created on"
-msgstr ""
+msgstr "Creado en"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_reversal__refund_method
@@ -2805,6 +2825,7 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.actions.server,name:l10n_cl_fe.ir_cron_auto_accept_documents_ir_actions_server
+#: model:ir.actions.server,name:l10n_cl_fe.ir_cron_auto_acept_documents_ir_actions_server
 #: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_auto_accept_documents
 msgid "Cron AutoAceptación Documentos"
 msgstr ""
@@ -2816,7 +2837,10 @@ msgid "Cron AutoReponer CAF"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.actions.server,name:l10n_cl_fe.ir_cron_update_remote
+#: partners_ir_actions_server
 #: model:ir.actions.server,name:l10n_cl_fe.ir_cron_update_remote_partners_ir_actions_server
+#: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_update_remote partners
 #: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_update_remote_partners
 msgid "Cron Verificación de Partners"
 msgstr ""
@@ -3012,7 +3036,7 @@ msgstr ""
 msgid ""
 "Cultivo de plantas vivas incluida la producción en viveros (excepto viveros "
 "forestales)"
-msgstr "Explotación Mixta"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_11106
@@ -3036,7 +3060,7 @@ msgstr ""
 msgid ""
 "Cultivo de semillas de cereales, legumbres y oleaginosas (excepto semillas "
 "de raps y maravilla)"
-msgstr "Cultivo de Trigo"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_12501
@@ -3071,17 +3095,17 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_12111
 msgid "Cultivo de uva destinada a la producción de pisco y aguardiente"
-msgstr "Cría de Ganado Bovino Para La Producción Lechera"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_12112
 msgid "Cultivo de uva destinada a la producción de vino"
-msgstr "Cría de Ganado Para Producción de Carne, O Como Ganado Reproductor"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_12120
 msgid "Cultivo de uva para mesa"
-msgstr "Cría de Ganado Ovino Y/O Explotación Lanera"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_32110
@@ -3124,7 +3148,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL10204
 msgid "Curaco De Vélez"
-msgstr "Curaco de Vélez"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL08205
@@ -3154,16 +3178,9 @@ msgid "Currency"
 msgstr "Moneda"
 
 #. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid "Currency CLP must be enabled"
-msgstr ""
-
-#. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_res_currency_rate
 msgid "Currency Rate"
-msgstr "Tasa monetaria"
+msgstr "Tasa Monetaria"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_currency__rate
@@ -3225,7 +3242,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_ir_sequence__dte_caf_ids
 msgid "DTE CAF"
-msgstr ""
+msgstr "DTE Caf"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_dte_caf_apicaf
@@ -3299,7 +3316,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_book_honorarios__date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__date
 msgid "Date"
-msgstr ""
+msgstr "Fecha"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_dte_caf_apicaf__folios_disp
@@ -3460,7 +3477,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL03202
 msgid "Diego De Almagro"
-msgstr "Diego de Almagro"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_tax_mepco__type__diesel
@@ -3501,6 +3518,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones__display_name
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles__display_name
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos__display_name
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__display_name
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__display_name
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__display_name
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__display_name
@@ -3539,7 +3557,7 @@ msgstr "Nombre mostrado"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_line__display_type
 msgid "Display Type"
-msgstr "Tipo de visualización"
+msgstr "Tipo de pantalla"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_351030
@@ -3566,12 +3584,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_class__doc_code_prefix
 msgid "Document Code Prefix"
-msgstr ""
+msgstr "Prefijo de código de documento"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_class__document_letter_id
 msgid "Document Letter"
-msgstr ""
+msgstr "Documento Carta"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_bank_statement_line__sii_document_number
@@ -3601,7 +3619,7 @@ msgstr "Tipos de documentos"
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_partner__document_number
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_users__document_number
 msgid "Document number"
-msgstr ""
+msgstr "Número de Documento"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_company__document_type_id
@@ -3629,7 +3647,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_document_view_tree
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_view_form
 msgid "Documentos"
-msgstr ""
+msgstr "Documentos DTE"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_dte_validar_wizard__document_ids
@@ -3650,11 +3668,12 @@ msgstr "Documentos DTE"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal__journal_document_class_ids
 msgid "Documents Class"
-msgstr "Clase de Documento"
+msgstr "Clases de Documento"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_bank_statement_line__journal_document_class_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move__journal_document_class_id
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__jdc_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_payment__journal_document_class_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sale_order__journal_document_class_id
 msgid "Documents Type"
@@ -3688,6 +3707,8 @@ msgid ""
 "Draft: means it has not been checked yet.\n"
 "You must press the\"check\" button."
 msgstr ""
+"Borrador: significa que no se ha verificado todavía.\n"
+"Debes presionar el botón \"verificar\"."
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_dte_caf__state
@@ -3797,20 +3818,6 @@ msgstr ""
 #: code:addons/l10n_cl_fe/models/res_partner.py:0
 #, python-format
 msgid "El rut: %s debe ser único"
-msgstr ""
-
-#. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid "El tipo de documento %s, no es de tipo Documento"
-msgstr ""
-
-#. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid "El tipo de documento %s, no es de tipo Rectificativo"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -3973,7 +3980,7 @@ msgstr "Facturación Electrónica"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte__mail_id
 msgid "Email"
-msgstr ""
+msgstr "Correo electrónico"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__email_respuesta
@@ -3988,7 +3995,7 @@ msgstr "Asistente de redacción de correo electrónico."
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.layout_libro
 msgid "Email:"
-msgstr ""
+msgstr "Correo electrónico:"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__emision_date
@@ -4046,7 +4053,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__final_nm
 msgid "End Number"
-msgstr ""
+msgstr "Número final"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_854200
@@ -4120,7 +4127,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_sii_document_class__sequence_id
 msgid "Entry Sequence"
-msgstr "Secuencia de la entrada"
+msgstr "Secuencia de la secuencia"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move__sii_result__enviado
@@ -4280,8 +4287,6 @@ msgstr ""
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_732000
 msgid "Estudios de mercado y encuestas de opinión pública"
 msgstr ""
-"Investigaciones y Desarrollo Experimental En El Campo de Las Ciencias "
-"Sociales y Las Humanidades"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf_apicaf__etapa
@@ -4326,17 +4331,17 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__expiration_date
 msgid "Expiration Date"
-msgstr ""
+msgstr "Fecha de caducidad"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__expire_date
 msgid "Expire Date"
-msgstr ""
+msgstr "Fecha Vencimiento"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__sii_firma__state__expired
 msgid "Expired"
-msgstr ""
+msgstr "Vencida"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_522120
@@ -4533,8 +4538,6 @@ msgstr ""
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_323000
 msgid "Fabricación de artículos de deporte"
 msgstr ""
-"Fabricación de Receptores (Radio y Tv); Aparatos de Grabación y Reproducción"
-" (Audio y Video)"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_239500
@@ -4564,7 +4567,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_273100
 msgid "Fabricación de cables de fibra óptica"
-msgstr "Fundición de Hierro y Acero"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_152000
@@ -4733,7 +4736,7 @@ msgstr ""
 msgid ""
 "Fabricación de jabones y detergentes, preparados para limpiar, perfumes y "
 "preparados de tocador"
-msgstr "Fabricación de Recipientes de Madera"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_321100
@@ -4816,14 +4819,14 @@ msgstr ""
 msgid ""
 "Fabricación de motores y turbinas, excepto para aeronaves, vehículos "
 "automotores y motocicletas"
-msgstr "Fabricación de Productos Metálicos de Uso Estructural"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_271000
 msgid ""
 "Fabricación de motores, generadores y transformadores eléctricos, aparatos "
 "de distribución y control"
-msgstr "Industrias Basicas de Hierro y Acero"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_310001
@@ -4848,12 +4851,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_273200
 msgid "Fabricación de otros hilos y cables eléctricos"
-msgstr "Fundición de Metales No Ferrosos"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_221900
 msgid "Fabricación de otros productos de caucho"
-msgstr "Otras Actividades de Edición"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_162900
@@ -4927,7 +4930,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_293000
 msgid "Fabricación de partes, piezas y accesorios para vehículos automotores"
-msgstr "Fabricación de Aparatos de Uso Doméstico"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_272000
@@ -4940,14 +4943,12 @@ msgid ""
 "Fabricación de pinturas, barnices y productos de revestimiento, tintas de "
 "imprenta y masillas"
 msgstr ""
-"Fabricación de Partes y Piezas de Carpintería Para Edificios y "
-"Construcciones"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_202100
 msgid ""
 "Fabricación de plaguicidas y otros productos químicos de uso agropecuario"
-msgstr "Fabricación de Tableros, Paneles y Hojas de Madera Para Enchapado"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_201300
@@ -4972,7 +4973,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_192000
 msgid "Fabricación de productos de la refinación del petróleo"
-msgstr "Fabricación de Calzado"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_222000
@@ -5143,7 +5144,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document__date
 msgid "Fecha Emsisión"
-msgstr ""
+msgstr "Fecha Emisión"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__fecha_final
@@ -5201,7 +5202,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_dte_upload_xml_wizard__filename
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__name
 msgid "File Name"
-msgstr ""
+msgstr "Nombre del archivo"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_649201
@@ -5681,6 +5682,14 @@ msgid "Hipódromos"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_bank_statement_line__claim_ids
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move__claim_ids
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_payment__claim_ids
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document__claim_ids
+msgid "Historial de Reclamos"
+msgstr ""
+
+#. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL10403
 msgid "Hualaihue"
 msgstr ""
@@ -5729,6 +5738,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones__id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles__id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos__id
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__id
@@ -5803,7 +5813,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_document_letter__vat_discriminated
 msgid "If True, the vat will be discriminated on invoice report."
-msgstr ""
+msgstr "Si esta activo, el IVA será discriminado en el informe de la factura."
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_mail_message_dte__message_needaction
@@ -5820,6 +5830,11 @@ msgstr ""
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_dte_claim__message_has_error
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_dte_claim__message_has_sms_error
 msgid "If checked, some messages have a delivery error."
+msgstr ""
+
+#. module: l10n_cl_fe
+#: model:ir.model.fields,help:l10n_cl_fe.field_account_move_convert_dte__journal_id
+msgid "If empty, uses the journal of the journal entry to be reversed."
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -5924,7 +5939,7 @@ msgid "Ingrese Rango a anular"
 msgstr ""
 
 #. module: l10n_cl_fe
-#: model:ir.model.fields.selection,name:l10n_cl_fe.selection__res_config_settings__send_dte_method__imediato
+#: model:ir.model.fields.selection,name:l10n_cl_fe.selection__res_config_settings__send_dte_method__inmediato
 msgid "Inmediato"
 msgstr ""
 
@@ -5962,6 +5977,11 @@ msgid ""
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_cola_envio__intento
+msgid "Intento"
+msgstr ""
+
+#. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_721000
 msgid ""
 "Investigaciones y desarrollo experimental en el campo de las ciencias "
@@ -5973,12 +5993,12 @@ msgstr ""
 msgid ""
 "Investigaciones y desarrollo experimental en el campo de las ciencias "
 "sociales y las humanidades"
-msgstr "Asesores y Consultores En Informática (Software)"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_company__invoice_vat_discrimination_default
 msgid "Invoice VAT discrimination default"
-msgstr ""
+msgstr "Predeterminado. Debe ir RUT en la factura"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__sii_document_class__document_type__invoice
@@ -5991,6 +6011,11 @@ msgid "Iquique"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_sii_document_class__is_dte
+msgid "Is DTE"
+msgstr "Es DTE"
+
+#. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte__message_is_follower
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document__message_is_follower
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_dte_claim__message_is_follower
@@ -6000,52 +6025,52 @@ msgstr "Es Seguidor"
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL13603
 msgid "Isla De Maipo"
-msgstr "Isla de Maipo"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL05201
 msgid "Isla De Pascua"
-msgstr "Isla de Pascua"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__issued_date
 msgid "Issued Date"
-msgstr "Fecha Vencimiento"
+msgstr "Fecha de emisión"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_responsability__issued_letter_ids
 msgid "Issued Document Letters"
-msgstr ""
+msgstr "Cartas de documentos emitidos"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__issuer_common_name
 msgid "Issuer Common Name"
-msgstr ""
+msgstr "Nombre común del emisor"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__issuer_country
 msgid "Issuer Country"
-msgstr ""
+msgstr "País Emisor"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__issuer_email_address
 msgid "Issuer Email Address"
-msgstr ""
+msgstr "Dirección de correo electrónico del emisor"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__issuer_organization
 msgid "Issuer Organization"
-msgstr ""
+msgstr "Organización Emisora"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__issuer_serial_number
 msgid "Issuer Serial Number"
-msgstr ""
+msgstr "Número de serie del emisor"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_letter__issuer_ids
 msgid "Issuers"
-msgstr ""
+msgstr "Emisor"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_document_class__document_type
@@ -6053,6 +6078,8 @@ msgid ""
 "It defines some behaviours on automatic journal selection and        in "
 "menus where it is shown."
 msgstr ""
+"Define algunos comportamientos en la selección automática de diario y en los"
+" menús donde se muestra."
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_bank_statement_line__iva_uso_comun
@@ -6082,7 +6109,7 @@ msgstr "Configuración de documentos de diario"
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move
 msgid "Journal Entry"
-msgstr "Asiento contable"
+msgstr "Asiento Contable"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_line
@@ -6094,7 +6121,7 @@ msgstr "Apunte contable"
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_electronic_consumo_folios_form
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_electronic_libro_honorarios_form
 msgid "Journal Items"
-msgstr ""
+msgstr "Apuntes contables"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_journal_sii_document_class
@@ -6205,13 +6232,6 @@ msgid "Lanco"
 msgstr ""
 
 #. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid "Lang es_CL must be enabled"
-msgstr ""
-
-#. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL06107
 msgid "Las Cabras"
 msgstr ""
@@ -6235,6 +6255,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones____last_update
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles____last_update
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos____last_update
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte____last_update
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr____last_update
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias____last_update
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco____last_update
@@ -6289,6 +6310,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones__write_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles__write_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos__write_uid
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__write_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__write_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__write_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__write_uid
@@ -6322,7 +6344,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_sucursal__write_uid
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__write_uid
 msgid "Last Updated by"
-msgstr ""
+msgstr "Última actualización de"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__write_date
@@ -6338,6 +6360,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_anulaciones__write_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_detalles__write_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios_impuestos__write_date
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__write_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_gdr__write_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__write_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_tax_mepco__write_date
@@ -6371,7 +6394,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_sucursal__write_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__write_date
 msgid "Last Updated on"
-msgstr ""
+msgstr "Última actualización en"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL09108
@@ -6420,7 +6443,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_book_honorarios
 msgid "Libro de Honorarios"
-msgstr ""
+msgstr "account.move.book.honorarios"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.layout_libro
@@ -6484,7 +6507,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_gdr
 msgid "Linea de descuento global factura"
-msgstr ""
+msgstr "account.invoice.gdr"
 
 #. module: l10n_cl_fe
 #. odoo-python
@@ -6615,7 +6638,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_book_honorarios_tax
 msgid "Línea Impuesto libro Honorarios"
-msgstr ""
+msgstr "account.move.book.honorarios.tax"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_consumo_folios_impuestos
@@ -6625,11 +6648,6 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_consumo_folios_anulaciones
 msgid "Línea anulación de folios para Consumo de folios"
-msgstr ""
-
-#. module: l10n_cl_fe
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf_apicaf__linea_disponible_seleccionada
-msgid "Línea de CAF Seleccionada"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -6645,7 +6663,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_book_boletas
 msgid "Línea de boletas mensuales para Libro de Ventas"
-msgstr ""
+msgstr "Detalle Boleta libro CV"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_referencias
@@ -7013,8 +7031,9 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_book__move_ids
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_book_honorarios__move_ids
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__move_ids
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__move_ids
 msgid "Move"
-msgstr ""
+msgstr "Movimiento"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_comision__move_id
@@ -7057,6 +7076,11 @@ msgid "Método Recepción DTE"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__boleta_voucher_ids
+msgid "NC Vouchers Boletas"
+msgstr ""
+
+#. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_dte_caf_apicaf
 msgid "NO se puede anular Folio ya recibido aunque sea incluído en el rango"
 msgstr ""
@@ -7079,7 +7103,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_responsability__name
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_view_tree_select
 msgid "Name"
-msgstr ""
+msgstr "Nombre"
 
 #. module: l10n_cl_fe
 #: model:ir.model.constraint,message:l10n_cl_fe.constraint_sii_document_letter_name
@@ -7091,12 +7115,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_class__report_name
 msgid "Name on Reports"
-msgstr ""
+msgstr "Nombre en los informes"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_document_class__report_name
 msgid "Name that will be printed in reports, for example \"CREDIT NOTE\""
-msgstr ""
+msgstr "Nombre que se imprimirá en los informes, por ejemplo \"NOTA DE CRÉDITO\""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL06305
@@ -7194,22 +7218,6 @@ msgid ""
 msgstr ""
 
 #. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid ""
-"No puede ir una línea igual o menor que 0, elimine la línea o verifique el "
-"valor ingresado"
-msgstr ""
-
-#. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid "No pueden ir valores negativos en las líneas de detalle"
-msgstr ""
-
-#. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL05506
 msgid "Nogales"
 msgstr ""
@@ -7253,12 +7261,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_firma__expire_date
 msgid "Not After this Date"
-msgstr ""
+msgstr "No después de esta fecha"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_firma__emision_date
 msgid "Not Before this Date"
-msgstr ""
+msgstr "No antes de esta fecha"
 
 #. module: l10n_cl_fe
 #. odoo-python
@@ -7313,7 +7321,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_cola_envio__n_atencion
 msgid "Número de Atención"
-msgstr ""
+msgstr "Número atención"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_dte_upload_xml_wizard__num_dtes
@@ -7460,7 +7468,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__origen
 msgid "Origin"
-msgstr ""
+msgstr "Origen"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL10301
@@ -7475,7 +7483,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__other_available
 msgid "Others available?"
-msgstr ""
+msgstr "¿Otros disponibles?"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__sii_dte_claim__claim__erm
@@ -7864,7 +7872,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__password
 msgid "Password"
-msgstr ""
+msgstr "Contraseña"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_payment_term
@@ -8056,7 +8064,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_cf_filter
 msgid "Posted"
-msgstr ""
+msgstr "Publicado"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL01401
@@ -8066,7 +8074,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_mail_message_dte_document_line
 msgid "Pre Document Line"
-msgstr ""
+msgstr "Pre Documento Línea"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_mail_message_dte_document
@@ -8081,7 +8089,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_dte_upload_xml_wizard__pre_process
 msgid "Pre Process"
-msgstr ""
+msgstr "Pre Proceso"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
@@ -8101,6 +8109,8 @@ msgid ""
 "Prefix for Documents Codes on Invoices         and Account Moves. For eg. "
 "'FAC' will build 'FAC 00001' Document Number"
 msgstr ""
+"Prefijo para códigos de documentos en facturas y movimientos de cuenta. Por "
+"ej. 'FAC' construirá 'FAC 00001' Número de documento"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_431200
@@ -8143,27 +8153,27 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__priority
 msgid "Priority"
-msgstr ""
+msgstr "Prioridad"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__priv_key
 msgid "Private Key"
-msgstr ""
+msgstr "Llave privada"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__private_key_bits
 msgid "Private Key Bits"
-msgstr ""
+msgstr "Bits de clave privada"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__private_key_check
 msgid "Private Key Check"
-msgstr ""
+msgstr "Comprobación de clave privada"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__private_key_type
 msgid "Private Key Type"
-msgstr ""
+msgstr "Tipo de clave privada"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move__sii_result__proceso
@@ -8207,7 +8217,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_concept_type__product_types
 msgid "Product types"
-msgstr ""
+msgstr "Tipos de productos"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document_line__product_id
@@ -8305,6 +8315,11 @@ msgid "Puerto Varas"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model_terms:ir.actions.act_window,help:l10n_cl_fe.action_dte_process
+msgid "Pulse aquí para añadir un nuevo documento"
+msgstr ""
+
+#. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL06309
 msgid "Pumanque"
 msgstr ""
@@ -8368,7 +8383,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_sii_document_class__qty_available
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_ir_sequence__qty_available
 msgid "Quantity Available"
-msgstr "Cantidad Disponible"
+msgstr "Cantidad disponible"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL10207
@@ -8423,7 +8438,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL06114
 msgid "Quinta De Tilcoco"
-msgstr "Quinta de Tilcoco"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL13126
@@ -8459,7 +8474,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__rut_n
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.layout_libro
 msgid "RUT"
-msgstr ""
+msgstr "R.U.T"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_document_search_view
@@ -8561,7 +8576,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_responsability__received_letter_ids
 msgid "Received Document Letters"
-msgstr ""
+msgstr "Letras de documentos recibidos"
 
 #. module: l10n_cl_fe
 #: model:ir.ui.menu,name:l10n_cl_fe.menu_sii_exchange
@@ -8615,7 +8630,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_letter__receptor_ids
 msgid "Receptors"
-msgstr ""
+msgstr "Receptores"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move__sii_result__rechazado
@@ -8841,27 +8856,29 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_regional_offices__name
 msgid "Regional Office Name"
-msgstr ""
+msgstr "Nombre de la oficina regional"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__dte_register
 msgid "Register Electronic Documents?"
-msgstr ""
+msgstr "¿Registrar documentos electrónicos?"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__free_tax_zone
 msgid "Register Free-Tax Zone or # 1057 Resolution Documents?"
 msgstr ""
+"¿Registre la zona libre de impuestos o los documentos de resolución n.º "
+"1057?"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__non_dte_register
 msgid "Register Manual Documents?"
-msgstr ""
+msgstr "¿Registrar documentos manuales?"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__settlement_invoice
 msgid "Register Settlement Invoices?"
-msgstr ""
+msgstr "¿Registrar facturas de liquidación?"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_document_view_form
@@ -8874,6 +8891,7 @@ msgid "Registro de Reclamo en SII"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_res_country_state_provincia__state_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_partner__state_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_users__state_id
 msgid "Región"
@@ -9051,7 +9069,7 @@ msgstr "Acción de informe"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_ir_actions_report__report_type
 msgid "Report Type"
-msgstr "Tipo de informe"
+msgstr "Tipo de Reporte"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.action_move_boleta_voucher
@@ -9067,7 +9085,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_182000
 msgid "Reproducción de grabaciones"
-msgstr "Adobo y Tenidos de Pieles; Fabricación de Artículos de Piel"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_32130
@@ -9089,7 +9107,7 @@ msgstr "Responsabilidades"
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_partner__responsability_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_users__responsability_id
 msgid "Responsability"
-msgstr ""
+msgstr "Tipo de Contribuyente"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__responsable_envio
@@ -9129,7 +9147,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal__restore_mode
 msgid "Restore Mode"
-msgstr "Modo Restauración"
+msgstr "Modo de restauración"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_boleta_voucher__sii_result
@@ -9302,7 +9320,7 @@ msgstr "SII CAF Archivo para DTE"
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_type__sii_code
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_optional_type__sii_code
 msgid "SII Code"
-msgstr ""
+msgstr "Código SII"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.act_sii_concept_type
@@ -9345,7 +9363,7 @@ msgstr "SII Tipo de documento"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_letter__sii_document_class_ids
 msgid "SII Document Classes"
-msgstr ""
+msgstr "SII Tipos de documentos"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.act_sii_document_letter
@@ -9381,7 +9399,7 @@ msgstr "SII Tipo de documento"
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_activity_description_form
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_activity_description_tree
 msgid "SII Economic Activities"
-msgstr ""
+msgstr "SII Actividades económicas"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_partner_activities
@@ -9391,22 +9409,22 @@ msgstr "SII Actividades económicas"
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_activity_description
 msgid "SII Economical Activities Printable Description"
-msgstr "SII Descripción imprimible de las actividades económicas"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_company__dte_resolution_date
 msgid "SII Exempt Resolution Date"
-msgstr ""
+msgstr "SII Fecha de resolución exenta"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_company__dte_resolution_number
 msgid "SII Exempt Resolution Number"
-msgstr ""
+msgstr "SII Número de resolución exenta"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_dte_masive_accept_wizard
 msgid "SII Masive DTE Accept Wizard"
-msgstr ""
+msgstr "Asistente Envío masivo al SII"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_dte_masive_process_wizard
@@ -9416,7 +9434,7 @@ msgstr "Asistente de procesos masivos de SII DTE"
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_dte_masive_send_wizard
 msgid "SII Masive send Wizard"
-msgstr "Asistente Envío masivo al SII"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__sii_receipt
@@ -9449,17 +9467,17 @@ msgstr "SII Actividades del asociado"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__sii_referencia_CodRef
 msgid "SII Reference Code"
-msgstr ""
+msgstr "SII Código de refencia"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_referencias__sii_referencia_TpoDocRef
 msgid "SII Reference Document Type"
-msgstr ""
+msgstr "SII Tipo de Documento De Referencia"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_company__sii_regional_office_id
 msgid "SII Regional Office"
-msgstr ""
+msgstr "SII Oficina regional"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.act_sii_regional_offices
@@ -9506,7 +9524,7 @@ msgstr "XML Envío SII"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__sii_xml_response
 msgid "SII XML Response"
-msgstr "Respuesta SII"
+msgstr "XML de respuesta del SII"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_dte_upload_xml_wizard
@@ -9535,7 +9553,7 @@ msgstr "SII Tipos opcionales"
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_cola_envio_form
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_cola_envio_tree
 msgid "SII queue"
-msgstr ""
+msgstr "Cola de envío"
 
 #. module: l10n_cl_fe
 #: model:ir.actions.act_window,name:l10n_cl_fe.xml_envio
@@ -9642,12 +9660,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL13203
 msgid "San José De Maipo"
-msgstr "San José de Maipo"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL10306
 msgid "San Juan De La Costa"
-msgstr "San Juan de la Costa"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL13130
@@ -9672,7 +9690,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL02203
 msgid "San Pedro De Atacama"
-msgstr "San Pedro de Atacama"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL08108
@@ -9768,7 +9786,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_651100
 msgid "Seguros de vida"
-msgstr "Banca Central"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_651210
@@ -9788,7 +9806,6 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
 #: code:addons/l10n_cl_fe/models/account_move_boleta_voucher.py:0
 #, python-format
 msgid "Seleccione giro del partner"
@@ -9804,7 +9821,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_account_journal__journal_activities_ids
 msgid "Select the turns you want to             invoice in this Journal"
-msgstr "Seleccionar los giros que quiere usar en este Diario"
+msgstr "Seleccione los giros que desea facturar en este Diario"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_electronic_boleta_voucher_form
@@ -9841,7 +9858,7 @@ msgstr "Secuencia Prefijo Siguiente Número"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__cert_serial_number
 msgid "Serial Number"
-msgstr ""
+msgstr "Número de serie"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_452001
@@ -10067,12 +10084,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__cert_signature_algor
 msgid "Signature Algorithm"
-msgstr ""
+msgstr "Algoritmo de firma"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__file_content
 msgid "Signature File"
-msgstr ""
+msgstr "Archivo de firma"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_document_letter
@@ -10143,21 +10160,20 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__start_nm
 msgid "Start Number"
-msgstr "Número Inicio"
+msgstr "Número de inicio"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_company__start_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_partner__start_date
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_users__start_date
 msgid "Start-up Date"
-msgstr ""
+msgstr "Fecha de Inicio de actividad"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document__state
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_res_country_state_provincia__state_id
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_xml_envio__state
 msgid "State"
-msgstr ""
+msgstr "Estado"
 
 #. module: l10n_cl_fe
 #: model:res.groups,name:l10n_cl_fe.state_manager
@@ -10194,7 +10210,7 @@ msgstr "Subir XML de Envío"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__subject_common_name
 msgid "Subject Common Name"
-msgstr ""
+msgstr "Nombre común del sujeto"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__subject_c
@@ -10268,7 +10284,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_partner_activities__tax_category
 msgid "TAX Category"
-msgstr ""
+msgstr "Categoría de impuesto"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.invoice_thermal
@@ -10321,7 +10337,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_currency_rate__rate
 msgid "Technical Rate"
-msgstr "Tasa técnica"
+msgstr "Tasa"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_131200
@@ -10397,7 +10413,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_res_city__code
 msgid "The city code.\n"
-msgstr ""
+msgstr "Código de la ciudad.\n"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_account_move_reversal
@@ -10423,6 +10439,13 @@ msgstr ""
 msgid ""
 "The email address associated with electronica invoice, where all emails "
 "vendors would send Exchange DTE, for automatic reception in Odoo."
+msgstr ""
+
+#. module: l10n_cl_fe
+#. odoo-python
+#: code:addons/l10n_cl_fe/models/res_country.py:0
+#, python-format
+msgid "The layout contains an invalid format key"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -10453,14 +10476,13 @@ msgid ""
 "browser PDF means the report will be rendered using Wkhtmltopdf and "
 "downloaded by the user."
 msgstr ""
-"El tipo de informe que se renderizará, cada uno con su propio método de "
-"renderización. HTML indica que el informe se abrirá directamente en el "
-"navegador, PDF indica que el informe se renderizará usando Wkhtmltopdf y "
-"luego será descargado por el usuario."
+"El tipo de informe que se representará, cada uno con su propio método de "
+"representación. HTML significa que el informe se abrirá directamente en el "
+"PDF de su navegador significa que el informe se representará usando "
+"Wkhtmltopdf y el usuario lo descargará."
 
 #. module: l10n_cl_fe
 #. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
 #: code:addons/l10n_cl_fe/models/account_move_boleta_voucher.py:0
 #: code:addons/l10n_cl_fe/models/consumo_folios.py:0
 #: code:addons/l10n_cl_fe/models/libro.py:0
@@ -10479,11 +10501,15 @@ msgid ""
 "This field contains the information related to the numbering             of "
 "the documents entries of this document type."
 msgstr ""
+"Este campo contiene la información relacionada con la numeración de las "
+"entradas pare este tipo de documentos."
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_account_journal_document_config__dte_register
 msgid "This option allows you to register electronic documents (DTEs).\n"
 msgstr ""
+"\n"
+"This option allows you to register electronic documents (DTEs).\n"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_res_company__dte_resolution_number
@@ -10491,6 +10517,8 @@ msgid ""
 "This value must be provided and must appear in your pdf or printed tribute "
 "document, under the electronic stamp to be legally valid."
 msgstr ""
+"Este valor debe ser provisto y debe aparecer en su documento impreso o PDF, "
+"bajo el sello electrónico para ser valido legalmente."
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.res_config_settings_view_form
@@ -10516,7 +10544,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL13303
 msgid "Til Til"
-msgstr "Til til"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL12303
@@ -10689,7 +10717,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL12402
 msgid "Torres Del Paine"
-msgstr "Torres del Paine"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL11303
@@ -10799,6 +10827,8 @@ msgid ""
 "Translate this product types to this SII concept.        Types must be a "
 "subset of adjust,        consu and service separated by commas."
 msgstr ""
+"Traduzca este tipo de producto a este concepto de SII. Los tipos deben ser "
+"un subconjunto de ajuste, consumo y servicio separados por comas."
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_601000
@@ -10946,7 +10976,7 @@ msgstr "Total Neto"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_journal_document_config__weird_documents
 msgid "Unusual Documents"
-msgstr ""
+msgstr "Documentos inusuales"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__sii_firma__state__unverified
@@ -10956,17 +10986,17 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_dte_caf__caf_file
 msgid "Upload the CAF XML File in this holder"
-msgstr ""
+msgstr "Cargue aquí el archivo XML de CAF"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_firma__file_content
 msgid "Upload the Signature File"
-msgstr ""
+msgstr "Cargue el archivo de firma"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_sii_dte_upload_xml_wizard__xml_file
 msgid "Upload the XML File in this holder"
-msgstr ""
+msgstr "Cargue aquí el archivo XML de CAF"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.res_config_settings_view_form
@@ -11013,7 +11043,12 @@ msgstr "¿Usa DTE?"
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf__use_level
 msgid "Use Level"
-msgstr "Nivel de Uso"
+msgstr "Nivel de uso"
+
+#. module: l10n_cl_fe
+#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_convert_dte__journal_id
+msgid "Use Specific Journal"
+msgstr "Usar Diario Específico"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_res_users
@@ -11028,13 +11063,8 @@ msgid "Usuario"
 msgstr ""
 
 #. module: l10n_cl_fe
-#. odoo-python
-#: code:addons/l10n_cl_fe/models/account_move.py:0
-#, python-format
-msgid ""
-"Usuario no autorizado a usar firma electrónica para esta compañia. Por favor"
-" solicitar autorización en la ficha de compañia del documento por alguien "
-"con los permisos suficientes de administrador"
+#: model:ir.model.fields,help:l10n_cl_fe.field_sii_xml_envio__user_id
+msgid "Usuario que envía el XML"
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -11046,7 +11076,7 @@ msgstr ""
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_partner_activities__vat_affected
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_activity_description__vat_affected
 msgid "VAT Affected"
-msgstr ""
+msgstr "IVA afectado"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL14101
@@ -11116,12 +11146,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_optional_type__value_computation
 msgid "Value computation"
-msgstr ""
+msgstr "Cómputo de valor"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_document_letter__vat_discriminated
 msgid "Vat Discriminated on Invoices?"
-msgstr ""
+msgstr "¿Solicitar RUT en las facturas?"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.invoice_thermal
@@ -11706,7 +11736,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_453000
 msgid "Venta de partes, piezas y accesorios para vehículos automotores"
-msgstr "Acondicionamiento de Edificios"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move_book__tipo_operacion__venta
@@ -11724,7 +11754,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__cert_version
 msgid "Version"
-msgstr ""
+msgstr "Versión"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_config_settings__fe_version
@@ -11779,7 +11809,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL05109
 msgid "Viña Del Mar"
-msgstr "Viña del Mar"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__account_move_book_honorarios__state__done
@@ -11872,7 +11902,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_xml_envio
 msgid "XML de envío DTE"
-msgstr ""
+msgstr "sii.xml.envio"
 
 #. module: l10n_cl_fe
 #: model:ir.ui.menu,name:l10n_cl_fe.menu_action_sii_xml_envio
@@ -11966,6 +11996,11 @@ msgid "account.move.comision"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model:ir.model,name:l10n_cl_fe.model_account_move_convert_dte
+msgid "account.move.convert.dte"
+msgstr ""
+
+#. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.invoice_thermal
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
@@ -12027,7 +12062,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_firma__state
 msgid "state"
-msgstr ""
+msgstr "Estado"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_res_partner__sync

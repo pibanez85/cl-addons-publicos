@@ -2838,9 +2838,7 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.actions.server,name:l10n_cl_fe.ir_cron_update_remote
-#: partners_ir_actions_server
 #: model:ir.actions.server,name:l10n_cl_fe.ir_cron_update_remote_partners_ir_actions_server
-#: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_update_remote partners
 #: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_update_remote_partners
 msgid "Cron Verificación de Partners"
 msgstr ""

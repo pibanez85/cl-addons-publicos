@@ -1360,7 +1360,11 @@ class AccountMove(models.Model):
         if not self.partner_id or Receptor["RUTRecep"] == "66666666-6":
             return Receptor
         if not self.es_boleta() and not self.es_nc_boleta():
-            GiroRecep = self.acteco_id.name or commercial_partner_id.activity_description.name
+            GiroRecep = (
+                self.acteco_id.name
+                or commercial_partner_id.activity_description.name
+                or (self.acteco_ids and self.acteco_ids[0].name)
+            )
             if not GiroRecep:
                 raise UserError(_("Seleccione giro del partner"))
             Receptor["GiroRecep"] = self._acortar_str(GiroRecep, 40)

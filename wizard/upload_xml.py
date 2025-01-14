@@ -416,7 +416,6 @@ class UploadXMLWizard(models.TransientModel):
                         if c.find("VlrCodigo").text:
                             code += c.find("VlrCodigo").text
                         coma = ", "
-                        
                     if code != "":
                         return NmbItem + "" + code
                     else:

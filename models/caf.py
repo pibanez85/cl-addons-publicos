@@ -209,7 +209,7 @@ has been exhausted.""",
         self.folios_sin_usar = str(folios_sin_usar)
 
     def _join_inspeccionar(self):
-        return 'LEFT JOIN account_move a on s = a.sii_document_number and a.document_class_id = %s' % self.document_class_id.id
+        return f'LEFT JOIN account_move a ON s = a.sii_document_number AND a.document_class_id = {self.document_class_id.id} AND a.use_documents'
 
     def _where_inspeccionar(self):
         return 'a.sii_document_number is null'

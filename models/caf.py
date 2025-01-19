@@ -287,22 +287,14 @@ to work properly!"""
         return etree.fromstring(self.caf_string)
 
     def expirar_folios(self):
-        query = '''SELECT numero
-FROM generate_series({0}, {1}) numero
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM account_move m
-    WHERE m.sii_document_number = numero and m.document_class_id={2}
-);'''.format(
-    self.start_nm,
-    self.final_nm,
-    self.document_class_id.id
-)
-        folios_vencidos = []
-        for x in self._cr.fetchall():
-            self.eliminar_folio_sin_usar(x[0])
-            folios_vencidos.append(x[0])
+        self.inspeccionar_folios_sin_usar()
+        folios_vencidos = ast.literal_eval(self.folios_sin_usar)
+        if not folios_vencidos:
+            return
         self.write({
+            'folios_sin_usar': '[]',
+            'cantidad_folios_sin_usar': 0,
+            'qty_available': 0,
             'folios_vencidos': str(folios_vencidos),
             'cantidad_folios_vencidos': len(folios_vencidos),
             'cantidad_folios_vencidos_sin_anular': len(folios_vencidos)
@@ -331,23 +323,26 @@ WHERE NOT EXISTS (
             hasta = desde
         wiz = self.env["dte.caf.apicaf"].create({
             'operacion': 'anular',
-            'comany_id': self.company_id.id,
+            'company_id': self.company_id.id,
             'firma': self.env.user.get_digital_signature(self.company_id).id,
-
         })
         linea = False
         for l in wiz.lineas_disponibles:
-            if l.inicial<=desde <= line.final:
+            if l.inicial <= desde <= l.final:
                 linea = l
+                break
+        if not linea:
+            raise UserError(_("No se encontró una línea disponible para los folios especificados."))
+        line.selected = True
         wiz.write({
             'folio_ini': desde,
-            'foio_fin': hasta,
+            'folio_fin': hasta,
             'motivo': "Vencido",
-            'linea_disponible_seleccionada': linea.id
         })
         wiz.obtener_caf()
         wiz.confirmar()
-        self.cantidad_folios_anulados += len(hasta+1-desde)
+        folios_anulados = hasta + 1 - desde
+        self.cantidad_folios_anulados += folios_anulados
 
     def after_anular_folios(self, inicio, final):
         folios_vencidos = ast.literal_eval(self.folios_vencidos or '[]')
@@ -362,3 +357,39 @@ WHERE NOT EXISTS (
             'cantidad_folios_vencidos': len(folios_vencidos),
             'cantidad_folios_vencidos_sin_anular': len(folios_vencidos)
             })
+
+    def auto_anular(self):
+        for record in self:
+            if record.folios_vencidos in [False, '[]']:
+                _logger.info(f"No hay folios vencidos para el CAF {record.id}.")
+                continue
+            try:
+                folios = ast.literal_eval(record.folios_vencidos)
+            except Exception as e:
+                _logger.error(f"Error al parsear folios vencidos para el CAF {record.id}: {e}")
+                continue
+            if not folios:
+                _logger.info(f"La lista de folios vencidos está vacía para el CAF {record.id}.")
+                continue
+            folios = sorted(folios)
+            ranges = []
+            start = folios[0]
+            end = start
+            for folio in folios[1:]:
+                if folio == end + 1:
+                    end = folio
+                else:
+                    ranges.append((start, end))
+                    start = folio
+                    end = folio
+            ranges.append((start, end))
+            for (desde, hasta) in ranges:
+                try:
+                    record.anular_folio(desde, hasta)
+                    _logger.info(
+                        f"Folios anulados automáticamente desde {desde} hasta {hasta} para CAF {record.id}."
+                    )
+                except Exception as e:
+                    _logger.error(
+                        f"Error al anular folios desde {desde} hasta {hasta} para CAF {record.id}: {e}"
+                    )

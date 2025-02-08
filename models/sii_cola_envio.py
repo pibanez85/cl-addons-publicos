@@ -2,7 +2,7 @@ import ast
 import logging
 from datetime import datetime, timedelta
 
-from odoo import SUPERUSER_ID, api, fields, models
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class ColaEnvio(models.Model):
     def _procesar_tipo_trabajo(self):
         self.intento += 1
         admin = self.env.ref("base.user_admin")
-        if self.user_id.id == SUPERUSER_ID:
+        if self.user_id in [self.env.ref("base.user_root"), self.env.ref("base.public_user")] :
             self.user_id = admin.id
         if self.user_id.id != admin.id and not self.user_id.active:
             _logger.warning("¡Usuario %s desactivado!" % self.user_id.name)

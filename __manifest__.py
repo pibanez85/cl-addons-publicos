@@ -1,7 +1,7 @@
 {
     "name": """Facturación Electrónica para Chile\
     """,
-    "version": "0.46.1",
+    "version": "0.43.2",
     "countries": ["cl"],
     "category": "Accounting/Localizations",
     "sequence": 12,
@@ -114,10 +114,13 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
             "l10n_cl_fe/static/src/js/upgrade_fields.js",
             "l10n_cl_fe/static/src/js/notify_manager.js",
             "l10n_cl_fe/static/src/js/report/action_manager_report.js",
-            "l10n_cl_fe/static/src/js/totals_widget.js"
+            "l10n_cl_fe/static/src/js/totals_widget.js",
         ],
         'web.assets_qweb': [
             'l10n_cl_fe/static/src/xml/**/*',
+        ],
+        'web.report_assets_common': [
+            "l10n_cl_fe/static/src/css/styles_pdf_layout.css",
         ],
     },
     "post_init_hook": "_set_default_configs",

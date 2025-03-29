@@ -1,124 +1,62 @@
-odoo.define("l10n_cl_fe.upgrade_widgets", function(require) {
-    "use strict";
+/** @odoo-module **/
 
-    /**
-     *  The upgrade widgets are intended to be used in config settings.
-     *  When checked, an upgrade popup is showed to the user.
-     */
+import { registry } from "@web/core/registry";
+import { booleanField, BooleanField } from "@web/views/fields/boolean/boolean_field";
+import { useService } from "@web/core/utils/hooks";
+import { Dialog } from "@web/core/dialog/dialog";
 
-    var AbstractField = require("web.AbstractField");
-    var basic_fields = require("web.basic_fields");
-    var core = require("web.core");
-    var Dialog = require("web.Dialog");
-    var field_registry = require("web.field_registry");
-    var framework = require("web.framework");
-    var relational_fields = require("web.relational_fields");
+import { Component } from "@odoo/owl";
 
-    var _t = core._t;
-    var QWeb = core.qweb;
 
-    var FieldBoolean = basic_fields.FieldBoolean;
-    var FieldRadio = relational_fields.FieldRadio;
 
-    var AbstractFieldUpgrade = {
-        _confirmUpgrade: function() {
-            return this._rpc({
-                model: "res.users",
-                method: "search_count",
-                args: [[["share", "=", false]]],
-            }).then(function(data) {
-                framework.redirect("https://odoocoop.cl/upgrade?num_users=" + data);
-            });
-        },
-        _insertEnterpriseLabel: function($enterpriseLabel) {},
+export class L10nCLFEUpgradeDialog extends Component {
+    setup() {
+        this.orm = useService("orm");
+        this.router = useService("router");
+    }
+    async _confirmUpgrade() {
+        const usersCount = await this.orm.call("res.users", "search_count", [
+            [["share", "=", false]],
+        ]);
+        window.open("https://globalresponse.cl/upgrade?num_users=" + usersCount, "_blank");
+        this.props.close();
+    }
+}
+L10nCLFEUpgradeDialog.template = "l10n_cl_fe.ProUpgrade";
+L10nCLFEUpgradeDialog.components = { Dialog };
 
-        _openDialog: function() {
-            var message = $(QWeb.render("ProUpgrade"));
 
-            var buttons = [
+export class UpgradeBooleanField extends BooleanField {
+    setup() {
+        super.setup();
+        this.dialogService = useService("dialog");
+        this.isEnterprise = odoo.info && odoo.info.isEnterprise;
+    }
+
+    async onChange(newValue) {
+        if (!this.isEnterprise) {
+            this.dialogService.add(
+                L10nCLFEUpgradeDialog,
+                {},
                 {
-                    text: _t("Be a Pro now"),
-                    classes: "btn-primary",
-                    close: true,
-                    click: this._confirmUpgrade.bind(this),
-                },
-                {
-                    text: _t("Cancel"),
-                    close: true,
-                },
-            ];
-
-            return new Dialog(this, {
-                size: "medium",
-                buttons: buttons,
-                $content: $("<div>", {
-                    html: message,
-                }),
-                title: _t("Be a Pro with OdooCoop"),
-            }).open();
-        },
-        _render: function() {
-            this._super.apply(this, arguments);
-            this._insertEnterpriseLabel(
-                $("<span>", {
-                    text: "Pro",
-                    class: "label label-primary oe_inline o_enterprise_label",
-                })
+                    onClose: () => {
+                        this.props.record.update({ [this.props.name]: false });
+                    },
+                }
             );
-        },
+        } else {
+            super.onChange(...arguments);
+        }
+    }
+}
 
-        _resetValue: function() {},
+export const upgradeBooleanField = {
+    ...booleanField,
+    component: UpgradeBooleanField,
+    isUpgradeField: true,
+    additionalClasses: [...(booleanField.additionalClasses || []), "o_field_boolean"],
+};
 
-        _onInputClicked: function(event) {
-            if ($(event.currentTarget).prop("checked")) {
-                this._openDialog().on("closed", this, this._resetValue.bind(this));
-            }
-        },
-    };
 
-    var UpgradeBoolean = FieldBoolean.extend(AbstractFieldUpgrade, {
-        supportedFieldTypes: [],
-        events: _.extend({}, AbstractField.prototype.events, {
-            "click input": "_onInputClicked",
-        }),
-        renderWithLabel: function($label) {
-            this.$label = $label;
-            this._render();
-        },
 
-        _insertEnterpriseLabel: function($enterpriseLabel) {
-            var $el = this.$label || this.$el;
-            $el.append("&nbsp;").append($enterpriseLabel);
-        },
-        _resetValue: function() {
-            this.$input.prop("checked", false).change();
-        },
-    });
-
-    var UpgradeRadio = FieldRadio.extend(AbstractFieldUpgrade, {
-        supportedFieldTypes: [],
-        events: _.extend({}, FieldRadio.prototype.events, {
-            "click input:last": "_onInputClicked",
-        }),
-
-        isSet: function() {
-            return true;
-        },
-
-        _insertEnterpriseLabel: function($enterpriseLabel) {
-            this.$("label")
-                .last()
-                .append("&nbsp;")
-                .append($enterpriseLabel);
-        },
-
-        _resetValue: function() {
-            this.$("input")
-                .first()
-                .prop("checked", true)
-                .click();
-        },
-    });
-
-    field_registry.add("upgrade_odoocoop_boolean", UpgradeBoolean).add("upgrade_odoocoop_radio", UpgradeRadio);
-});
+registry.category("fields").add("upgrade_odoocoop_boolean", upgradeBooleanField)//.add("upgrade_odoocoop_radio", UpgradeRadio);

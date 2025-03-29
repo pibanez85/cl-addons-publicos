@@ -11,7 +11,7 @@
                         type="object"
                         name="action_process"
                         class="oe_highlight"
-                        attrs="{'invisible':[('state', 'not in', ['unverified', 'incomplete'])]}"
+                        invisible="state not in ['unverified', 'incomplete']"
                     />
                     <field name="state" widget="statusbar" />
                 </header>
@@ -21,23 +21,22 @@
                             <field name="active" widget="boolean_button" options='{"terminology": "archive"}' />
                         </button>
                     </div>
-                    <group attrs="{'invisible': [('state', '!=', 'unverified')]}">
+                    <group invisible="state != 'unverified'">
                         <field name="file_content" filename="name" />
-                        <field name="name" attrs="{'invisible': [('name', '=', False)]}" />
-                        <field name="password" password="True" attrs="{'invisible':[('state', '!=', 'unverified')]}" />
+                        <field name="name" invisible="not name" />
+                        <field name="password" password="True" invisible="state != 'unverified'" />
                     </group>
-                    <div attrs="{'invisible': [
-                                ('state', '=', 'unverified')]}">
+                    <div invisible="state == 'unverified'">
                         <group col="4">
                             <field name="emision_date" />
                             <field name="expire_date" />
                         </group>
-                        <group col="4" attrs="{'invisible':[('state','=','unverified')]}">
+                        <group col="4" invisible="state == 'unverified'">
                             <field name="subject_title" />
                             <field name="subject_c" />
                             <field
                                 name="subject_serial_number"
-                                attrs="{'required':[('state', 'in', ['valid', 'incomplete'])]}"
+                                invisible="state in  ['valid', 'incomplete']"
                             />
                             <field name="subject_common_name" />
                             <field name="subject_email_address" />
@@ -90,7 +89,7 @@
         <field name="priority" eval="2" />
         <field name="arch" type="xml">
             <tree string="Firmas Electrónicas">
-                <field name="active" invisible="1" />
+                <field name="active" invisible="True" />
                 <field name="name" />
                 <field name="state" />
                 <field name="expire_date" />

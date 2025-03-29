@@ -28,22 +28,22 @@
             <field name="inherit_id" ref="account.view_account_journal_form" />
             <field name="arch" type="xml">
                 <field name="refund_sequence" position="before">
-                  <field name="default_gd_account_id" attrs="{'invisible': [('type', 'not in', [ 'purchase', 'sale'])]}" />
-                  <field name="default_gr_account_id" attrs="{'invisible': [('type', 'not in', [ 'purchase', 'sale'])]}" />
-                  <field name="default_comision_account_id" attrs="{'invisible': [('type', 'not in', [ 'purchase', 'sale'])]}" />
+                  <field name="default_gd_account_id" invisible="type not in ['purchase', 'sale']" />
+                  <field name="default_gr_account_id" invisible="type not in ['purchase', 'sale']" />
+                  <field name="default_comision_account_id" invisible="type not in ['purchase', 'sale']" />
                 </field>
 
                 <field name="type" position="after">
                     <field name="sucursal_id" />
                     <field name="sii_code" />
-                    <field name="use_documents" attrs="{'invisible': [('type', 'not in', [ 'purchase', 'sale'])]}" />
-                    <field name="restore_mode" attrs="{'invisible': [('use_documents', '=', False)]}" />
+                    <field name="use_documents" invisible="type not in  ['purchase', 'sale']" />
+                    <field name="restore_mode" invisible="not use_documents" />
                 </field>
 
                 <notebook position="inside">
                     <page
                         string="Documents"
-                        attrs="{'invisible': [('use_documents','=',False)]}"
+                        invisible="not use_documents"
                     >
                         <button
                             name="%(action_account_journal_document_config_form)d"
@@ -54,8 +54,7 @@
                         />
                         <button
                             name="%(action_apicaf_form)d"
-                            attrs="{'invisible': [
-                                  ('journal_document_class_ids', '=', [])]}"
+                            invisible="not journal_document_class_ids"
                             string="Obtener Folios desde el SII"
                             type="action"
                             context="{'default_company_id': company_id,
@@ -63,10 +62,11 @@
                             class="btn-primary"
                         />
                         <group>
-                            <field name="company_activity_ids" invisible="1" />
+                            <field name="company_activity_ids" invisible="True" />
                             <field
                                 name="journal_activities_ids"
-                                attrs="{'invisible': [('journal_document_class_ids', '=', [])],'required': [('use_documents','=',True), ('journal_document_class_ids', '!=', [])]}"
+                                invisible="not journal_document_class_ids"
+                                required="use_documents and journal_document_class_ids"
                                 placeholder="Giros del Diario"
                                 widget="many2many_tags"
                                 options="{'no_create': True}"
@@ -75,14 +75,14 @@
                         </group>
                         <field
                             name="document_class_ids"
-                            attrs="{'invisible': [('type', '!=', 'purchase')]}"
+                            invisible="type != 'purchase'"
                             widget="many2many_tags"
                             options="{'no_open': True, 'no_create': True}"
                         />
                         <field
                             name='journal_document_class_ids'
                             context="{'journal_type': type}"
-                            attrs="{'invisible': [('journal_document_class_ids', '=', []), ('type', '=', 'purchase')]}"
+                            invisible="not journal_document_class_ids and type == 'purchase'"
                             editable="bottom"
                             widget="one2many"
                         >

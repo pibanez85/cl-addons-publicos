@@ -24,7 +24,7 @@ class AccountMoveConvertDTE(models.TransientModel):
         return res
 
     move_ids = fields.Many2many(
-        'account.move', 
+        'account.move',
         domain=[
             ('state', '=', 'posted'),
             ('document_class_id.dte', '=', False)

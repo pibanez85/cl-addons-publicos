@@ -29,8 +29,8 @@ class SIIXMLEnvio(models.Model):
     _name = "sii.xml.envio"
     _description = "XML de envío DTE"
 
-    name = fields.Char(string="Nombre de envío", required=True, readonly=True, states={"draft": [("readonly", False)]},)
-    xml_envio = fields.Text(string="XML Envío", readonly=True, states={"draft": [("readonly", False)]},)
+    name = fields.Char(string="Nombre de envío", required=True, readonly=True,)
+    xml_envio = fields.Text(string="XML Envío", readonly=True, )
     state = fields.Selection(
         [
             ("draft", "Borrador"),
@@ -48,36 +48,32 @@ class SIIXMLEnvio(models.Model):
         required=True,
         default=lambda self: self.env.user.company_id.id,
         readonly=True,
-        states={"draft": [("readonly", False)]},
     )
     sii_xml_response = fields.Text(
-        string="SII XML Response", copy=False, readonly=True, states={"NoEnviado": [("readonly", False)]},
+        string="SII XML Response", copy=False, readonly=True,
     )
     sii_send_ident = fields.Text(
-        string="SII Send Identification", copy=False, readonly=True, states={"draft": [("readonly", False)]},
+        string="SII Send Identification", copy=False, readonly=True,
     )
     sii_receipt = fields.Text(
         string="SII Mensaje de recepción",
         copy=False,
         readonly=False,
-        states={"Aceptado": [("readonly", False)], "Rechazado": [("readonly", False)]},
     )
     user_id = fields.Many2one(
         "res.users",
         string="Usuario",
-        help="Usuario que envía el XML",
         readonly=True,
-        states={"draft": [("readonly", False)]},
     )
     move_ids = fields.One2many(
-        "account.move", "sii_xml_request", string="Facturas", readonly=True, states={"draft": [("readonly", False)]},
+        "account.move", "sii_xml_request", string="Facturas", readonly=True,
     )
     attachment_id = fields.Many2one("ir.attachment", string="XML Recepción", readonly=True,)
     email_respuesta = fields.Text(string="Email SII", readonly=True,)
     email_estado = fields.Selection(status_dte, string="Respuesta Envío", readonly=True,)
     email_glosa = fields.Text(string="Glosa Recepción", readonly=True,)
     boleta_voucher_ids = fields.One2many(
-        "account.move.boleta_voucher", "sii_xml_request", string="NC Vouchers Boletas", readonly=True, states={"draft": [("readonly", False)]},
+        "account.move.boleta_voucher", "sii_xml_request", string="NC Vouchers Boletas", readonly=True,
     )
 
 
@@ -220,5 +216,5 @@ class SIIXMLEnvio(models.Model):
             elif receipt.find("RESP_HDR") is not None:
                 state = "Aceptado"
         self.set_childs(state, detalle_rep_rech)
-        if self.sii_send_ident and state in ("EnProceso", "Aceptado"):
+        if self.sii_send_ident and state in ("EnProceso", "Aceptado") and 'Libro' not in self.xml_envio:
             self.xml_envio = ""

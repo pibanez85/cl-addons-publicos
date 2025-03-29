@@ -2,6 +2,7 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from .currency import float_round_custom
+from odoo.tools.float_utils import float_round as round
 from odoo.tools import frozendict
 import logging
 _logger = logging.getLogger(__name__)
@@ -47,13 +48,12 @@ class AccountInvoiceLine(models.Model):
                 line.price_total = line.price_subtotal = False
             # Compute 'price_subtotal'.
             line_discount_price_unit = line.price_unit
-            if line.display_type in ['D', 'R', 'C']:
+            if line.display_type in ['C', 'D', 'R']:
                 line_discount_price_unit = line.balance
                 if line.display_type in ['D', 'C']:
                     line_discount_price_unit *= -1
             subtotal = line.quantity * line_discount_price_unit
             subtotal -= line.currency_id.round(subtotal *  (line.discount / 100.0))
-
             # Compute 'price_total'.
             if line.tax_ids:
                 taxes_res = line.tax_ids.compute_all(
@@ -71,18 +71,20 @@ class AccountInvoiceLine(models.Model):
             else:
                 line.price_total = line.price_subtotal = subtotal
 
-    @api.depends('tax_ids', 'currency_id', 'partner_id', 'analytic_distribution', 'balance', 'partner_id', 'move_id.partner_id', 'price_unit')
+    @api.depends('tax_ids', 'currency_id', 'partner_id', 'analytic_distribution', 'balance', 'partner_id', 'move_id.partner_id', 'price_unit', 'quantity')
     def _compute_all_tax(self):
         for line in self:
             sign = line.move_id.direction_sign
+            if line.display_type == 'tax':
+                line.compute_all_tax = {}
+                line.compute_all_tax_dirty = False
+                continue
             if line.display_type == 'product' and line.move_id.is_invoice(True):
                 amount_currency = sign * line.price_unit
-                amount = sign * line.price_unit / line.currency_rate
                 handle_price_include = True
                 quantity = line.quantity
             else:
                 amount_currency = line.amount_currency
-                amount = line.balance
                 handle_price_include = False
                 quantity = 1
             compute_all_currency = line.tax_ids.compute_all(
@@ -99,34 +101,33 @@ class AccountInvoiceLine(models.Model):
             )
             rate = line.amount_currency / line.balance if line.balance else 1
             line.compute_all_tax_dirty = True
-            compute_all_tax = {}
-            for tax in compute_all_currency['taxes']:
-                if tax['amount']:
-                    rpl = self.env['account.tax.repartition.line'].sudo().browse(tax['tax_repartition_line_id'])
-                    compute_all_tax[frozendict({
-                        'tax_repartition_line_id': tax['tax_repartition_line_id'],
-                        'group_tax_id': tax['group'] and tax['group'].id or False,
-                        'account_id': tax['account_id'] or line.account_id.id,
-                        'currency_id': line.currency_id.id,
-                        'analytic_distribution': (tax['analytic'] or not tax['use_in_tax_closing']) and line.analytic_distribution,
-                        'tax_ids': [(6, 0, tax['tax_ids'])],
-                        'tax_tag_ids': [(6, 0, tax['tag_ids'])],
-                        'partner_id': line.move_id.partner_id.id or line.partner_id.id,
-                        'move_id': line.move_id.id,
-                    })] = {
-                        'name': tax['name'],
-                        'balance': tax['amount'] / rate,
-                        'amount_currency': tax['amount'],
-                        'tax_base_amount': tax['base'] / rate * (-1 if line.tax_tag_invert else 1),
-                    }
-
-            line.compute_all_tax = compute_all_tax
+            line.compute_all_tax = {
+                frozendict({
+                    'tax_repartition_line_id': tax['tax_repartition_line_id'],
+                    'group_tax_id': tax['group'] and tax['group'].id or False,
+                    'account_id': tax['account_id'] or line.account_id.id,
+                    'currency_id': line.currency_id.id,
+                    'analytic_distribution': (tax['analytic'] or not tax['use_in_tax_closing']) and line.analytic_distribution,
+                    'tax_ids': [(6, 0, tax['tax_ids'])],
+                    'tax_tag_ids': [(6, 0, tax['tag_ids'])],
+                    'partner_id': line.move_id.partner_id.id or line.partner_id.id,
+                    'move_id': line.move_id.id,
+                    'display_type': line.display_type,
+                }): {
+                    'name': tax['name'] + (' ' + _('(Discount)') if line.display_type == 'epd' else ''),
+                    'balance': tax['amount'] / rate,
+                    'amount_currency': tax['amount'],
+                    'tax_base_amount': tax['base'] / rate * (-1 if line.tax_tag_invert else 1),
+                }
+                for tax in compute_all_currency['taxes']
+                if tax['amount']
+            }
             if not line.tax_repartition_line_id:
                 line.compute_all_tax[frozendict({'id': line.id})] = {
                     'tax_tag_ids': [(6, 0, compute_all_currency['base_tags'])],
                 }
 
-    @api.depends('debit', 'credit', 'amount_currency', 'account_id', 'currency_id', 'move_id.state', 'company_id',
+    @api.depends('debit', 'credit', 'amount_currency', 'account_id', 'currency_id', 'company_id',
                  'matched_debit_ids', 'matched_credit_ids')
     def _compute_amount_residual(self):
         for line in self:
@@ -199,11 +200,19 @@ class AccountInvoiceLine(models.Model):
             price_unit=self.price_unit,
             desglose=force_desglose,
             IndExe=False,
+            TasaIVA=False,
+            es_compra=self.move_id.is_purchase_document() and (self.move_id.es_factura_compra() or self.move_id.es_nc_factura_compra()),
         )
         force_precio_neto = False
         currency_base = self.move_id.currency_base()
         i = 0
+        tax_compras = self.tax_ids.filtered(lambda x: x.sii_code in [0, 14, 15])
+
+        if details["es_compra"] and len(tax_compras) < 2 and tax_compras and tax_compras[0].sii_code != 0:
+            raise UserError(f"EL registro {self.move_id.id} la línea de compras debe llevar doble impuesto:IVA Compra y Retencion de IVA, agregar ambos por línea de pedido ")
         for t in self.tax_ids:
+            if t.sii_code == 14 and details["es_compra"]:
+                continue
             if self.move_id.use_documents and not self.move_id.es_nc() and \
             not self.move_id.es_nd() and self.move_id.document_class_id.sii_code \
             not in t.documentos_dte_admitidos():
@@ -228,6 +237,8 @@ class AccountInvoiceLine(models.Model):
                     force_precio_neto = True
                     continue
                 details['cod_imp_adic'] = t.sii_code
+            if t.sii_code in [14, 15]:
+                details['TasaIVA'] = round(t.amount if t.amount > 0 else t.amount * -1, 2)
             if self.ind_exe or t.ind_exe or t.amount == 0 or t.sii_code in [0]:
                 details['IndExe'] = self.ind_exe or t.ind_exe or "1"
                 if not self.ind_exe:
@@ -235,7 +246,9 @@ class AccountInvoiceLine(models.Model):
                 details['MntExe'] += currency_base.round(self.price_subtotal)
             else:
                 amount = t.amount
-                if t.sii_code in [28, 35]:
+                if t.sii_code in [14, 15]:
+                    amount = round(amount if amount > 0 else amount * -1, 2)
+                elif t.sii_code in [28, 35]:
                     amount = t.compute_factor(self.product_uom_id)
                 details['impuestos'].append({
                             "CodImp": t.sii_code,

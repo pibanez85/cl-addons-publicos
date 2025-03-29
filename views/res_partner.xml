@@ -6,16 +6,16 @@
         <field name="model">res.partner</field>
         <field name="arch" type="xml">
             <field name="parent_id" position="before">
-                <field name="sync" invisible="1" />
+                <field name="sync" invisible="True" />
                 <field
                     name="activity_description"
                     placeholder="Glosa Descriptiva (Giro)"
-                    attrs="{'invisible': [('parent_id', '!=', False)]}"
+                    invisible="parent_id"
                 />
                 <field
                     name="acteco_ids"
                     placeholder="Actividades del partner"
-                    attrs="{'invisible': [('parent_id', '!=', False)]}"
+                    invisible="parent_id"
                     widget="many2many_tags"
                     options="{'no_create': True}"
                 />
@@ -25,7 +25,7 @@
                     name="city_id"
                     placeholder="Comuna"
                     style="width: 100%"
-                    attrs="{'readonly': [('type', '=', 'contact'),('parent_id', '!=', False)]}"
+                    readonly="type == 'contact' and parent_id"
                     options='{"no_open": True, "no_quick_create": True}'
                 />
             </field>
@@ -39,12 +39,12 @@
                 />
             </xpath>
             <field name="vat" position="after">
-                <field name="document_type_id" attrs="{'invisible': [('parent_id', '!=', False)]}" />
-                <field name="document_number" attrs="{'invisible': [('parent_id', '!=', False)]}" />
+                <field name="document_type_id" invisible="parent_id" />
+                <field name="document_number" invisible="parent_id" />
                 <field
                     name="responsability_id"
                     widget="selection"
-                    attrs="{'invisible': [('parent_id', '!=', False)]}"
+                    invisible="parent_id"
                 />
             </field>
             <field name="vat" position="attributes">
@@ -54,9 +54,10 @@
                 <field
                     name="dte_email"
                     widget="email"
-                    attrs="{'invisible': [('parent_id', '!=', False)], 'required': [('es_mipyme', '=', False), ('parent_id', '=', False)]}"
+                    invisible="parent_id"
+                    required="not es_mipyme and not parent_id"
                 />
-                <field name="es_mipyme" attrs="{'invisible': [('parent_id', '!=', False)]}" />
+                <field name="es_mipyme" invisible="parent_id" />
             </field>
             <xpath expr="//field[@name='child_ids']/kanban" position="inside">
                 <field name="send_dte" />
@@ -66,20 +67,20 @@
                 expr="//field[@name='child_ids']/kanban/templates/t/div/div[hasclass('oe_kanban_details')]"
                 position="inside"
             >
-                <div attrs="{'invisible': [('type', '!=', 'dte')]}">
+                <div invisible="type != 'dte'">
                     <h3>Opciones DTE</h3>
                     <field name="send_dte" />
                     <field name="principal" />
                 </div>
             </xpath>
             <xpath expr="//field[@name='child_ids']/form/sheet/group/group/field[@name='email']" position="attributes">
-                <attribute name="attrs">{'required' : [('send_dte', '=', True)]}</attribute>
+                <attribute name="required">send_dte</attribute>
             </xpath>
             <xpath expr="//field[@name='child_ids']/form/sheet/group" position="attributes">
-                <attribute name="attrs">{'invisible': [('type', '=', 'dte')]}</attribute>
+                <attribute name="invisible">type == 'dte'</attribute>
             </xpath>
             <xpath expr="//field[@name='child_ids']/form/sheet" position="inside">
-                <group attrs="{'invisible': [('type', '!=', 'dte')]}">
+                <group invisible="type != 'dte'">
                     <group>
                         <field name="name" string="Contact Name" />
                         <field name="email" />
@@ -95,7 +96,6 @@
         <field name="name">Partners</field>
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_tree" />
-        <field name="type">form</field>
         <field name="arch" type="xml">
             <field name="display_name" position="before">
                 <field name="document_number" />
@@ -133,7 +133,7 @@
         <field name="inherit_id" ref="base.res_partner_view_form_private" />
         <field name="arch" type="xml">
             <field name="type" position="after">
-                <field name="parent_id" invisible="1" />
+                <field name="parent_id" invisible="True" />
             </field>
         </field>
     </record>

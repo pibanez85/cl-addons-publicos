@@ -496,16 +496,9 @@
         </t>
     </template>
     <template id="dte_invoice_con_pagos" inherit_id="account.report_invoice_with_payments">
-        <t t-call="web.html_container" position="replace">
-            <t t-call="web.html_container">
-                <t t-foreach="docs" t-as="o">
-                    <t t-if="o.ticket">
-                        <t t-call="l10n_cl_fe.report_ticket" t-lang="'es_CL'" />
-                    </t>
-                    <t t-else="" t-call="web.html_container">
-                        <t t-call="l10n_cl_fe.report_invoice_document_with_payments" t-lang="'es_CL'" />
-                    </t>
-                </t>
+        <t t-call="account.report_invoice" position="replace">
+            <t t-call="l10n_cl_fe.dte_invoice">
+                <t t-set="print_with_payments" t-value="True"/>
             </t>
         </t>
     </template>
@@ -656,10 +649,10 @@
                                   <span t-field="line.quantity"/>
                               </td>
                               <td class="text-right">
-                                  <span t-field="line.price_unit" />
+                                  <span t-field="line.price_unit" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                               <td class="text-right">
-                                  <span t-field="line.price_total" />
+                                  <span t-field="line.price_total" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                           </tr>
                       </tbody>
@@ -764,7 +757,7 @@
                               Efectivo
                           </td>
                               <td class="text-right">
-                                  <span t-field="o.amount_total" />
+                                  <span t-field="o.amount_total" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                           </tr>
                       </tbody>

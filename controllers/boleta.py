@@ -6,7 +6,7 @@ from odoo.tools.misc import formatLang
 
 
 class Boleta(http.Controller):
-    @http.route(["/boleta"], type="http", auth="public", website=True, sitemap=False)
+    @http.route(["/boleta"], type="http", auth="public", website=True)
     def input_document(self, **post):
         if "boleta" not in post:
             return request.render("l10n_cl_fe.boleta_layout")
@@ -30,7 +30,7 @@ class Boleta(http.Controller):
         orders = Model.search(domain, limit=1)
         return orders
 
-    @http.route(["/boleta/<int:folio>"], type="http", auth="public", website=True, sitemap=False)
+    @http.route(["/boleta/<int:folio>"], type="http", auth="public", website=True)
     def view_document(self, folio=None, **post):
         if "otra_boleta" in post:
             return request.redirect("/boleta/%s" % (post["otra_boleta"]))
@@ -45,7 +45,7 @@ class Boleta(http.Controller):
     def _get_report(self, document):
         return request.env.ref("account.account_invoices").sudo().render_qweb_pdf([document.id])[0]
 
-    @http.route(["/download/boleta"], type="http", auth="public", website=True, sitemap=False)
+    @http.route(["/download/boleta"], type="http", auth="public", website=True)
     def download_boleta(self, **post):
         document = request.env[post["model"]].sudo().browse(int(post["model_id"]))
         file_name = document._get_printed_report_name()

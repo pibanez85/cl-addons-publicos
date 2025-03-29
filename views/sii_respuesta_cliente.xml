@@ -6,18 +6,18 @@
         <field name="arch" type="xml">
             <form string="XML Respuesta">
                 <field name="type" />
-                <field name="recep_envio" attrs="{'invisible': [('recep_envio', '=', False)]}" />
-                <field name="merc_recinto" attrs="{'invisible': [('merc_recinto', '=', False)]}" />
-                <field name="merc_fecha" attrs="{'invisible': [('merc_fecha', '=', False)]}" />
-                <field name="merc_declaracion" attrs="{'invisible': [('merc_declaracion', '=', False)]}" />
-                <field name="merc_rut" attrs="{'invisible': [('merc_rut', '=', False)]}" />
-                <field name="attachment_id" attrs="{'invisible': [('attachment_id', '=', False)]}" />
-                <field name="glosa" attrs="{'invisible': [('glosa', '=', False)]}" />
-                <field name="id_respuesta" attrs="{'invisible': [('id_respuesta', '=', False)]}" />
-                <field name="recep_dte" attrs="{'invisible': [('recep_dte', '=', False)]}" />
-                <field name="merc_estado" attrs="{'invisible': [('merc_estado', '=', False)]}" />
-                <field name="recep_comercial" attrs="{'invisible': [('recep_comercial', '=', False)]}" />
-                <field name="exchange_id" attrs="{'invisible': [('exchange_id', '=', False)]}" />
+                <field name="recep_envio" invisible="not recep_envio" />
+                <field name="merc_recinto" invisible="not merc_recinto" />
+                <field name="merc_fecha" invisible="not merc_fecha" />
+                <field name="merc_declaracion" invisible="not merc_declaracion" />
+                <field name="merc_rut" invisible="not merc_rut" />
+                <field name="attachment_id" invisible="not attachment_id" />
+                <field name="glosa" invisible="not glosa" />
+                <field name="id_respuesta" invisible="not id_respuesta" />
+                <field name="recep_dte" invisible="not recep_dte" />
+                <field name="merc_estado" invisible="not merc_estado" />
+                <field name="recep_comercial" invisible="not recep_comercial" />
+                <field name="exchange_id" invisible="not exchange_id" />
             </form>
         </field>
     </record>

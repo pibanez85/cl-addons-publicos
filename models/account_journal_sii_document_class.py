@@ -33,7 +33,6 @@ class AccountJournalSiiDocumentClass(models.Model):
     sequence = fields.Integer(string="Sequence")
     company_id = fields.Many2one("res.company", default=lambda self: self.env.user.company_id,)
     qty_available = fields.Integer(string="Quantity Available", related="sequence_id.qty_available")
-    is_dte = fields.Boolean(string="Is DTE", related="sii_document_class_id.dte")
 
     @api.onchange("sii_document_class_id")
     def check_sii_document_class(self):

@@ -7,13 +7,12 @@
             <field name="priority">5</field>
             <field name="arch" type="xml">
                 <form string="Boletas Honorarios">
-                    <field name="document_class_ids" invisible="1" />
-                    <field name="use_documents" invisible="1" />
-                    <field name="sii_document_number" invisible="1" />
+                    <field name="document_class_ids" invisible="True" />
+                    <field name="use_documents" invisible="True" />
+                    <field name="sii_document_number" invisible="True" />
                     <header>
                         <button
                             name="invoice_open"
-                            states="draft,proforma2"
                             string="Validate"
                             class="oe_highlight"
                             groups="account.group_account_invoice"
@@ -39,33 +38,33 @@
                     </div>
                         <span
                             class="o_form_label"
-                            attrs="{'invisible': ['|',('state','=','draft'), ('type','!=','out_refund')]}"
+                            invisible="state == 'draft' or type != 'out_refund'"
                         >Boleta de Honorarios</span>
                         <h1 class="mt0">
-                            <div attrs="{'invisible': [('sequence_number_next_prefix','!=',False)]}">
+                            <div invisible="sequence_number_next_prefix">
                                 <span
                                     class="o_form_label"
-                                    attrs="{'invisible': ['|',('state','not in',('draft',)), ('type','!=','out_invoice')]}"
+                                    invisible="state not in ['draft'] or type != 'out_invoice'"
                                 >Draft Invoice</span>
                                 <span
                                     class="o_form_label"
-                                    attrs="{'invisible': ['|',('state','not in',('draft',)), ('type','!=','out_refund')]}"
+                                    invisible="state not in ['draft'] or type != 'out_refund'"
                                 >Draft Credit Note</span>
                                 <field
                                     name="name"
-                                    readonly="1"
+                                    readonly="True"
                                     class="oe_inline"
-                                    attrs="{'invisible': [('state','in',('draft',))]}"
+                                    invisible="state in ['draft']"
                                 />
                             </div>
-                            <div attrs="{'invisible': [('sequence_number_next_prefix','=',False)]}">
+                            <div invisible="sequence_number_next_prefix">
                                 <span class="o_form_label">Boleta Númbero:</span>
                                 <br />
                                 <field name="sequence_number_next_prefix" class="oe_inline" />
                                 <field name="sequence_number_next" class="oe_inline" />
                             </div>
                         </h1>
-                        <field name="type" invisible="1" />
+                        <field name="type" invisible="True" />
                         <group>
                             <group>
                                 <field
@@ -77,7 +76,7 @@
                                 <field name="reference" string="Vendor Reference" />
                             </group>
                             <group>
-                                <field name="origin" attrs="{'invisible': [('origin', '=', False)]}" />
+                                <field name="origin" invisible="not origin" />
                                 <field name="date" string="Bill Date" />
                                 <field name="invoice_date_due" />
                                 <field
@@ -85,7 +84,7 @@
                                     options="{'no_create': True, 'no_open': True}"
                                     groups="base.group_multi_currency"
                                 />
-                                <field name="company_currency_id" invisible="1" />
+                                <field name="company_currency_id" invisible="True" />
                             </group>
                         </group>
                         <notebook>
@@ -95,7 +94,7 @@
                                         <field name="sequence" widget="handle" />
                                         <field name="product_id" context="{'partner_id': parent.partner_id}" />
                                         <field name="name" />
-                                        <field name="company_id" invisible="1" />
+                                        <field name="company_id" invisible="True" />
                                         <field
                                             name="account_id"
                                             groups="account.group_account_user"
@@ -118,7 +117,7 @@
                                             options="{'no_create': True}"
                                         />
                                         <field name="price_subtotal" />
-                                        <field name="currency_id" invisible="1" />
+                                        <field name="currency_id" invisible="True" />
                                     </tree>
                                 </field>
                                 <group>
@@ -128,9 +127,9 @@
                                                 <tree editable="bottom" string="Taxes">
                                                     <field name="name" />
                                                     <!--Need invisible fields for on_change to create all necessary info -->
-                                                    <field name="tax_id" invisible="1" />
-                                                    <field name="sequence" invisible="1" />
-                                                    <field name="manual" invisible="1" />
+                                                    <field name="tax_id" invisible="True" />
+                                                    <field name="sequence" invisible="True" />
+                                                    <field name="manual" invisible="True" />
                                                     <field name="account_id" groups="account.group_account_invoice" />
                                                     <field
                                                         name="retencion_account_id"
@@ -143,7 +142,7 @@
                                                     />
                                                     <field name="amount" />
                                                     <field name="amount_retencion" />
-                                                    <field name="currency_id" invisible="1" />
+                                                    <field name="currency_id" invisible="True" />
                                                 </tree>
                                             </field>
                                         </div>
@@ -153,16 +152,16 @@
                                         <field name="amount_tax" />
                                         <field
                                             name="amount_retencion"
-                                            attrs="{'invisible':[('amount_retencion', '=', 0)]}"
+                                            invisible="amount_retencion == 0"
                                         />
                                         <field name="amount_total" class="oe_subtotal_footer_separator" />
                                         <field name="payments_widget" colspan="2" nolabel="1" widget="payment" />
                                         <field
                                             name="residual"
                                             class="oe_subtotal_footer_separator"
-                                            attrs="{'invisible': [('state', '=', 'draft')]}"
+                                            invisible="state == 'draft'"
                                         />
-                                        <field name="reconciled" invisible="1" />
+                                        <field name="reconciled" invisible="True" />
                                         <field
                                             name="outstanding_credits_debits_widget"
                                             colspan="2"
@@ -187,18 +186,20 @@
                                             name="journal_id"
                                             groups="account.group_account_user"
                                             options="{'no_create': True}"
-                                            attrs="{'readonly':['|','|',('state','!=','draft'),('sii_document_number','!=',False)]}"
+                                            readonly="state != 'draft' or sii_document_number"
                                             domain="[('journal_document_class_ids.sii_document_class_id.document_letter_id.name','=','M')]"
                                         />
                                         <field
                                             name="journal_document_class_id"
-                                            attrs="{'invisible':[('use_documents','=',False)],'required':[('use_documents','=',True)],'readonly':['|',('state','!=','draft'),('sii_document_number','!=',False)]}"
+                                            invisible="not use_documents"
+                                            required="use_documents"
+                                            readonly="state != 'draft' or sii_document_number"
                                             options="{'no_create': True}"
                                         />
                                         <field
                                             domain="[('partner_id', '=', partner_id)]"
                                             name="partner_bank_id"
-                                            invisible="1"
+                                            invisible="True"
                                         />
                                         <field
                                             name="user_id"
@@ -210,11 +211,11 @@
                                             name="account_id"
                                             groups="account.group_account_manager"
                                         />
-                                        <field name="name" invisible="1" />
+                                        <field name="name" invisible="True" />
                                         <field
                                             name="payment_term_id"
                                             options="{'no_create': True}"
-                                            attrs="{'invisible': [('payment_term_id','=',False)]}"
+                                            invisible="not payment_term_id"
                                         />
                                     </group>
                                     <group>
@@ -222,11 +223,6 @@
                                             name="fiscal_position_id"
                                             options="{'no_create': True}"
                                             placeholder="Auto-detect"
-                                        />
-                                        <field
-                                            name="move_id"
-                                            groups="account.group_account_manager"
-                                            attrs="{'invisible': [('move_id', '=', False)]}"
                                         />
                                         <field
                                             name="date"
@@ -277,16 +273,16 @@
                     <field name="date" string="Bill Date" />
                     <field name="number" />
                     <field name="reference" />
-                    <field name="commercial_partner_id" invisible="1" />
-                    <field name="name" invisible="1" />
-                    <field name="journal_id" invisible="1" />
+                    <field name="commercial_partner_id" invisible="True" />
+                    <field name="name" invisible="True" />
+                    <field name="journal_id" invisible="True" />
                     <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}" />
                     <field name="invoice_date_due" />
                     <field name="origin" />
                     <field name="amount_total_signed" sum="Total" />
                     <field name="residual_signed" string="To Pay" sum="To pay" />
-                    <field name="currency_id" invisible="1" />
-                    <field name="company_currency_id" invisible="1" />
+                    <field name="currency_id" invisible="True" />
+                    <field name="company_currency_id" invisible="True" />
                     <field name="state" />
                     <field name="type" invisible="context.get('type',True)" />
                 </tree>

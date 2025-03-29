@@ -1,0 +1,152 @@
+id,code,name,account_type,reconcile,tag_ids,name@es
+account_110201,110201,Mutual Funds,asset_current,,,Fondos Mutuos
+account_110202,110202,Term Deposits,asset_current,,,Depósitos a Plazo
+account_110301,110301,Accounts Receivable,asset_receivable,,,Cuentas por Cobrar
+account_110302,110302,Domestic Sales Debtors,asset_receivable,,,Deudores por Ventas Nacionales
+account_110303,110303,Debtors from Imported Sales,asset_receivable,,,Deudores por Ventas Importadas
+account_110304,110304,National Suppliers Advance,asset_current,,,Anticipo Proveedores Nacionales
+account_110305,110305,International Suppliers Advance,asset_current,,,Anticipo Proveedores Internacionales
+account_110401,110401,Checks due on date,asset_current,,,Cheques a Fecha Por Cobrar
+account_110402,110402,Protested Checks,asset_current,,,Cheques Protestados
+account_110403,110403,Debtors for Sales (Pos),asset_receivable,,,Deudores por Ventas (Pos)
+account_110501,110501,Advance on Salaries,asset_current,,,Anticipo de Remuneraciones
+account_110502,110502,Personal Loans,asset_receivable,,,Préstamos al Personal
+account_110503,110503,Travel Expense Advances,asset_prepayments,,,Anticipos de Viáticos
+account_110504,110504,Backgrounds x Render,asset_receivable,,,Fondos x Rendir
+account_110505,110505,Advance on Fees,asset_prepayments,,,Anticipo de Honorarios
+account_110506,110506,Advance of Christmas bonus,asset_prepayments,,,Anticipo de Aguinaldo
+account_110507,110507,Family Allowance,asset_receivable,,,Asignación Familiar
+account_110601,110601,Inputs,asset_current,,,Insumos
+account_110602,110602,Teams,asset_current,,,Equipos
+account_110603,110603,Spare parts,asset_current,,,Repuestos
+account_110604,110604,Stock in Transit,asset_current,,,Existencias en Tránsito
+account_110605,110605,Stock Entry Account,asset_current,,,Cuenta de entrada de stock
+account_110606,110606,Stock withdrawal account,asset_current,,,Cuenta de salida de stock
+account_110607,110607,Stock valuation account,asset_current,,,Cuenta de valoración de stock
+account_110701,110701,VAT Tax Credit,asset_current,,,IVA Crédito Fiscal
+account_110702,110702,VAT Tax Credit (DIN),asset_current,,,IVA Crédito Fiscal (DIN)
+account_110703,110703,Remaining Tax Credit,asset_current,,,Remanente Crédito Fiscal
+account_110704,110704,Fixed Asset Credit,asset_current,,,Crédito por Activo Fijo
+account_110705,110705,Monthly Provisions Payment (P.P.M.),asset_current,,,Pago Provisiones Mensuales (P.P.M.)
+account_110706,110706,Sence Credit,asset_current,,,Crédito Sence
+account_110708,110708,VAT Withholding Tax Credit,asset_current,,,Retención IVA Crédito Fiscal
+account_110801,110801,Accounts Receivable Partners,asset_current,,,Cuentas por Cobrar Socios
+account_110901,110901,Expenses Paid in Advance,asset_current,,,Gastos Pagados Por Anticipado
+account_120101,120101,Land,asset_fixed,,,Terreno
+account_120102,120102,Machinery,asset_fixed,,,Maquinaria
+account_120103,120103,Vehicles,asset_fixed,,,Vehículos
+account_120104,120104,Construction and Infrastructure Works,asset_fixed,,,Contrucciones y Obras de Infraestructura
+account_120105,120105,Infrastructure Works Under Construction,asset_fixed,,,Obras de Infraestructura en Construcción
+account_120106,120106,Other Assets,asset_fixed,,,Otros Activos
+account_120201,120201,Machinery Depreciation,asset_fixed,,,Depreciación Maquinaria
+account_120202,120202,Vehicle Depreciation,asset_fixed,,,Depreciación Vehículos
+account_120203,120203,Depreciation of buildings,asset_fixed,,,Depreciación Construcciones
+account_120204,120204,Depreciation Accumulated Other Assets,asset_fixed,,,Depreciación Acum Otros Activos
+account_130101,130101,Investments in Other Entities,asset_non_current,,,Inversiones en Otras Entidades
+account_130102,130102,Patents,asset_non_current,,,Patentes
+account_130103,130103,"Accounts Receivable from Individuals and Companies Related Long Term",asset_non_current,,,"Cuentas por Cobrar a Personas y Empresas Relacionadas Largo Plazo"
+account_130104,130104,Long-Term Accounts Receivable and Documents,asset_non_current,,,"Documentos y Cuentas por Cobrar a Largo Plazo"
+account_130105,130105,Guarantees of Long-Term Obligations and Third-Party Obligations,asset_non_current,,,"Garantías de Obligaciones a Largo Plazo y de Obligaciones de Terceros"
+account_130106,130106,Other Intangibles,asset_non_current,,,Otros Intangibles
+account_210101,210101,Corporate Credit Card,liability_current,,,Tarjeta de Crédito Corporativa
+account_210102,210102,Bank Credit Line,liability_current,,,Linea de Crédito Bancaria
+account_210103,210103,Obligations to Financial Institutions,liability_current,,,Obligaciones con Instituciones Financieras
+account_210104,210104,Commercial Credit Term,liability_current,,,Crédito Comercial C/Plazo
+account_210105,210105,Short Term Leasing Obligations,liability_current,,,Obligaciones Leasing Corto Plazo
+account_210106,210106,Mortgage Loan with Term,liability_current,,,Crédito Hipotecario C/Plazo
+account_210107,210107,LP Commercial Credit Due C/Deadline,liability_current,,,Crédito Comercial LP Venc. C/Plazo
+account_210201,210201,National Accounts Payable,liability_payable,,,Cuentas por Pagar Nacionales
+account_210202,210202,International Accounts Payable,liability_payable,,,Cuentas por Pagar Internacionales
+account_210203,210203,Customer Advance,liability_payable,,,Anticipo de Clientes
+account_210301,210301,Checks Issued and Not Cashed,liability_current,,,Cheques Girados y No Cobrados
+account_210302,210302,Documents in Guarantee,liability_current,,,Documentos en Garantía
+account_210303,210303,Warranty Ticket,liability_current,,,Boleta en Garantia
+account_210401,210401,Social Laws Payable (AFP),liability_current,,,Leyes Sociales por Pagar (AFP)
+account_210402,210402,C.C.A.F. x Pay,liability_current,,,C.C.A.F. x Pagar
+account_210403,210403,INP x Pay,liability_current,,,INP x Pagar
+account_210404,210404,ISAPRES x Pay,liability_current,,,ISAPRES x Pagar
+account_210405,210405,Mutual Seg. x Pay,liability_current,,,Mutual Seg. x Pagar
+account_210501,210501,Salaries Payable,liability_current,,,Sueldos por Pagar
+account_210502,210502,Fees Payable,liability_current,,,Honorarios por Pagar
+account_210503,210503,Travel Expenses and Others Payable,liability_current,,,Viáticos y Otros por Pagar
+account_210504,210504,Settlements to be paid,liability_current,,,Finiquitos por Pagar
+account_210505,210505,Accounts Payable,liability_current,,,Rendiciones por Pagar
+account_210601,210601,Income Tax Provision,liability_non_current,,,Provisión de Impuesto a la Renta
+account_210602,210602,Provision of vacations,liability_non_current,,,Provisión de Vacaciones
+account_210603,210603,Other Provisions,liability_non_current,,,Otras Provisiones
+account_210604,210604,Bridge Account,liability_non_current,,,Cuenta Puente
+account_210701,210701,VAT Fiscal Debit,liability_current,,,IVA Débito Fiscal
+account_210702,210702,PPM Payable,liability_current,,,PPM por Pagar
+account_210703,210703,Single Tax for Workers,liability_current,,,Impuesto Único Trabajadores
+account_210704,210704,Second Category Withholding Tax,liability_current,,,Impuesto Retención Segunda Categoría
+account_210705,210705,1st Category Income Tax Payable,liability_current,,,Impuesto Renta 1a Categoría por Pagar
+account_210706,210706,Monthly Taxes Payable,liability_current,,,Impuesto Mensuales por Pagar
+account_210707,210707,CCAF Personal Loans,liability_current,,,CCAF Créditos Personales
+account_210708,210708,Unemployment Insurance,liability_current,,,Seguro de Cesantía
+account_210709,210709,VAT Withholding Tax Debit,liability_current,,,Retención IVA Débito Fiscal
+account_220102,220102,Leasing Obligations L/Term,liability_current,,,Obligaciones Leasing L/Plazo
+account_220103,220103,Commercial Credit Long Term,liability_current,,,Crédito Comercial L/Plazo
+account_220201,220201,Provision for Compensation for Years of Service,liability_current,,,Provisión Indemnización por Años de Servicio
+account_220301,220301,Current Account Related Company,liability_non_current,,,Cta Corriente Empresa Relacionada
+account_220302,220302,Long Term Deferred Tax,liability_non_current,,,Impuesto Diferido Largo Plazo
+account_220401,220401,Dividends Payable,liability_non_current,,,Dividendos por Pagar
+account_310101,310101,Subscribed Share Capital,equity,,,Capital Social Suscrito
+account_310102,310102,Paid-in Share Capital,equity,,,Capital Social Pagado
+account_310103,310103,Reserves Future Dividends,equity,,,Reservas Futuros Dividendos
+account_310104,310104,Contributions to be reported,equity,,,Aportes por Enterar
+account_310105,310105,Monetary Correction,equity,,,Corrección Monetaria
+account_310201,310201,Cumulative Result,equity,,,Resultado Acumulado
+account_310202,310202,Exercise Result,equity,,,Resultado del Ejercicio
+account_310203,310203,Fluctuation of Values,liability_current,,,Fluctuación de Valores
+account_310302,310302,Loans,liability_current,,,Prestamos
+account_410101,410101,Operating Income,income,,,Ingresos de la Explotación
+account_410102,410102,Consulting Revenue,income,,,Ingresos por Consultoría
+account_410103,410103,Global Discount,expense,,,Descuento Global
+account_410104,410104,Effective Rounding Loss,expense,,,Pérdida por Redondeo Efectivo
+account_410201,410201,Product Sales,income,,,Ventas de Productos
+account_4102021,410202,Export Sales,income,,,Ventas de Exportación
+account_410203,410203,Sales Commissions,income,,,Comisiones por Ventas
+account_420101,420101,Profit from Sale of Fixed Assets,income,,,Utilidad Venta Activo Fijo
+account_420102,420102,Interest on Loans Granted,income,,,Intereses Sobre Préstamos Otorgados
+account_420103,420103,Global Surcharge,income,,,Recargo Global
+account_420104,420104,Effective Rounding Gain,income,,,Ganancia por Redondeo Efectivo
+account_420105,420105,Other Income,income,,,Otros Ingresos
+account_420104,420104,Interests on Term Deposits and Mutual Funds,income,,,Intereses Depósito a Plazo y Fondos Mutuos
+account_420201,420201,Monetary Correction Assets,income,,,Corrección Monetaria Activos
+account_420202,420202,Monetary Correction of Leasing Goods,income,,,Corrección Monetaria Bienes Leasing
+account_510101,510101,Operation Remunerations,expense,,,Remuneraciones Operación
+account_510102,510102,Employer Contribution Operation,expense,,,Aporte Patronal Operación
+account_510103,510103,Travel expenses,expense,,,Viáticos
+account_510104,510104,Training,expense,,,Capacitación
+account_510105,510105,Fees Paid,expense,,,Honorarios Pagados
+account_510106,510106,Consultancies,expense,,,Asesorías
+account_510107,510107,Advertising,expense,,,Publicidad
+account_510108,510108,Phones,expense,,,Teléfonos
+account_510109,510109,Computer Expenses,expense,,,Gastos en Computación
+account_530201,530201,Shopping - Product Category 01,expense_direct_cost,,,Compras - Categoría de productos 01
+account_530202,530202,Imports,expense_direct_cost,,,Importaciones
+account_530203,530203,CIF,expense_direct_cost,,,CIF
+account_530301,530301,Raw Material Purchases,expense_direct_cost,,,Compras de Materia Prima
+account_530302,530302,Direct Labor,expense,,,Mano de Obra Directa
+account_540101,540101,Goods Received on Consignment,expense,,,Mercaderias Recibidas en Consignación
+account_610101,610101,Basic Services,expense,,,Servicios Básicos
+account_610102,610102,Communications,expense,,,Comunicaciones
+account_610103,610103,Legal Services,expense,,,Servicios Legales
+account_610104,610104,Asset Maintenance and Repair,expense,,,Manutención y Reparación de Activos
+account_610105,610105,Stationery-Cleaning-Miscellaneous Expenses,expense,,,Papelería-Aseo-Gastos Diversos
+account_610106,610106,Administration remunerations,expense,,,Remuneraciones Administración
+account_610107,610107,Employer Contribution Administration,expense,,,Aporte Patronal Administración
+account_610108,610108,Electricity - Light,expense,,,Electricidad - Luz
+account_610109,610109,Common Expenses,expense,,,Gastos Comunes
+account_610110,610110,Office Leases,expense,,,Arriendos Oficina
+account_610111,610111,Warehouse Rentals,expense,,,Arriendos Bodega
+account_620101,620101,Bank charges,expense,,,Gastos Bancarios
+account_620201,620201,Exchange Rate Difference,expense,,,Diferencia Tipo de Cambio
+account_620202,620202,Monetary Correction,expense,,,Corrección Monetaria
+account_62020,620203,Tax Fines,expense,,,Multas Fiscales
+account_620204,620204,1st Category Tax,expense,,,Impuesto 1ra Categoría
+account_620205,620205,Loss on Sale of Assets,expense,,,Pérdida por Venta Activo
+account_620206,620206,Previous Exercise Adjustment,expense,,,Ajuste Ejercicio Anterior
+account_620207,620207,Donation,expense,,,Donación
+account_620208,620208,Fuel,expense,,,Combustible
+account_710101,710101,Other Non-Operating Income,expense,,,Otros Ingresos No Operacionales

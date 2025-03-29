@@ -54,19 +54,19 @@
                     name="accept_document"
                     string="Aceptar"
                     type="object"
-                    attrs="{'invisible':[('state', '!=', 'draft')]}"
+                    invisible="state != 'draft'"
                 />
                 <button
                     name="reject_document"
                     string="Rechazar"
                     type="object"
-                    attrs="{'invisible':[('state', '!=', 'draft')]}"
+                    invisible="state != 'draft'"
                 />
                 <button
                     name="%(l10n_cl_fe.action_validar_wizard)d"
                     type='action'
                     string='Reclamo Avanzado'
-                    attrs="{'invisible': [('state', '!=', 'draft')]}"
+                    invisible="state != 'draft'"
                     context="{'default_tipo': 'mail.message.dte.document'}"
                 />
             </tree>
@@ -126,19 +126,19 @@
                         name="process_document"
                         string="Procesar Documento"
                         type="object"
-                        attrs="{'invisible':[('state', '=', 'draft')]}"
+                        invisible="state == 'draft'"
                     />
                     <button
                         name="accept_document"
                         string="Aceptar"
                         type="object"
-                        attrs="{'invisible':[('state', '!=', 'draft')]}"
+                        invisible="state != 'draft'"
                     />
                     <button
                         name="reject_document"
                         string="Rechazar"
                         type="object"
-                        attrs="{'invisible':[('state', '!=', 'draft')]}"
+                        invisible="state != 'draft'"
                     />
                 </header>
                 <sheet>
@@ -198,8 +198,8 @@
                                     <field name="aplicacion" />
                                     <field name="impuesto" />
                                     <field name="account_id"/>
-                                    <field name="amount_untaxed_global_dr" invisible="1" />
-                                    <field name="document_id" invisible="1" />
+                                    <field name="amount_untaxed_global_dr" invisible="True" />
+                                    <field name="document_id" invisible="True" />
                                 </tree>
                             </field>
                         </page>
@@ -212,7 +212,7 @@
                                 <field name='claim' widget="statusbar" />
                             </header>
                             <field name="claim_description" />
-                            <field name="claim_ids" readonly="1">
+                            <field name="claim_ids" readonly="True">
                                 <tree>
                                     <field name="date" />
                                     <field name="claim" />
@@ -262,7 +262,7 @@
                     name="process_mess"
                     type="object"
                     string="Manual XML Process"
-                    attrs="{'invisible': [('message_type', '!=', 'email'), ('mail_server_id', '=', False)]}"
+                    invisible="message_type != 'email' and not mail_server_id"
                 />
             </field>
         </field>

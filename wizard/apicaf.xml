@@ -11,17 +11,17 @@
                           <field
                               name="etapa"
                               widget="statusbar"
-                              attrs="{'invisible': [('operacion', '!=', 'obtener')]}"
+                              invisible="operacion != 'obtener'"
                           />
                           <field
                               name="reob_etapa"
                               widget="statusbar"
-                              attrs="{'invisible': [('operacion', '!=', 'reobtener')]}"
+                              invisible="operacion != 'reobtener'"
                           />
                           <field
                               name="an_etapa"
                               widget="statusbar"
-                              attrs="{'invisible': [('operacion', '!=', 'anular')]}"
+                              invisible="operacion != 'anular'"
                           />
                       </header>
                       <group>
@@ -29,52 +29,52 @@
                           <field name="company_id" />
                           <field
                               name="firma"
-                              attrs="{'invisible': [('company_id', '=', False)]}"
+                              invisible="not company_id"
                               domain="[('user_ids', '=', uid), ('company_ids', '=', company_id)]"
                           />
                           <field
                               name="documentos"
-                              attrs="{'invisible': ['|', ('firma', '=', False), ('documentos', '=', [])]}"
-                              readonly="1"
+                              invisible="not firma or not documentos"
+                              readonly="True"
                               widget="many2many_tags"
                           />
-                          <field name="id_peticion" invisible="1" />
+                          <field name="id_peticion" invisible="True" />
                       </group>
-                      <group attrs="{'invisible': [('id_peticion', '=', 0)]}">
+                      <group invisible="id_peticion == 0">
                           <field
                               name="jdc_id"
                               domain="[('id', 'in', documentos)]"
-                              attrs="{'invisible': [('documentos', '=', [])]}"
+                              invisible="not documentos"
                               options="{'no_create': True, 'no_open': True}"
                           />
-                          <field name="sequence_id" invisible="1" />
+                          <field name="sequence_id" invisible="True" />
                           <field
                               name="cod_docto"
                               domain="[('dte', '=', True)]"
-                              attrs="{'invisible': [('sequence_id', '=', False)]}"
+                              invisible="not sequence_id"
                           />
                       </group>
                       <group
-                          attrs="{'invisible': ['|', ('id_peticion', '=', 0), ('operacion', '!=', 'obtener')]}"
+                          invisible="id_peticion == 0 or operacion != 'obtener'"
                           string="Recuerde emitir una cantidad que pueda gastar en un plazo máximo de 6 meses, ya que después de ese tiempo los CAF Vencen y deberá anular en la página del SII los Folios Vencidos"
                       >
-                          <field name="folios_disp" attrs="{'invisible': [('cod_docto', '=', False)]}" />
+                          <field name="folios_disp" invisible="not cod_docto" />
                           <field
                               name="max_autor"
-                              attrs="{'invisible': ['|', ('cod_docto', '=', False), ('max_autor', '=', -1)]}"
+                              invisible="not cod_docto or max_autor == -1"
                           />
-                          <span attrs="{'invisible': ['|', ('cod_docto', '=', False), ('max_autor', '!=', -1)]}">
+                          <span invisible="not cod_docto or max_autor != -1">
                          Cantidad máxima no especificada
                      </span>
                           <field
                               name="cant_doctos"
-                              attrs="{'invisible': ['|', ('cod_docto', '=', False), ('max_autor', '=', 0)]}"
+                              invisible="not cod_docto or max_autor == 0"
                           />
-                          <field name="api_max_autor" invisible="1" />
-                          <field name="api_folios_disp" invisible="1" />
+                          <field name="api_max_autor" invisible="True" />
+                          <field name="api_folios_disp" invisible="True" />
                       </group>
                       <group
-                          attrs="{'invisible': ['|', ('id_peticion', '=', 0), ('operacion', 'not in', ['reobtener', 'anular'])]}"
+                          invisible="id_peticion == 0 or operacion not in ['reobtener', 'anular']"
                       >
                           <field
                               name="lineas_disponibles"
@@ -83,19 +83,19 @@
                               context="{'default_apicaf_id': active_id}"
                           >
                               <tree string="CAFs disponibles" editable="bottom">
-                                  <field name="apicaf_id" invisible="1" />
-                                  <field name="fecha" readonly="1" />
-                                  <field name="inicial" readonly="1" />
-                                  <field name="final" readonly="1" />
-                                  <field name="cantidad" readonly="1" />
+                                  <field name="apicaf_id" invisible="True" />
+                                  <field name="fecha" readonly="True" />
+                                  <field name="inicial" readonly="True" />
+                                  <field name="final" readonly="True" />
+                                  <field name="cantidad" readonly="True" />
                                   <field name="selected" />
-                                  <field name="sequence" invisible="1" />
-                                  <field name="form_name" invisible="1" />
-                                  <field name="caf_id" invisible="1" />
+                                  <field name="sequence" invisible="True" />
+                                  <field name="form_name" invisible="True" />
+                                  <field name="caf_id" invisible="True" />
                               </tree>
                           </field>
                       </group>
-                      <div attrs="{'invisible': ['|', ('id_peticion', '=', 0), ('an_etapa', '!=', 'an_motivo')]}">
+                      <div invisible="id_peticion == 0 or an_etapa != 'an_motivo'">
                         <group
                             string="Ingrese Rango a anular"
                         >
@@ -122,13 +122,13 @@
                             <field name="motivo" />
                         </group>
                       </div>
-                      <group attrs="{'invisible': [('message', '=', False)]}">
-                          <field name="message" readonly="1" />
+                      <group invisible="not message">
+                          <field name="message" readonly="True" />
                           <button
                               name="delist"
                               type="object"
                               string="Remover Bloqueo (Ban)"
-                              attrs="{'invisible': [('message', '!=', 'Usuario Baneado temporalmente')]}"
+                              invisible="message != 'Usuario Baneado temporalmente'"
                           />
                       </group>
                       <footer>
@@ -137,19 +137,14 @@
                               name="obtener_caf"
                               type="object"
                               class="btn-primary"
-                              attrs="{'invisible':
-                                  [
-                                      ('etapa', '!=', 'confirmar'),
-                                      ('reob_etapa', '!=', 'reob_confirmar')
-                                  ]}"
+                              invisible="etapa !='confirmar' and reob_etapa != 'reob_confirmar'"
                           />
                           <button
                               string='Anular Folios'
                               name="confirmar"
                               type="object"
                               class="btn-primary"
-                              attrs="{'invisible':
-                                  [('an_etapa', '!=', 'an_motivo')]}"
+                              invisible="an_etapa != 'an_motivo'"
                           />
                           <button string="Cancelar" class="btn-default" special="cancel" />
                       </footer>

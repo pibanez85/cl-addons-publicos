@@ -12,7 +12,7 @@
                             <field
                                 name="estado_dte"
                                 widget="radio"
-                                attrs="{'invisible': [('action', 'in', ['receipt'])]}"
+                                invisible="action in ['receipt']"
                             />
                         </group>
                         <group string="Opciones Reclamo hacia el SII">
@@ -30,19 +30,19 @@
                         <group>
                             <field
                                 name="claim_description"
-                                atts="{'readonly': [('estado_dte', '=', '0')], 'required': [('estado_dte', '!=', '0')]}"
+                                readonly="estado_dte == '0'" required="estado_dte != '0'"
                             />
                             <field
                                 name="move_ids"
                                 widget="many2many_tags"
-                                attrs="{'invisible': [('tipo', '!=', 'account.move')]}"
+                                invisible="tipo != 'account.move'"
                             />
                             <field
                                 name="document_ids"
                                 widget="many2many_tags"
-                                attrs="{'invisible': [('tipo', '!=', 'mail.message.dte.document')]}"
+                                invisible="tipo != 'mail.message.dte.document'"
                             />
-                            <field name="tipo" invisible="1" />
+                            <field name="tipo" invisible="True" />
                         </group>
                     </group>
                     <footer>

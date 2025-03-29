@@ -1,5 +1,5 @@
 from odoo import api, fields, models
-from odoo.exceptions import Warning
+from odoo.exceptions import UserError
 from odoo.tools.translate import _
 
 
@@ -97,7 +97,7 @@ class sii_concept_type(models.Model):
             if r.product_types:
                 types = set(r.product_types.split(","))
                 if not types.issubset(["adjust", "consu", "service"]):
-                    raise Warning(
+                    raise UserError(
                         _(
                             "You provided an invalid list of product types.\
                     Must been separated by commas"

@@ -50,8 +50,11 @@ class AccountMoveReversal(models.TransientModel):
             domain=lambda self: self._dominio_nc(),
         )
     refund_method = fields.Selection(
-        selection_add=[("cl_refund", 'Rectificativa modo chileno')],
-        ondelete={'cl_refund': 'cascade'}
+        [
+            ("cl_refund", "Rectificativa modo chileno"),
+            ("normal", "Normal")
+        ],
+        default='normal' #@TODO autocomputar este caso
     )
     cl_refund = fields.Selection(
             [

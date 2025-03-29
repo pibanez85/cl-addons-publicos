@@ -16,7 +16,7 @@ class Honorarios(models.Model):
         string="Date",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default=lambda *a: datetime.now(),
     )
     tipo_libro = fields.Selection(
@@ -25,13 +25,13 @@ class Honorarios(models.Model):
         default="MENSUAL",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     periodo_tributario = fields.Char(
         string="Periodo Tributario",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default=lambda *a: datetime.now().strftime("%Y-%m"),
     )
     company_id = fields.Many2one(
@@ -40,11 +40,11 @@ class Honorarios(models.Model):
         required=True,
         default=lambda self: self.env.user.company_id.id,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
-    name = fields.Char(string="Detalle", required=True, readonly=True, states={"draft": [("readonly", False)]},)
+    name = fields.Char(string="Detalle", required=True, readonly=True, )
     state = fields.Selection([("draft", "Borrador"), ("done", "Válido"),], default="draft", string="Estado",)
-    move_ids = fields.Many2many("account.move", readonly=True, states={"draft": [("readonly", False)]},)
+    move_ids = fields.Many2many("account.move", readonly=True, )
     impuestos = fields.One2many("account.move.book.honorarios.tax", "book_id", string="Detalle Impuestos",)
 
     @api.onchange("periodo_tributario", "tipo_libro")
@@ -104,7 +104,7 @@ class Honorarios(models.Model):
             lines.append([0, 0, i])
         self.impuestos = lines
 
-    
+
     def validar_libro(self):
         return self.write({"state": "done"})
 
@@ -126,6 +126,5 @@ class ImpuestosLibro(models.Model):
         string="Moneda",
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
-        track_visibility="always",
     )
     book_id = fields.Many2one("account.move.book.honorarios", string="Libro")

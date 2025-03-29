@@ -31,7 +31,7 @@ class APICAFDocs(models.TransientModel):
     cantidad = fields.Integer(string="Cantidad Folios del CAF",)
     inicial = fields.Integer(string="Folio Inicial",)
     final = fields.Integer(string="Folio Final",)
-    form_name = fields.Char(string="Form Name", invisible=True)
+    form_name = fields.Char(string="Form Name")
     cod_docto = fields.Many2one("sii.document_class", string="Código Documento",)
     selected = fields.Boolean(string="Seleccionar")
     sequence = fields.Integer(string="secuencia")

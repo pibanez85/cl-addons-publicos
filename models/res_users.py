@@ -10,9 +10,9 @@ class ResUsers(models.Model):
 
     def get_digital_signature(self, company_id):
         user_id = self.id
-        if user_id == SUPERUSER_ID or self.env.user.has_group('base.group_portal'):
+        if user_id == SUPERUSER_ID:
             user_id = self.env.ref("base.user_admin").id
-        signature = self.env["sii.firma"].sudo().search(
+        signature = self.env["sii.firma"].search(
             [
                 ("user_ids", "=", user_id),
                 ("company_ids", "=", company_id.id),

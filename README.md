@@ -8,6 +8,7 @@ Se crea este repositorio, para dar un enfoque de firma electrónica directa con 
 - Se integra la consulta de datos de empresas al repositorio https://sre.cl, para permitir obtener datos digitando el rut
 - Al instalar este módulo acepta que por defecto estará activa la sincronización de datos de partners al repositorio https://sre.cl, sin embargo puede desactivarlo en todo momento desde el panel de configuración general.
 - Integración con https://apicaf.cl , Api que permite emitir folios vía api, sin pasar por la página del SII. El uso y condiciones de la api es según políticas expuestas en el sitio web mismo de la api.
+- Se integra código desde l10_cl_chart_of_account, ya que desde la versión 17.0 está archivado: https://github.com/KonosCL/addons-konos
 
 Estado:
 

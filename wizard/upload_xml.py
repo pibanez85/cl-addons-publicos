@@ -196,7 +196,7 @@ class UploadXMLWizard(models.TransientModel):
                         email_to = partner_id.dte_email
                 values = {
                     "res_id": self.dte_id.id,
-                    "email_from": dte_email_id.name_get()[0][1],
+                    "email_from": dte_email_id.display_name,
                     "email_to": email_to,
                     "auto_delete": False,
                     "model": "mail.message.dte",
@@ -286,9 +286,7 @@ class UploadXMLWizard(models.TransientModel):
 
     def _buscar_impuesto(self, type="purchase", name="Impuesto", amount=0,
                         sii_code=0, ind_exe=False, company_id=False, refund=False):
-        target = 'invoice_tax_id.'
-        if refund:
-            target = 'refund_tax_id.'
+        target = 'tax_id.'
         query = [
             (target + "amount", "=", amount),
             (target + "sii_code", "=", sii_code),

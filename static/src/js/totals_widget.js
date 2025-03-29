@@ -5,6 +5,7 @@ import { patch } from '@web/core/utils/patch';
 
 patch(TaxTotalsComponent.prototype, 'l10n_cl_fe.TaxTotalsComponent', {
     _computeTotalsFormat() {
+        console.log("totals")
         if (!this.totals) {
             return;
         }

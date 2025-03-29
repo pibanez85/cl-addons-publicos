@@ -18,7 +18,7 @@ class ConsumoFolios(models.Model):
     order = "fecha_inicio desc"
 
     sii_xml_request = fields.Many2one(
-        "sii.xml.envio", string="SII XML Request", copy=False, readonly=True, states={"draft": [("readonly", False)]},
+        "sii.xml.envio", string="SII XML Request", copy=False, readonly=True,
     )
     state = fields.Selection(
         [
@@ -45,23 +45,23 @@ class ConsumoFolios(models.Model):
         " * The 'Paid' status is set automatically when the invoice is paid. Its related journal entries may or may not be reconciled.\n"
         " * The 'Cancelled' status is used when user cancel invoice.",
     )
-    move_ids = fields.Many2many("account.move", readonly=True, states={"draft": [("readonly", False)]},)
+    move_ids = fields.Many2many("account.move", readonly=True, )
     fecha_inicio = fields.Date(
         string="Fecha Inicio",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default=lambda self: fields.Date.context_today(self),
     )
     fecha_final = fields.Date(
         string="Fecha Final",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default=lambda self: fields.Date.context_today(self),
     )
     correlativo = fields.Integer(
-        string="Correlativo", readonly=True, states={"draft": [("readonly", False)]}, invisible=True,
+        string="Correlativo", readonly=True,
     )
-    sec_envio = fields.Integer(string="Secuencia de Envío", readonly=True, states={"draft": [("readonly", False)]},)
+    sec_envio = fields.Integer(string="Secuencia de Envío", readonly=True, )
     total_neto = fields.Monetary(string="Total Neto", store=True, readonly=False, compute="get_totales",)
     total_iva = fields.Monetary(string="Total Iva", store=True, readonly=False, compute="get_totales",)
     total_exento = fields.Monetary(string="Total Exento", store=True, readonly=False, compute="get_totales",)
@@ -72,14 +72,14 @@ class ConsumoFolios(models.Model):
         required=True,
         default=lambda self: self.env.user.company_id.id,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
-    name = fields.Char(string="Detalle", required=True, readonly=True, states={"draft": [("readonly", False)]},)
+    name = fields.Char(string="Detalle", required=True, readonly=True, )
     date = fields.Date(
         string="Date",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default=lambda self: fields.Date.context_today(self),
     )
     detalles = fields.One2many(
@@ -87,21 +87,21 @@ class ConsumoFolios(models.Model):
         "cf_id",
         string="Detalle Rangos",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     impuestos = fields.One2many(
         "account.move.consumo_folios.impuestos",
         "cf_id",
         string="Detalle Impuestos",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     anulaciones = fields.One2many(
         "account.move.consumo_folios.anulaciones",
         "cf_id",
         string="Detalle Impuestos",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     currency_id = fields.Many2one(
         "res.currency",
@@ -109,7 +109,7 @@ class ConsumoFolios(models.Model):
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     responsable_envio = fields.Many2one("res.users",)
     sii_result = fields.Selection(

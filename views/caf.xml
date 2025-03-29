@@ -21,30 +21,30 @@
                             <field
                                 name="caf_file"
                                 filename="filename"
-                                attrs="{'invisible':[('state', '!=', 'draft')]}"
+                                invisible="state != 'draft'"
                                 options="{'accepted_file_extensions': '.xml,.txt'}"
                             />
-                            <field name="filename" invisible="1" />
-                            <field name="caf_string" invisible="1" />
+                            <field name="filename" invisible="True" />
+                            <field name="caf_string" invisible="True" />
                         </group>
-                        <group attrs="{'invisible':[('state', '=', 'draft')]}">
+                        <group invisible="state == 'draft'">
                           <group>
-                            <field name="document_class_id" options="{'no_open': True, 'no_create': True}" readonly="1"/>
-                            <field name="start_nm" readonly="1"/>
-                            <field name="final_nm" readonly="1"/>
+                            <field name="document_class_id" options="{'no_open': True, 'no_create': True}" readonly="True"/>
+                            <field name="start_nm" readonly="True"/>
+                            <field name="final_nm" readonly="True"/>
                             <field name="folio_actual" />
                           </group>
                           <group>
-                            <field name="issued_date" readonly="1"/>
+                            <field name="issued_date" readonly="True"/>
                             <field name="issued_date" />
-                            <field name="expiration_date" readonly="1"/>
+                            <field name="expiration_date" readonly="True"/>
                             <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="rut_n" readonly="1"/>
+                            <field name="rut_n" readonly="True"/>
                             <field name="sequence_id" />
                           </group>
                           <group>
-                            <field name="cantidad_usados" readonly="1"/>
-                            <field name="cantidad_folios" readonly="1"/>
+                            <field name="cantidad_usados" readonly="True"/>
+                            <field name="cantidad_folios" readonly="True"/>
                           </group>
                           <group>
                               <field
@@ -54,34 +54,34 @@
                               />
                             </group>
                         </group>
-                        <notebook attrs="{'invisible':[('state', '=', 'draft')]}">
+                        <notebook invisible="state == 'draft'">
                           <page string="Mantención">
                             <header>
-                              <button name="inspeccionar_folios_sin_usar" type="object" string="Inspeccionar folios sin usar" attrs="{'invisible': [('state', '=', 'draft')]}"/>
-                              <button name="inspeccionar_folios_sin_usar" type="object" string="Exprirar Folios" attrs="{'invisible': [('state', '=', 'draft')]}"/>
-                              <button name="auto_anular" type="object" string="Anular Automáticamente" class="btn-primary" attrs="{'invisible': [('state', '!=', 'in_use')]}"/>
+                              <button name="inspeccionar_folios_sin_usar" type="object" string="Inspeccionar folios sin usar" invisible="state == 'draft'"/>
+                              <button name="inspeccionar_folios_sin_usar" type="object" string="Exprirar Folios" invisible="state == 'draft'"/>
+                              <button name="auto_anular" type="object" string="Anular Automáticamente" class="btn-primary" invisible="state != 'in_use'"/>
                             </header>
                             <sheet>
                               <group>
-                                <field name="cantidad_folios_sin_usar" readonly="1"/>
+                                <field name="cantidad_folios_sin_usar" readonly="True"/>
                               </group>
-                              <field name="folios_sin_usar" readonly="1"/>
+                              <field name="folios_sin_usar" readonly="True"/>
                               <group>
-                                <field name="cantidad_folios_vencidos" readonly="1"/>
-                                <field name="cantidad_folios_vencidos_sin_anular" readonly="1"/>
+                                <field name="cantidad_folios_vencidos" readonly="True"/>
+                                <field name="cantidad_folios_vencidos_sin_anular" readonly="True"/>
                               </group>
-                              <field name="folios_vencidos" readonly="1"/>
+                              <field name="folios_vencidos" readonly="True"/>
                             </sheet>
                           </page>
                           <page string="Folios Anulados">
                             <header>
-                              <button name="obtener_folios_anulados" type="object" string="Obtener Folios anulados desde el SII" attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                              <button name="obtener_folios_anulados" type="object" string="Obtener Folios anulados desde el SII" invisible="state == 'draft'"/>
                             </header>
                             <sheet>
                               <group>
-                                <field name="cantidad_folios_anulados" readonly="1"/>
+                                <field name="cantidad_folios_anulados" readonly="True"/>
                               </group>
-                              <field name="folios_anulados" readonly="1"/>
+                              <field name="folios_anulados" readonly="True"/>
                             </sheet>
                           </page>
                         </notebook>
@@ -96,14 +96,14 @@
             <field name="arch" type="xml">
                 <tree string="CAF Files">
                     <field name="name" />
-                    <field name="document_class_id" options="{'no_open': True, 'no_create': True}" readonly="1"/>
+                    <field name="document_class_id" options="{'no_open': True, 'no_create': True}" readonly="True"/>
                     <field name="start_nm" />
                     <field name="final_nm" />
                     <field name="folio_actual" />
                     <field name="expiration_date" />
                     <field name="company_id" groups="base.group_multi_company"/>
-                    <field name="qty_available" readonly="1"/>
-                    <field name="cantidad_folios" readonly="1"/>
+                    <field name="qty_available" readonly="True"/>
+                    <field name="cantidad_folios" readonly="True"/>
                     <field name="use_level" />
                     <field name="state" />
                 </tree>

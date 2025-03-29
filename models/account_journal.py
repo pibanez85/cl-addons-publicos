@@ -17,6 +17,8 @@ class AccountJournal(models.Model):
     company_activity_ids = fields.Many2many("partner.activities", related="company_id.company_activities_ids")
     journal_activities_ids = fields.Many2many(
         "partner.activities",
+        id1="journal_id",
+        id2="activities_id",
         string="Journal Turns",
         help="""Select the turns you want to \
             invoice in this Journal""",

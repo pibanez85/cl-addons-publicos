@@ -49,7 +49,7 @@ class DTEClaim(models.Model):
         Emisor["GiroEmis"] = company_id.activity_description.name
         if company_id.phone:
             Emisor["Telefono"] = company_id.phone
-        Emisor["CorreoEmisor"] = company_id.dte_email_id.name_get()[0][1]
+        Emisor["CorreoEmisor"] = company_id.dte_email_id.display_name
         # Emisor['Actecos'] = self._actecos_emisor()
         Emisor["DirOrigen"] = company_id.street + " " + (company_id.street2 or "")
         if not company_id.city_id:
@@ -154,7 +154,7 @@ class DTEClaim(models.Model):
         dte_email_id = doc.company_id.dte_email_id or self.env.user.company_id.dte_email_id
         values = {
             "res_id": doc.id,
-            "email_from": dte_email_id.name_get()[0][1],
+            "email_from": dte_email_id.display_name,
             "email_to": doc.dte_id.sudo().mail_id.email_from,
             "auto_delete": False,
             "model": "mail.message.dte.document",
@@ -211,7 +211,7 @@ class DTEClaim(models.Model):
         dte_email_id = doc.company_id.dte_email_id or self.env.user.company_id.dte_email_id
         values = {
             "res_id": doc.id,
-            "email_from": dte_email_id.name_get()[0][1],
+            "email_from": dte_email_id.display_name,
             "email_to": doc.partner_id.commercial_partner_id.dte_email,
             "auto_delete": False,
             "model": tipo,
@@ -267,7 +267,7 @@ class DTEClaim(models.Model):
             dte_email_id = doc.company_id.dte_email_id or self.env.user.company_id.dte_email_id
             values = {
                 "res_id": doc.id,
-                "email_from": dte_email_id.name_get()[0][1],
+                "email_from": dte_email_id.display_name,
                 "email_to": doc.partner_id.commercial_partner_id.dte_email,
                 "auto_delete": False,
                 "model": tipo,

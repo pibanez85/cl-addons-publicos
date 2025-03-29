@@ -47,7 +47,8 @@ class GlobalDescuentoRecargo(models.Model):
         required=True,
     )
     gdr_detail = fields.Char(
-        string="Razón del descuento",)
+        string="Razón del descuento",
+    )
     aplicacion = fields.Selection(
         [
             ("flete", "Flete"),
@@ -76,7 +77,7 @@ class GlobalDescuentoRecargo(models.Model):
         string='Account',
         required=True,
         check_company=True,
-        domain="[('deprecated', '=', False), ('company_id', '=', company_id), ('is_off_balance', '=', False)]",
+        domain="[('deprecated', '=', False), ('account_type', '!=', 'off_balance')]",
         default=lambda self: self.move_id.journal_id.default_gd_account_id if self.type == 'D' else self.move_id.journal_id.default_gr_account_id
     )
     amount_untaxed = fields.Float(

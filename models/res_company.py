@@ -49,7 +49,6 @@ stamp to be legally valid.""",
         "partner.activities", related="partner_id.acteco_ids", string="Activities Names", readonly=False,
     )
     responsability_id = fields.Many2one(
-        "sii.responsability",
         related="partner_id.responsability_id",
         string="Responsability",
         default=lambda self: self._get_default_tp_type(),
@@ -74,27 +73,30 @@ stamp to be legally valid.""",
             """,
     )
     activity_description = fields.Many2one(
-        "sii.activity.description",
         string="Glosa Giro",
         related="partner_id.activity_description",
+        relation="sii.activity.description",
         readonly=False,
     )
-    city_id = fields.Many2one("res.city", related="partner_id.city_id", string="City", readonly=False,)
+    city_id = fields.Many2one(related="partner_id.city_id", relation="res.city", string="City", readonly=False,)
     document_number = fields.Char(
-        related="partner_id.document_number", string="Document Number", required=True, readonly=False,
+        related="partner_id.document_number", string="Document Number", readonly=False,
     )
     document_type_id = fields.Many2one(
-        "sii.document_type",
         related="partner_id.document_type_id",
+        relation="sii.document_type",
         string="Document type",
         default=lambda self: self._get_default_doc_type(),
-        required=True,
         readonly=False,
     )
     sucursal_ids = fields.One2many(
         'sii.sucursal',
         'company_id',
         string="Sucursales de la compañia",
+    )
+    sucursal_id = fields.Many2one(
+        'sii.sucursal',
+        string="Sucursal SII de esta compañia",
     )
     medios_de_pago_electronico = fields.Many2many(
         'account.journal',

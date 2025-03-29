@@ -54,7 +54,6 @@
                         <button
                             name="validar_consumo_folios"
                             type="object"
-                            states="draft"
                             string="Validate"
                             class="oe_highlight"
                             groups="base.group_user"
@@ -63,21 +62,21 @@
                             string="Download XML"
                             type="object"
                             name="get_xml_file"
-                            attrs="{'invisible':[('state', 'in', ['draft','NoEnviado'])]}"
+                            invisible="state in ['draft','NoEnviado']"
                         />
                         <button
                             string="Send XML"
                             type="object"
                             class="oe_highlight"
                             name="do_dte_send_consumo_folios"
-                            attrs="{'invisible': [ ('state', 'not in', ['NoEnviado'])]}"
+                            invisible="state not in ['NoEnviado']"
                         />
                         <button
                             string="Ask for DTE"
                             type="object"
                             class="oe_highlight"
                             name="ask_for_dte_status"
-                            attrs="{'invisible': [('state', 'in', ['draft','NoEnviado'])]}"
+                            invisible="state in ['draft','NoEnviado']"
                         />
                         <field name="state" widget="statusbar" />
                     </header>
@@ -88,7 +87,7 @@
                         <field name="sec_envio" />
                         <field name="date" />
                         <field name="company_id" />
-                        <field name="currency_id" invisible="1" force_save="1" />
+                        <field name="currency_id" invisible="True" force_save="1" />
                         <field name="total_neto" />
                         <field name="total_boletas" />
                         <field name="total_iva" />
@@ -144,7 +143,7 @@
                         </page>
                         <page string="Envio SII">
                             <group>
-                                <field name='sii_xml_request' readonly="1" />
+                                <field name='sii_xml_request' readonly="True" />
                             </group>
                         </page>
                     </notebook>

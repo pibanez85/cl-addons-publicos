@@ -195,9 +195,6 @@
             <field name='rut_juridica'>55000000034</field>
             <field name='rut_natural'>50000000032</field>
             <field name='rut_otro'>51600000032</field>
-            <field name='zip_required'>0</field>
-            <field name="state_required">1</field>
-            <field name="address_format">%(street)s\n%(street2)s\n%(comuna_name)s - %(city)s\n%(country_name)s</field>
         </record>
         <record model='res.country' id='base.cm'>
             <field name='rut_juridica'>55000001057</field>

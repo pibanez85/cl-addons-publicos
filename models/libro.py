@@ -101,7 +101,7 @@ class Libro(models.Model):
         " * The 'Paid' status is set automatically when the invoice is paid. Its related journal entries may or may not be reconciled.\n"
         " * The 'Cancelled' status is used when user cancel invoice.",
     )
-    move_ids = fields.Many2many("account.move", readonly=True, states={"draft": [("readonly", False)]})
+    move_ids = fields.Many2many("account.move", readonly=True,)
 
     tipo_libro = fields.Selection(
         [("ESPECIAL", "Especial"), ("MENSUAL", "Mensual"), ("RECTIFICA", "Rectifica"),],
@@ -109,14 +109,14 @@ class Libro(models.Model):
         default="MENSUAL",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     tipo_operacion = fields.Selection(
         [("COMPRA", "Compras"), ("VENTA", "Ventas"), ("BOLETA", "Boleta Electrónica"),],
         string="Tipo de operación",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default="COMPRA",
     )
     tipo_envio = fields.Selection(
@@ -125,10 +125,10 @@ class Libro(models.Model):
         default="TOTAL",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     folio_notificacion = fields.Char(
-        string="Folio de Notificación", readonly=True, states={"draft": [("readonly", False)]},
+        string="Folio de Notificación", readonly=True,
     )
     impuestos = fields.One2many("account.move.book.tax", "book_id", string="Detalle Impuestos",)
     currency_id = fields.Many2one(
@@ -148,7 +148,7 @@ class Libro(models.Model):
         string="Periodo Tributario",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default=lambda *a: datetime.now().strftime("%Y-%m"),
     )
     company_id = fields.Many2one(
@@ -157,16 +157,15 @@ class Libro(models.Model):
         required=True,
         default=lambda self: self.env.user.company_id.id,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
-    name = fields.Char(string="Detalle", required=True, readonly=True, states={"draft": [("readonly", False)]},)
-    fact_prop = fields.Float(string="Factor proporcionalidad", readonly=True, states={"draft": [("readonly", False)]},)
-    nro_segmento = fields.Integer(string="Número de Segmento", readonly=True, states={"draft": [("readonly", False)]},)
+    name = fields.Char(string="Detalle", required=True, readonly=True, )
+    fact_prop = fields.Float(string="Factor proporcionalidad", readonly=True, )
+    nro_segmento = fields.Integer(string="Número de Segmento", readonly=True, )
     date = fields.Date(
         string="Fecha",
         required=True,
         readonly=True,
-        states={"draft": [("readonly", False)]},
         default=lambda self: fields.Date.context_today(self),
     )
     boletas = fields.One2many(
@@ -174,22 +173,10 @@ class Libro(models.Model):
         "book_id",
         string="Boletas",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     codigo_rectificacion = fields.Char(string="Código de Rectificación",)
     sii_result = fields.Selection(
-        [
-            ("draft", "Borrador"),
-            ("NoEnviado", "No Enviado"),
-            ("Enviado", "Enviado"),
-            ('EnProceso', 'EnProceso'),
-            ("Aceptado", "Aceptado"),
-            ("Rechazado", "Rechazado"),
-            ("Reparo", "Reparo"),
-            ("Proceso", "Proceso"),
-            ("Reenviar", "Reenviar"),
-            ("Anulado", "Anulado"),
-        ],
         related="state",
     )
 
@@ -569,6 +556,7 @@ class Boletas(models.Model):
         string="Moneda",
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
+        track_visibility="always",
     )
     tipo_boleta = fields.Many2one(
         "sii.document_class",
@@ -618,5 +606,6 @@ class ImpuestosLibro(models.Model):
         string="Moneda",
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
+        track_visibility="always",
     )
     book_id = fields.Many2one("account.move.book", string="Libro")

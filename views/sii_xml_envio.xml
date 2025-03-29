@@ -11,19 +11,19 @@
                         name="do_send_xml"
                         string="Send XML"
                         type="object"
-                        attrs="{'invisible': [('state', 'not in', ['draft', 'NoEnviado', 'Rechazado'])]}"
+                        invisible="state not in ['draft', 'NoEnviado', 'Rechazado']"
                     />
                     <button
                         name="ask_for"
                         string="Ask for XML"
                         type="object"
-                        attrs="{'invisible': [('sii_send_ident', '=', False)]}"
+                        invisible="not sii_send_ident"
                     />
                     <button
                         name="solicitar_reenvio_email"
                         string="Solicitar Reenvío Email SII"
                         type="object"
-                        attrs="{'invisible': [('sii_send_ident', '=', False)]}"
+                        invisible="not sii_send_ident"
                     />
                 </header>
                 <sheet>
@@ -34,10 +34,10 @@
                         <field name="sii_receipt" />
                         <field name="user_id" />
                         <field name="company_id" />
-                        <field name="xml_envio" attrs="{'required': [('sii_send_ident', '=', False)]}"/>
+                        <field name="xml_envio" invisible="not sii_send_ident"/>
                         <field name="move_ids" readonly="True" />
                     </group>
-                    <notebook attrs="{'invisible': [('state', 'not in', ['Enviado', 'Aceptado'])]}">
+                    <notebook invisible="state not in ['Enviado', 'Aceptado']">
                         <page string="Respuesta Email SII">
                             <field name="email_respuesta" />
                             <field name="email_estado" />

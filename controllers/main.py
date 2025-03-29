@@ -1,12 +1,15 @@
-# -*- coding: utf-8 -*-
+# Copyright (C) 2017 Creu Blanca
 # License AGPL-3.0 or later (https://www.gnuorg/licenses/agpl.html).
+
 import json
+
 from odoo.http import content_disposition, request, route
 from odoo.tools.safe_eval import safe_eval
-from odoo.addons.web.controllers.report import ReportController
+
+from odoo.addons.web.controllers import main as report
 
 
-class ReportController(ReportController):
+class ReportController(report.ReportController):
     @route()
     def report_routes(self, reportname, docids=None, converter=None, **data):
         if converter == "xlsx":

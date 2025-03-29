@@ -3,7 +3,7 @@
 # directory
 ##############################################################################
 from odoo import _, api, fields, models
-from odoo.exceptions import Warning
+from odoo.exceptions import UserError
 
 
 class sii_ws_currency_rate_wizard(models.TransientModel):
@@ -12,11 +12,11 @@ class sii_ws_currency_rate_wizard(models.TransientModel):
 
     currency_id = fields.Many2one("res.currency", "Currency", required=True,)
 
-    
+
     def confirm(self):
         self.ensure_one()
         point_of_sale_id = self._context.get("active_id", False)
         if not point_of_sale_id:
-            raise Warning(_("No Point Of sale as active_id on context"))
+            raise UserError(_("No Point Of sale as active_id on context"))
         point_of_sale = self.env["sii.point_of_sale"].browse(point_of_sale_id)
         return point_of_sale.get_pysiiws_currency_rate(self.currency_id)

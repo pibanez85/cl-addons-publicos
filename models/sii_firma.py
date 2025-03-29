@@ -69,12 +69,7 @@ class SignatureCert(models.Model):
     subject_c = fields.Char(string="Subject Country", readonly=True)
     subject_serial_number = fields.Char(
         string="Subject Serial Number",
-        readonly=True,
-        states={
-            "draft": [("readonly", False)],
-            "incomplete": [("readonly", False)],
-            "unverified": [("readonly", False)],
-        },
+        readonly=False,
     )
     subject_common_name = fields.Char(string="Subject Common Name", readonly=True)
     subject_email_address = fields.Char(string="Subject Email Address", readonly=True)

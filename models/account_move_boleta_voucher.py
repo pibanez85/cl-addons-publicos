@@ -49,14 +49,14 @@ class SIIResumenBoletaVoucher(models.Model):
         string="Folio del Documento",
         copy=False,
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     sii_xml_request = fields.Many2one(
         'sii.xml.envio',
         string='SII XML Request',
         copy=False,
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     state = fields.Selection(
         [
@@ -85,7 +85,7 @@ class SIIResumenBoletaVoucher(models.Model):
         string=_('SII Barcode'),
         help='SII Barcode Name',
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     sii_barcode_img = fields.Binary(
         string=_('SII Barcode Image'),
@@ -100,38 +100,38 @@ class SIIResumenBoletaVoucher(models.Model):
         string='SII XML DTE',
         copy=False,
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     move_ids = fields.Many2many(
         'account.move',
     	readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     fecha_emision = fields.Date(
         string="Fecha Emisión",
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
         default=lambda self: fields.Date.context_today(self),
     )
     total_neto = fields.Monetary(
         string="Total Neto",
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     total_iva = fields.Monetary(
         string="Total IVA",
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     total_exento = fields.Monetary(
         string="Total Exento",
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     total = fields.Monetary(
         string="Monto Total",
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     total_neto_calculado = fields.Monetary(
         string="Total Neto Calculado",
@@ -163,13 +163,13 @@ class SIIResumenBoletaVoucher(models.Model):
         required=True,
         default=lambda self: self.env.user.company_id.id,
     	readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     name = fields.Char(
         string="Detalle" ,
         required=True,
     	readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     currency_id = fields.Many2one(
         'res.currency',
@@ -177,7 +177,7 @@ class SIIResumenBoletaVoucher(models.Model):
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
     	readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     sii_result = fields.Selection(
         [
@@ -197,7 +197,7 @@ class SIIResumenBoletaVoucher(models.Model):
         'ir.sequence',
         required=True,
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     document_class_id = fields.Many2one(
         'sii.document_class',
@@ -209,20 +209,20 @@ class SIIResumenBoletaVoucher(models.Model):
         string="Folio que será anulado",
         required=True,
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
     )
     periodo = fields.Char(
         string='Periodo a generar',
         required=True,
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
         default=lambda *a: (datetime.now() - relativedelta.relativedelta(months=1)).strftime('%Y-%m'),
     )
     medios_de_pago = fields.Many2many(
         'account.journal',
         string="Medios de pago Electrónicos",
         readonly=True,
-        states={'draft': [('readonly', False)]},
+
         default=lambda self: self.company_id.medios_de_pago_electronico.ids,
     )
 

@@ -117,18 +117,17 @@ class AccountMove(models.Model):
         "account.journal.sii_document_class",
         string="Documents Type",
         readonly=True,
-        states={"draft": [("readonly", False)]},
         check_company=True,
     )
     document_class_id = fields.Many2one(
-        "sii.document_class", string="Document Type", readonly=True, states={"draft": [("readonly", False)]},
+        "sii.document_class", string="Document Type", readonly=True,
         index=True,
     )
     sii_code = fields.Integer(
         related="document_class_id.sii_code", string="Document Code", copy=False, readonly=True, store=True,
     )
     sii_document_number = BigInt(
-        string="Document Number", copy=False, readonly=True, states={"draft": [("readonly", False)]},
+        string="Document Number", copy=False, readonly=True,
         index=True,
     )
     sii_batch_number = fields.Integer(
@@ -139,14 +138,13 @@ class AccountMove(models.Model):
         string=_("SII Barcode"),
         help="SII Barcode Name",
         readonly=True,
-        states={"draft": [("readonly", False)]},
     )
     sii_barcode_img = fields.Binary(
         string=_("SII Barcode Image"), help="SII Barcode Image in PDF417 format",
         compute="_get_barcode_img"
     )
     sii_message = fields.Text(string="SII Message", copy=False,)
-    sii_xml_dte = fields.Text(string="SII XML DTE", copy=False, readonly=True, states={"draft": [("readonly", False)]},)
+    sii_xml_dte = fields.Text(string="SII XML DTE", copy=False, readonly=True, )
     sii_xml_request = fields.Many2one("sii.xml.envio", string="SII XML Request", copy=False,)
     sii_result = fields.Selection(
         [
@@ -165,8 +163,8 @@ class AccountMove(models.Model):
         help="Resultado del envío y Proceso del documento nn el SII",
         copy=False,
     )
-    canceled = fields.Boolean(string="Canceled?", readonly=True, states={"draft": [("readonly", False)]},)
-    iva_uso_comun = fields.Boolean(string="Iva Uso Común", readonly=True, states={"draft": [("readonly", False)]},)
+    canceled = fields.Boolean(string="Canceled?", readonly=True, )
+    iva_uso_comun = fields.Boolean(string="Iva Uso Común", readonly=True, )
     no_rec_code = fields.Selection(
         [
             ("1", "Compras destinadas a IVA a generar operaciones no gravados o exentas."),
@@ -177,19 +175,19 @@ class AccountMove(models.Model):
         ],
         string="Código No recuperable",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )  # @TODO select 1 automático si es emisor 2Categoría
     use_documents = fields.Boolean(string="Use Documents?",
                                    readonly=True,
-                                   states={"draft": [("readonly", False)]},)
+                                   )
     referencias = fields.One2many(
-        "account.move.referencias", "move_id", readonly=True, states={"draft": [("readonly", False)]},
+        "account.move.referencias", "move_id", readonly=True,
     )
     forma_pago = fields.Selection(
         [("1", "Contado"), ("2", "Crédito"), ("3", "Gratuito")],
         string="Forma de pago",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
         default="1",
     )
     contact_id = fields.Many2one("res.partner", string="Contacto",)
@@ -201,7 +199,7 @@ class AccountMove(models.Model):
     )
     estado_recep_glosa = fields.Char(string="Información Adicional del Estado de Recepción", copy=False,)
     ticket = fields.Boolean(
-        string="Formato Ticket", default=False, readonly=True, states={"draft": [("readonly", False)]},
+        string="Formato Ticket", default=False, readonly=True,
     )
     claim = fields.Selection(
         [
@@ -224,25 +222,25 @@ class AccountMove(models.Model):
     amount_untaxed_global_discount = fields.Float(
         string="Global Discount Amount", default=0.00,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     amount_untaxed_global_recargo = fields.Float(
         string="Global Recargo Amount", default=0.00,
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     global_descuentos_recargos = fields.One2many(
         "account.move.gdr",
         "move_id",
         string="Descuentos / Recargos globales",
         readonly=True,
-        states={"draft": [("readonly", False)]},
+
     )
     acteco_ids = fields.Many2many(
         "partner.activities", related="commercial_partner_id.acteco_ids", string="Partner Activities"
     )
     acteco_id = fields.Many2one(
-        "partner.activities", string="Partner Activity", readonly=True, states={"draft": [("readonly", False)]},
+        "partner.activities", string="Partner Activity", readonly=True,
     )
     respuesta_ids = fields.Many2many("sii.respuesta.cliente", string="Recepción del Cliente", readonly=True,)
     ind_servicio = fields.Selection(
@@ -258,14 +256,6 @@ class AccountMove(models.Model):
         ]
     )
     claim_ids = fields.One2many("sii.dte.claim", "move_id", string="Historial de Reclamos")
-    amount_tax_retencion = fields.Monetary(string='Monto Retención', store=True, readonly=True,
-        compute='_compute_amount',
-        inverse='_inverse_amount_total',
-    )
-    amount_tax_retencion_signed = fields.Monetary(string='Monto Retención con signo', store=True, readonly=True,
-        compute='_compute_amount',
-        inverse='_inverse_amount_total',
-    )
     sequence_number_next = fields.Integer(
         compute='_get_sequence_number_next'
     )
@@ -292,29 +282,14 @@ class AccountMove(models.Model):
         'line_ids.amount_residual_currency',
         'line_ids.payment_id.state',
         'line_ids.full_reconcile_id',
+        'state',
         'global_descuentos_recargos.amount_untaxed')
     def _compute_amount(self):
         for move in self:
-            if move.payment_state == 'invoicing_legacy':
-                # invoicing_legacy state is set via SQL when setting setting field
-                # invoicing_switch_threshold (defined in account_accountant).
-                # The only way of going out of this state is through this setting,
-                # so we don't recompute it here.
-                move.payment_state = move.payment_state
-                continue
-
-            total_untaxed = 0.0
-            total_untaxed_currency = 0.0
-            total_tax = 0.0
-            total_tax_currency = 0.0
-            total_to_pay = 0.0
-            total_residual = 0.0
-            total_residual_currency = 0.0
-            total = 0.0
-            total_currency = 0.0
-            total_retencion = 0
-            total_retencion_currency = 0
-            sign = move.direction_sign
+            total_untaxed, total_untaxed_currency = 0.0, 0.0
+            total_tax, total_tax_currency = 0.0, 0.0
+            total_residual, total_residual_currency = 0.0, 0.0
+            total, total_currency = 0.0, 0.0
             for line in move.line_ids:
                 if move.is_invoice(True):
                     # === Invoices ===
@@ -324,15 +299,7 @@ class AccountMove(models.Model):
                         total_tax_currency += line.amount_currency
                         total += line.balance
                         total_currency += line.amount_currency
-                        if line.tax_repartition_line_id.sii_type in ['R', 'A']:
-                            total_retencion += line.balance
-                            total_retencion_currency += line.amount_currency
-                            if line.tax_repartition_line_id.credec:
-                                total_tax -= line.balance
-                                total_tax_currency -= line.amount_currency
-                            total -= (sign * line.balance)
-                            total_currency -= (sign * line.amount_currency)
-                    elif line.display_type in ('product', 'rounding', 'R', 'D', 'C'):
+                    elif line.display_type in ('product', 'rounding', 'C', 'D', 'R'):
                         # Untaxed amount.
                         total_untaxed += line.balance
                         total_untaxed_currency += line.amount_currency
@@ -347,6 +314,7 @@ class AccountMove(models.Model):
                     if line.debit:
                         total += line.balance
                         total_currency += line.amount_currency
+            sign = move.direction_sign
             move.amount_untaxed = sign * total_untaxed_currency
             move.amount_tax = sign * total_tax_currency
             move.amount_total = sign * total_currency
@@ -356,9 +324,8 @@ class AccountMove(models.Model):
             move.amount_total_signed = abs(total) if move.move_type == 'entry' else -total
             move.amount_residual_signed = total_residual
             move.amount_total_in_currency_signed = abs(move.amount_total) if move.move_type == 'entry' else -(sign * move.amount_total)
-            move.amount_tax_retencion = sign * total_retencion_currency
-            move.amount_tax_retencion_signed = -total_retencion
 
+    @api.depends_context('lang')
     @api.depends(
         'invoice_line_ids.currency_rate',
         'invoice_line_ids.tax_base_amount',
@@ -368,7 +335,6 @@ class AccountMove(models.Model):
         'invoice_payment_term_id',
         'partner_id',
         'currency_id',
-        'global_descuentos_recargos.amount_untaxed'
     )
     def _compute_tax_totals(self):
         """ Computed field used for custom widget's rendering.
@@ -378,11 +344,10 @@ class AccountMove(models.Model):
             if move.is_invoice(include_receipts=True):
                 base_lines = move.invoice_line_ids.filtered(lambda line: line.display_type == 'product')
                 base_line_values_list = [line._convert_to_tax_base_line_dict() for line in base_lines]
-
+                sign = move.direction_sign
                 if move.id:
                     # The invoice is stored so we can add the early payment discount lines directly to reduce the
                     # tax amount without touching the untaxed amount.
-                    sign = -1 if move.is_inbound(include_receipts=True) else 1
                     base_line_values_list += [
                         {
                             **line._convert_to_tax_base_line_dict(),
@@ -401,12 +366,12 @@ class AccountMove(models.Model):
                             'price_subtotal': sign * line.amount_currency,
                             'taxes': line.tax_ids,
                         }
-                        for line in move.line_ids.filtered(lambda line: line.display_type in ['D', 'R', 'C'])
+                        for line in move.line_ids.filtered(lambda line: line.display_type in ['C', 'D', 'R'])
                     ]
 
                 kwargs = {
                     'base_lines': base_line_values_list,
-                    'currency': move.currency_id,
+                    'currency': move.currency_id or move.journal_id.currency_id or move.company_id.currency_id,
                 }
 
                 if move.id:
@@ -414,6 +379,7 @@ class AccountMove(models.Model):
                         line._convert_to_tax_line_dict()
                         for line in move.line_ids.filtered(lambda line: line.display_type == 'tax')
                     ]
+
                 else:
                     # In case the invoice isn't yet stored, the early payment discount lines are not there. Then,
                     # we need to simulate them.
@@ -442,138 +408,32 @@ class AccountMove(models.Model):
                             price_subtotal=values['price_subtotal'],
                             is_refund=move.move_type in ('out_refund', 'in_refund'),
                             handle_price_include=False,
-                            #uom_id
+                            extra_context={'_extra_grouping_key_': 'epd'},
                         ))
-                    for r in move.global_descuentos_recargos:
-                        sign = -1 if r.type == 'D' else 1
-                        kwargs['base_lines'].append(self.env['account.tax']._convert_to_tax_base_line_dict(
-                            None,
-                            partner=move.partner_id,
-                            currency=move.currency_id,
-                            taxes=r.taxes,
-                            price_unit=sign*r.amount_untaxed,
-                            quantity=1.0,
-                            account=r.account_id,
-                            is_refund=move.move_type in ('out_refund', 'in_refund'),
-                            handle_price_include=True,
-                            #uom_id
-                        ))
-                    for r in move.comision_ids:
-                        sign = -1
-                        kwargs['base_lines'].append(self.env['account.tax']._convert_to_tax_base_line_dict(
-                            None,
-                            partner=move.partner_id,
-                            currency=move.currency_id,
-                            taxes=r.iva,
-                            price_unit=sign*r.valor_neto_comision,
-                            quantity=1.0,
-                            account=r.account_id,
-                            is_refund=move.move_type in ('out_refund', 'in_refund'),
-                            handle_price_include=True,
-                            #uom_id
-                        ))
-                        if r.valor_exento_comision:
-                            exento = self.env['account.tax'].search([('amount', '=', 0), ('sii_code','=', 0), ('type_tax_use', '=', 'sale'), ('activo_fijo', '=', False) ], limit=1).id
-                            kwargs['base_lines'].append(self.env['account.tax']._convert_to_tax_base_line_dict(
-                                None,
-                                partner=move.partner_id,
-                                currency=move.currency_id,
-                                taxes=exento,
-                                price_unit=sign*r.valor_exento_comision,
-                                quantity=1.0,
-                                account=r.account_id,
-                                price_subtotal=sign*r.valor_exento_comision,
-                                is_refund=move.move_type in ('out_refund', 'in_refund'),
-                                handle_price_include=True,
-                                #uom_id
-                            ))
-                tax_totals = self.env['account.tax']._prepare_tax_totals(**kwargs)
-                move.tax_totals = tax_totals
+                kwargs['is_company_currency_requested'] = move.currency_id != move.company_id.currency_id
+                move.tax_totals = self.env['account.tax']._prepare_tax_totals(**kwargs)
+                if move.invoice_cash_rounding_id:
+                    rounding_amount = move.invoice_cash_rounding_id.compute_difference(move.currency_id, move.tax_totals['amount_total'])
+                    totals = move.tax_totals
+                    totals['display_rounding'] = True
+                    if rounding_amount:
+                        if move.invoice_cash_rounding_id.strategy == 'add_invoice_line':
+                            totals['rounding_amount'] = rounding_amount
+                            totals['formatted_rounding_amount'] = formatLang(self.env, totals['rounding_amount'], currency_obj=move.currency_id)
+                        elif move.invoice_cash_rounding_id.strategy == 'biggest_tax':
+                            if totals['subtotals_order']:
+                                max_tax_group = max((
+                                    tax_group
+                                    for tax_groups in totals['groups_by_subtotal'].values()
+                                    for tax_group in tax_groups
+                                ), key=lambda tax_group: tax_group['tax_group_amount'])
+                                max_tax_group['tax_group_amount'] += rounding_amount
+                                max_tax_group['formatted_tax_group_amount'] = formatLang(self.env, max_tax_group['tax_group_amount'], currency_obj=move.currency_id)
+                        totals['amount_total'] += rounding_amount
+                        totals['formatted_amount_total'] = formatLang(self.env, totals['amount_total'], currency_obj=move.currency_id)
             else:
                 # Non-invoice moves don't support that field (because of multicurrency: all lines of the invoice share the same currency)
                 move.tax_totals = None
-
-    def _inverse_tax_totals(self):
-        if self.env.context.get('skip_invoice_sync'):
-            return
-        with self._sync_dynamic_line(
-            existing_key_fname='term_key',
-            needed_vals_fname='needed_terms',
-            needed_dirty_fname='needed_terms_dirty',
-            line_type='payment_term',
-            container={'records': self},
-        ):
-
-            for move in self:
-                if not move.is_invoice(include_receipts=True):
-                    continue
-                invoice_totals = move.tax_totals
-
-                for amount_by_group_list in invoice_totals['groups_by_subtotal'].values():
-                    for amount_by_group in amount_by_group_list:
-                        tax_lines = move.line_ids.filtered(lambda line: line.tax_group_id.id == amount_by_group['tax_group_id'])
-
-                        if tax_lines:
-                            first_tax_line = tax_lines[0]
-                            tax_group_old_amount = sum(tax_lines.mapped('amount_currency'))
-                            sign = -1 if move.is_inbound() else 1
-                            delta_amount = tax_group_old_amount * sign - amount_by_group['tax_group_amount']
-
-                            if not move.currency_id.is_zero(delta_amount):
-                                first_tax_line.amount_currency -= delta_amount * sign
-            self._compute_amount()
-
-    @api.depends('invoice_payment_term_id', 'invoice_date', 'currency_id', 'amount_total_in_currency_signed', 'invoice_date_due')
-    def _compute_needed_terms(self):
-        for invoice in self:
-            invoice.needed_terms = {}
-            invoice.needed_terms_dirty = True
-            sign = 1 if invoice.is_inbound(include_receipts=True) else -1
-            if invoice.is_invoice(True):
-
-                if invoice.invoice_payment_term_id:
-                    invoice_payment_terms = invoice.invoice_payment_term_id._compute_terms(
-                        date_ref=invoice.invoice_date or invoice.date or fields.Date.today(),
-                        currency=invoice.currency_id,
-                        tax_amount_currency=(invoice.amount_tax- invoice.amount_tax_retencion) * sign,
-                        tax_amount=(invoice.amount_tax_signed - invoice.amount_tax_retencion_signed),
-                        untaxed_amount_currency=invoice.amount_untaxed * sign,
-                        untaxed_amount=invoice.amount_untaxed_signed,
-                        company=invoice.company_id,
-                        sign=sign
-                    )
-                    for term in invoice_payment_terms:
-                        key = frozendict({
-                            'move_id': invoice.id,
-                            'date_maturity': fields.Date.to_date(term.get('date')),
-                            'discount_date': term.get('discount_date'),
-                            'discount_percentage': term.get('discount_percentage'),
-                        })
-                        values = {
-                            'balance': term['company_amount'],
-                            'amount_currency': term['foreign_amount'],
-                            'name': invoice.payment_reference or '',
-                            'discount_amount_currency': term['discount_amount_currency'] or 0.0,
-                            'discount_balance': term['discount_balance'] or 0.0,
-                            'discount_date': term['discount_date'],
-                            'discount_percentage': term['discount_percentage'],
-                        }
-                        if key not in invoice.needed_terms:
-                            invoice.needed_terms[key] = values
-                        else:
-                            invoice.needed_terms[key]['balance'] += values['balance']
-                            invoice.needed_terms[key]['amount_currency'] += values['amount_currency']
-                else:
-                    invoice.needed_terms[frozendict({
-                        'move_id': invoice.id,
-                        'date_maturity': fields.Date.to_date(invoice.invoice_date_due),
-                        'discount_date': False,
-                        'discount_percentage': 0
-                    })] = {
-                        'balance': invoice.amount_total_signed - invoice.amount_tax_retencion_signed,
-                        'amount_currency': invoice.amount_total_in_currency_signed - invoice.amount_tax_retencion,
-                        'name': invoice.payment_reference or '',
-                    }
 
     def _get_last_sequence_domain(self, relaxed=False):
         # EXTENDS account sequence.mixin
@@ -629,7 +489,7 @@ class AccountMove(models.Model):
 
     def _set_next_sequence(self):
         self.ensure_one()
-        if self.use_documents and self.journal_document_class_id.sequence_id:
+        if self.use_documents:
             if not (self.journal_id.restore_mode or self._context.get("restore_mode", False)):
                 self.sii_document_number = self.journal_document_class_id.sequence_id.next_by_id()
             self[self._sequence_field] = '%s%s' % (self.document_class_id.doc_code_prefix, self.sii_document_number)
@@ -638,9 +498,8 @@ class AccountMove(models.Model):
 
     def _post(self, soft=True):
         to_post = super(AccountMove, self)._post(soft=soft)
-        to_send = {}
         for inv in to_post:
-            if not inv.is_invoice() or not inv.journal_document_class_id.sequence_id or not inv.use_documents or inv.state != 'posted':
+            if not inv.is_invoice() or not inv.journal_document_class_id or not inv.use_documents:
                 continue
             if not inv.sii_document_number:
                 inv._set_next_sequence()
@@ -650,39 +509,37 @@ class AccountMove(models.Model):
             else:
                 inv._validaciones_uso_dte()
                 inv._timbrar()
-                to_send.setdefault(inv.company_id, self.env['account.move'])
-                to_send[inv.company_id] += inv
+                ISCP = self.env["ir.config_parameter"].sudo()
+                metodo = ISCP.get_param("account.send_dte_method", default='diferido')
+                if metodo == 'manual':
+                    continue
+                tiempo_pasivo = datetime.now()
+                if metodo == 'diferido':
+                    tipo_trabajo = 'pasivo'
+                    tiempo_pasivo += timedelta(
+                        hours=int(ISCP.get_param("account.auto_send_dte", default=1))
+                    )
+                elif metodo == 'inmediato':
+                    tipo_trabajo = 'envio'
+                company = inv.company_id.parent_id or inv.company_id
+                self.env["sii.cola_envio"].create(
+                    {
+                        "company_id": inv.company_id.id,
+                        "doc_ids": [inv.id],
+                        "model": "account.move",
+                        "user_id": self.env.uid,
+                        "tipo_trabajo": tipo_trabajo,
+                        "date_time": tiempo_pasivo,
+                        "send_email": False
+                        if company.dte_service_provider == "SIICERT"
+                        or not ISCP.get_param("account.auto_send_email", default=True)
+                        else True,
+                    }
+                )
             po = self.env['purchase.order'].browse(
                 inv._context.get('purchase_to_done', False))
             if po:
                 po.write({"state": "done"})
-        for company, invoices in to_send.items():
-            ISCP = self.env["ir.config_parameter"].sudo()
-            metodo = ISCP.get_param("account.send_dte_method", default='diferido')
-            if metodo == 'manual':
-                continue
-            tiempo_pasivo = datetime.now()
-            if metodo == 'diferido':
-                tipo_trabajo = 'pasivo'
-                tiempo_pasivo += timedelta(
-                    hours=int(ISCP.get_param("account.auto_send_dte", default=1))
-                )
-            elif metodo == 'inmediato':
-                tipo_trabajo = 'envio'
-            self.env["sii.cola_envio"].create(
-                {
-                    "company_id": company.id,
-                    "doc_ids": invoices.ids,
-                    "model": "account.move",
-                    "user_id": self.env.uid,
-                    "tipo_trabajo": tipo_trabajo,
-                    "date_time": tiempo_pasivo,
-                    "send_email": False
-                    if company.dte_service_provider == "SIICERT"
-                    or not ISCP.get_param("account.auto_send_email", default=True)
-                    else True,
-                }
-            )
         return to_post
 
     @contextmanager
@@ -765,8 +622,8 @@ class AccountMove(models.Model):
     @api.depends("state", "journal_id", "journal_document_class_id")
     def _get_sequence_number_next(self):
         for invoice in self:
-            invoice.sequence_number_next = -1
-            if invoice.journal_document_class_id and invoice.journal_document_class_id.sequence_id:
+            invoice.sequence_number_next = 0
+            if invoice.journal_document_class_id:
                 invoice.sequence_number_next = invoice.journal_document_class_id.sequence_id.number_next_actual
 
     @contextmanager
@@ -945,10 +802,6 @@ class AccountMove(models.Model):
                 raise UserError(_("You can not delete a valid document on SII"))
             to_unlink += r
         return super(AccountMove, to_unlink).unlink()
-
-    def action_convert_to_dte(self):
-        action = self.env["ir.actions.actions"]._for_xml_id("l10n_cl_fe.action_convert_to_dte")
-        return action
 
     @api.constrains("ref", "partner_id", "company_id", "move_type", "journal_document_class_id")
     def _check_reference_in_invoice(self):
@@ -1239,6 +1092,7 @@ class AccountMove(models.Model):
         if not isinstance(n_atencion, string_types):
             n_atencion = ""
         if ids:
+            company =  self[0].company_id.parent_id or self[0].company_id
             self.env["sii.cola_envio"].create(
                 {
                     "company_id": self[0].company_id.id,
@@ -1249,7 +1103,7 @@ class AccountMove(models.Model):
                     "n_atencion": n_atencion,
                     "set_pruebas": self._context.get("set_pruebas", False),
                     "send_email": False
-                    if self[0].company_id.dte_service_provider == "SIICERT"
+                    if company.dte_service_provider == "SIICERT"
                     or not self.env["ir.config_parameter"].sudo().get_param("account.auto_send_email", default=True)
                     else True,
                 }
@@ -1279,7 +1133,17 @@ class AccountMove(models.Model):
     def es_nc_factura_compra(self):
         if not self.es_nc() and not self.es_nd():
             return False
-        return any(r.sii_referencia_TpoDocRef.es_factura_compra() for r in self.referencias)
+        for r in self.referencias:
+            if r.sii_referencia_TpoDocRef.es_factura_compra():
+                return True
+            if r.sii_referencia_TpoDocRef.es_nc():
+                obj = self.env['account.move'].search([
+                    ('sii_document_number', '=', r.origen),
+                    ('document_class_id', '=', r.sii_referencia_TpoDocRef.id),
+                    ('use_documents', '=', True)
+                ])
+                return obj.es_nc_factura_compra()
+        return False
 
     def _actecos_emisor(self):
         actecos = []
@@ -1319,18 +1183,19 @@ class AccountMove(models.Model):
 
     def _emisor(self):
         Emisor = {}
-        Emisor["RUTEmisor"] = self.company_id.partner_id.rut()
+        company = self.company_id.parent_id or self.company_id
+        Emisor["RUTEmisor"] = company.partner_id.rut()
         if self.es_boleta():
-            Emisor["RznSocEmisor"] = self._acortar_str(self.company_id.partner_id.name, 100)
-            Emisor["GiroEmisor"] = self._acortar_str(self.company_id.activity_description.name, 80)
+            Emisor["RznSocEmisor"] = self._acortar_str(company.partner_id.name, 100)
+            Emisor["GiroEmisor"] = self._acortar_str(company.activity_description.name, 80)
         else:
-            Emisor["RznSoc"] = self._acortar_str(self.company_id.partner_id.name, 100)
-            Emisor["GiroEmis"] = self._acortar_str(self.company_id.activity_description.name, 80)
-            if self.company_id.phone:
-                Emisor["Telefono"] = self._acortar_str(self.company_id.phone, 20)
-            Emisor["CorreoEmisor"] = self.company_id.dte_email_id.name_get()[0][1]
+            Emisor["RznSoc"] = self._acortar_str(company.partner_id.name, 100)
+            Emisor["GiroEmis"] = self._acortar_str(company.activity_description.name, 80)
+            if company.phone:
+                Emisor["Telefono"] = self._acortar_str(company.phone, 20)
+            Emisor["CorreoEmisor"] = company.dte_email_id.display_name
             Emisor["Actecos"] = self._actecos_emisor()
-        dir_origen = self.company_id
+        dir_origen = company
         if self.journal_id.sucursal_id:
             Emisor['Sucursal'] = self._acortar_str(self.journal_id.sucursal_id.partner_id.name, 20)
             Emisor["CdgSIISucur"] = self._acortar_str(self.journal_id.sucursal_id.sii_code, 9)
@@ -1341,10 +1206,10 @@ class AccountMove(models.Model):
         Emisor['CmnaOrigen'] = dir_origen.city_id.name
         if not dir_origen.city:
             raise UserError("Debe ingresar la Ciudad de compañía emisora")
-        Emisor["CiudadOrigen"] = self.company_id.city
-        Emisor["Modo"] = "produccion" if self.company_id.dte_service_provider == "SII" else "certificacion"
-        Emisor["NroResol"] = self.company_id.dte_resolution_number
-        Emisor["FchResol"] = self.company_id.dte_resolution_date.strftime("%Y-%m-%d")
+        Emisor["CiudadOrigen"] = company.city
+        Emisor["Modo"] = "produccion" if company.dte_service_provider == "SII" else "certificacion"
+        Emisor["NroResol"] = company.dte_resolution_number
+        Emisor["FchResol"] = company.dte_resolution_date.strftime("%Y-%m-%d")
         Emisor["ValorIva"] = 19
         return Emisor
 
@@ -1360,11 +1225,7 @@ class AccountMove(models.Model):
         if not self.partner_id or Receptor["RUTRecep"] == "66666666-6":
             return Receptor
         if not self.es_boleta() and not self.es_nc_boleta():
-            GiroRecep = (
-                self.acteco_id.name
-                or commercial_partner_id.activity_description.name
-                or (self.acteco_ids and self.acteco_ids[0].name)
-            )
+            GiroRecep = self.acteco_id.name or commercial_partner_id.activity_description.name
             if not GiroRecep:
                 raise UserError(_("Seleccione giro del partner"))
             Receptor["GiroRecep"] = self._acortar_str(GiroRecep, 40)
@@ -1578,6 +1439,7 @@ class AccountMove(models.Model):
             return totales
         totales["MontoNF"] = resumen['MontoNF']
         totales['MntExe'] = resumen['MntExe']
+        totales["MntNeto"] = resumen["MntNeto"]
         if self.move_type == 'entry' or self.is_outbound():
             sign = 1
         else:
@@ -1589,18 +1451,26 @@ class AccountMove(models.Model):
             if self.amount_tax > 0:
                 raise UserError("NO pueden ir productos afectos en documentos exentos")
         elif self.amount_untaxed and self.amount_untaxed != 0:
-            for t in self.line_ids:
-                if t.display_type == 'rounding' or t.ind_exe:
+            es_compra = resumen['es_compra']
+            for t in self.line_ids.filtered(lambda x: x.display_type in ['tax', 'C', 'D', 'R']):
+                sii_code = t.tax_line_id.sii_code
+                if es_compra and sii_code == 14:
                     continue
+                es_retencion = t.tax_repartition_line_id.es_retencion()
+                balance = t.balance
                 if another_currency_id and currency_base != another_currency_id:
                     balance = sign * t.amount_currency
+                elif es_retencion:
+                    balance *= sign *(-1)
                 else:
-                    balance = sign * t.balance
-                sii_code = t.tax_line_id.sii_code
-                es_retencion = t.tax_repartition_line_id.sii_type in ['R', 'A']
+                    balance *= sign
+                if t.display_type in ['C', 'D', 'R']:
+                    totales['MntNeto'] += balance
+                    continue
                 if sii_code in [14, 15]:
                     if totales['TasaIVA'] == 0:
-                        totales['TasaIVA'] = round(t.tax_line_id.amount, 2)
+                        amount = t.tax_line_id.amount
+                        totales['TasaIVA'] = round(amount if amount > 0 else (amount * -1), 2)
                     totales['MntIVA'] += balance
                     if t.tax_repartition_line_id.credec:
                         totales['CredEC'] += balance
@@ -1608,11 +1478,6 @@ class AccountMove(models.Model):
                         totales['MntRet'] += balance
                 elif sii_code:
                     totales['OtrosImp'] += balance
-                for tl in t.tax_ids:
-                    if tl.sii_code in [14, 15]:
-                        totales['MntNeto'] += balance
-                    if tl.sii_code in [17]:
-                        totales['MntBase'] += balance  # @TODO Buscar forma de calcular la base para faenamiento
         if totales['MntIVA'] == 0 and totales['MntExe'] > 0 and not \
                 self._es_exento() and self.document_class_id.sii_code not in [
                                                                 60, 61, 55, 56]:
@@ -1646,8 +1511,7 @@ class AccountMove(models.Model):
             totales['MntIVA'] += val_com_iva
         totales['MntTotal'] = totales['MntNeto'] + totales['MntExe'] + \
             totales['MntIVA'] + totales['OtrosImp'] - totales['CredEC'] \
-            - totales['MntRet']  - val_com_neto \
-            - val_com_exe - val_com_iva
+            - totales['MntRet'] - val_com_neto - val_com_exe - val_com_iva
         if totales['MontoNF']:
             if self.es_boleta():
                 Totales['TotalPeriodo'] = totales['MntTotal'] + totales['MontoNF']
@@ -1709,9 +1573,11 @@ class AccountMove(models.Model):
         product = True
         MntExe = 0
         MontoNF = 0
+        MntNeto = 0
         currency_base = self.currency_base()
         currency_id = self.currency_target()
         taxInclude = False
+        es_compra = False
         #if (
         #    self.env["account.move.line"]
         #    .with_context(lang="es_CL")
@@ -1740,6 +1606,7 @@ class AccountMove(models.Model):
                         "VlrCodigo": line.product_id.barcode
                     })
             details = line.get_tax_detail(desglose)
+            es_compra = details['es_compra']
             if len(detalle) > 0 and not desglose and details['desglose']:
                 """ Fuerzo desglose para todo el contexto """
                 return self.with_context(force_desglose=True)._detalle()
@@ -1781,9 +1648,9 @@ class AccountMove(models.Model):
                     raise UserError("Cantidad no puede ser menor que 0")
                 uom_name = line.product_uom_id.with_context(
                         exportacion=self.document_class_id.es_exportacion()
-                    ).name_get()
+                    ).display_name
                 if uom_name:
-                    lines["UnmdItem"] = uom_name[0][1][:4]
+                    lines["UnmdItem"] = uom_name
                 if line.product_id:
                     price_unit = details['price_unit']
                     lines["PrcItem"] = round(price_unit, 6)
@@ -1798,6 +1665,8 @@ class AccountMove(models.Model):
                         lines["OtrMnda"]["Moneda"] = self._acortar_str(currency_id.name, 3)
                         lines["OtrMnda"]["FctConv"] = round(currency_id.rate, 4)
                 MontoItem = line.price_subtotal
+                if details['TasaIVA']:
+                    MntNeto += MontoItem
                 if taxInclude:
                     MontoItem = line.price_total
                 if line.discount > 0:
@@ -1864,11 +1733,13 @@ class AccountMove(models.Model):
                     'IndExe': "2" if MontoItem > 0 else "6"
                 })
         return {
-            "Detalle": detalle,
+            "MntNeto": MntNeto,
             "MntExe": MntExe,
             "product": product,
             "tax_include": taxInclude,
             "MontoNF": MontoNF,
+            "Detalle": detalle,
+            "es_compra": es_compra,
         }
 
     def _gdr(self):
@@ -2171,7 +2042,8 @@ class AccountMove(models.Model):
     def get_dte_claim(self):
         tipo_dte = self.document_class_id.sii_code
         datos = self._get_datos_empresa(self.company_id)
-        rut_emisor = self.company_id.partner_id.rut()
+        company = self.company_id.parent_id or self.company_id
+        rut_emisor = company.partner_id.rut()
         if self.move_type in ["in_invoice", "in_refund"]:
             partner_id = self.commercial_partner_id or self.partner_id.commercial_partner_id
             rut_emisor = partner_id.rut()
@@ -2235,7 +2107,7 @@ class AccountMove(models.Model):
             return
         body = "XML de Intercambio DTE: %s" % (self.name)
         subject = "XML de Intercambio DTE: %s" % (self.name)
-        dte_email_id = self.company_id.dte_email_id or self.env.user.company_id.dte_email_id
+        dte_email_id = self.company_id.parent_id.dte_email_id or self.company_id.dte_email_id or self.env.user.company_id.parent_id.dte_email_id or self.env.user.company_id.dte_email_id
         dte_receptors = commercial_partner_id.child_ids + commercial_partner_id
         email_to = commercial_partner_id.dte_email + "," if commercial_partner_id.dte_email else  ""
         for dte_email in dte_receptors:
@@ -2316,11 +2188,12 @@ class AccountMove(models.Model):
             w += 1
             h += 1
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
-        d.text((50, 30), "R.U.T.: %s" % self.company_id.document_number, fill=(0, 0, 0), font=font)
+        company = self.company_id.parent_id or self.company_id
+        d.text((50, 30), "R.U.T.: %s" % company.document_number, fill=(0, 0, 0), font=font)
         d.text((50, 90), self.document_class_id.name, fill=(0, 0, 0), font=font)
         d.text((220, 150), "N° %s" % self.sii_document_number, fill=(0, 0, 0), font=font)
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
-        d.text((200, 235), "SII %s" % self.company_id.sii_regional_office_id.name, fill=(0, 0, 0), font=font)
+        d.text((200, 235), "SII %s" % company.sii_regional_office_id.name, fill=(0, 0, 0), font=font)
 
         buffered = BytesIO()
         img.save(buffered, format="PNG")

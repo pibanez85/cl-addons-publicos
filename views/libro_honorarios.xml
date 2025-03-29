@@ -22,7 +22,6 @@
                     <button
                         type="object"
                         name="validar_libro"
-                        states="draft"
                         string="Validate"
                         class="oe_highlight"
                         groups="base.group_user"

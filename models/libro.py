@@ -556,7 +556,6 @@ class Boletas(models.Model):
         string="Moneda",
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
-        track_visibility="always",
     )
     tipo_boleta = fields.Many2one(
         "sii.document_class",
@@ -606,6 +605,5 @@ class ImpuestosLibro(models.Model):
         string="Moneda",
         default=lambda self: self.env.user.company_id.currency_id,
         required=True,
-        track_visibility="always",
     )
     book_id = fields.Many2one("account.move.book", string="Libro")

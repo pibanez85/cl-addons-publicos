@@ -80,6 +80,16 @@ class ResPartner(models.Model):
             rut = str(int(d[0])) + "-" + d[1]
         return rut
 
+    def _address_fields(self):
+        vals = super()._address_fields()
+        vals.append('city_id')
+        return vals
+
+    def _prepare_display_address(self, without_company=False):
+        address_format, args = super()._prepare_display_address(without_company=without_company)
+        args['comuna_name'] = self.city_id.name or ''
+        return address_format, args
+
     def write(self, vals):
         result = super(ResPartner, self).write(vals)
         if not vals.get("sync", False):
@@ -231,6 +241,14 @@ class ResPartner(models.Model):
         except IndexError:
             return False
 
+    @api.onchange('vat', 'document_number')
+    def restrict_vat(self):
+        if self._origin.vat != self.vat and self.env['account.move'].search([
+            ('commercial_partner_id', '=', self.id),
+            ('sii_xml_dte', '!=', False),
+        ]):
+            raise UserError("No se puede editar un RUT de este partner ya que tiene DTE emitidos. Por favor crear otra ficha de partner para este RUT")
+
     def _process_data(self, data=None):
         if data is None:
             data = {}
@@ -277,7 +295,7 @@ class ResPartner(models.Model):
             message = ""
             title = "Advertencia"
             if resp.status != 200:
-                _logger.warning("Error en conexión al sincronizar partners %s" % resp.data)
+                _logger.info("Error en conexión al sincronizar partners %s" % resp.data)
                 title = "Error en conexión al sincronizar partners"
                 if resp.status == 403:
                     data = json.loads(resp.data.decode("ISO-8859-1"))
@@ -293,7 +311,7 @@ class ResPartner(models.Model):
                      message = "Respuesta inesperada o vacía desde la api: %s " % str(resp.data)
 
             if message:
-                _logger.warning(message)
+                _logger.info(message, exc_info=True)
                 """self.env["bus.bus"].sendone(
                     (self._cr.dbname, "res.partner", self.env.user.partner_id.id),
                     {
@@ -344,7 +362,7 @@ class ResPartner(models.Model):
             message = ""
             title = "Advertencia"
             if resp.status != 200:
-                _logger.warning("Error en conexión al obtener partners %s" % resp.data)
+                _logger.info("Error en conexión al obtener partners %s" % resp.data)
                 title = "Error en conexión al obtener partners"
                 process_data = False
                 if resp.status == 403:
@@ -356,6 +374,8 @@ class ResPartner(models.Model):
                 data = json.loads(resp.data.decode("ISO-8859-1"))
                 message = data.get('message')
             if message:
+                _logger.info(resp.data, exc_info=True)
+                """
                 self.env["bus.bus"].sendone(
                     (self._cr.dbname, "res.partner", self.env.user.partner_id.id),
                     {
@@ -364,7 +384,7 @@ class ResPartner(models.Model):
                         "url": "res_config",
                         "type": "dte_notif",
                     },
-                )
+                )"""
             if not process_data:
                 return data
             if not data:
@@ -372,7 +392,7 @@ class ResPartner(models.Model):
                 return
             self._process_data(data)
         except:
-            _logger.error("Error en get remote partner", exc_info=True)
+            _logger.info("Error en get remote partner", exc_info=True)
 
     @api.onchange("name")
     def fill_partner(self):
@@ -447,7 +467,7 @@ class ResPartner(models.Model):
                 message = ""
                 title = "Advertencia"
                 if resp.status != 200:
-                    _logger.warning("Error en conexión al consultar partners %s" % resp.data)
+                    _logger.info("Error en conexión al consultar partners %s" % resp.data)
                     title = "Error en conexión al consultar partners"
                     if resp.status == 403:
                         data = json.loads(resp.data.decode("ISO-8859-1"))
@@ -469,6 +489,8 @@ class ResPartner(models.Model):
                             r._process_data(result)
 
                 if message:
+                    _logger.info(message, exc_info=True)
+                    """
                     self.env["bus.bus"].sendone(
                         (self._cr.dbname, "res.partner", self.env.user.partner_id.id),
                         {
@@ -478,5 +500,6 @@ class ResPartner(models.Model):
                             "type": "dte_notif",
                         },
                     )
+                    """
             except:
-                _logger.error("Error en need_update", exc_info=True)
+                _logger.info("Error en need_update", exc_info=True)

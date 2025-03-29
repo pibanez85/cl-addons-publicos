@@ -180,17 +180,6 @@ class SIIResumenBoletaVoucher(models.Model):
 
     )
     sii_result = fields.Selection(
-        [
-            ('draft', 'Borrador'),
-            ('NoEnviado', 'No Enviado'),
-            ('Enviado', 'Enviado'),
-            ('Aceptado', 'Aceptado'),
-            ('Rechazado', 'Rechazado'),
-            ('Reparo', 'Reparo'),
-            ('Proceso', 'Proceso'),
-            ('Reenviar', 'Reenviar'),
-            ('Anulado', 'Anulado')
-        ],
         related="state",
     )
     sequence_id = fields.Many2one(

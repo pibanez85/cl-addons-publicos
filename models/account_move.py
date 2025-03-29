@@ -1514,9 +1514,9 @@ class AccountMove(models.Model):
             - totales['MntRet'] - val_com_neto - val_com_exe - val_com_iva
         if totales['MontoNF']:
             if self.es_boleta():
-                Totales['TotalPeriodo'] = totales['MntTotal'] + totales['MontoNF']
+                totales['TotalPeriodo'] = totales['MntTotal'] + totales['MontoNF']
             else:
-                Totales['MontoPeriodo'] = totales['MntTotal'] + totales['MontoNF']
+                totales['MontoPeriodo'] = totales['MntTotal'] + totales['MontoNF']
         if not self.document_class_id.es_exportacion():
             totales['VlrPagar'] = totales['MntTotal']
         return totales

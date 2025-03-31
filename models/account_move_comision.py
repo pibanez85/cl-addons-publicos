@@ -45,7 +45,7 @@ class AccountMoveComision(models.Model):
         string='Account',
         required=True,
         check_company=True,
-        domain="[('deprecated', '=', False), ('company_id', '=', company_id), ('is_off_balance', '=', False)]",
+        domain="[('deprecated', '=', False), ('account_type', '!=', 'off_balance')]",
         default=lambda self: self.move_id.journal_id.default_comision_account_id
     )
     company_id = fields.Many2one(

@@ -172,8 +172,8 @@
                     </field>
                 </xpath>
                 <xpath expr="//field[@name='line_ids']/tree/field[@name='account_type']" position="before">
-                    <field name="is_gd_line" invisible="True"/>
-                    <field name="is_gr_line" invisible="True"/>
+                    <field name="is_gd_line" column_invisible="True"/>
+                    <field name="is_gr_line" column_invisible="True"/>
                 </xpath>
                 <page id="other_tab" position="after">
                   <page id="referencias" string="Referencias" invisible="move_type not in ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']">
@@ -206,13 +206,15 @@
                             <tree editable="top/bottom">
                               <field name="sequence" widget="handle" />
                               <field name="name" />
-                              <field name="currency_id" invisible="True" />
-                              <field name="tipo_movimiento" required="True"/>
+                              <field name="currency_id" column_invisible="True"/>
+                              <field name="tipo_movimiento" required="1"/>
                               <field name="tasa_comision" />
                               <field name="valor_neto_comision" />
                               <field name="valor_exento_comision" />
                               <field name="valor_iva_comision" />
-                              <field name="move_id" invisible="True" />
+                              <field name="move_id" column_invisible="True"/>
+                              <field name="company_id" column_invisible="True"/>
+                              <field name="account_id" />
                             </tree>
                           </field>
                       </group>

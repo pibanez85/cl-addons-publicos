@@ -20,7 +20,7 @@ class masive_send_dte_wizard(models.TransientModel):
 
     numero_atencion = fields.Char(string="Número de atención")
     set_pruebas = fields.Boolean(string="Es set de pruebas",
-                              default=lambda self: self.env.user.company_id.dte_service_provider=='SIICERT')
+                              default=lambda self: self.env.company.dte_service_provider=='SIICERT')
 
     
     def confirm(self):

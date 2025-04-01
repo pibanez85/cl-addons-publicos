@@ -174,7 +174,7 @@ class APICAF(models.TransientModel):
     company_id = fields.Many2one(
         "res.company",
         string="Compañía",
-        default=lambda self: self.env.user.company_id,
+        default=lambda self: self.env.company,
     )
     firma = fields.Many2one("sii.firma", string="Firma Electrónica")
     id_peticion = fields.Integer(string="ID Petición", default=0,)

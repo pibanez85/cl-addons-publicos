@@ -46,7 +46,7 @@ class SIIXMLEnvio(models.Model):
         "res.company",
         string="Compañia",
         required=True,
-        default=lambda self: self.env.user.company_id.id,
+        default=lambda self: self.env.company.id,
         readonly=True,
     )
     sii_xml_response = fields.Text(

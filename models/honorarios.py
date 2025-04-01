@@ -38,7 +38,7 @@ class Honorarios(models.Model):
         "res.company",
         string="Compañía",
         required=True,
-        default=lambda self: self.env.user.company_id.id,
+        default=lambda self: self.env.company.id,
         readonly=True,
 
     )
@@ -100,7 +100,7 @@ class Honorarios(models.Model):
             [5,],
         ]
         for _key, i in imp.items():
-            i["currency_id"] = self.env.user.company_id.currency_id.id
+            i["currency_id"] = self.env.company.currency_id.id
             lines.append([0, 0, i])
         self.impuestos = lines
 
@@ -124,7 +124,7 @@ class ImpuestosLibro(models.Model):
     currency_id = fields.Many2one(
         "res.currency",
         string="Moneda",
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
         required=True,
     )
     book_id = fields.Many2one("account.move.book.honorarios", string="Libro")

@@ -151,7 +151,7 @@ class DTEClaim(models.Model):
         }
         resp = fe.validacion_comercial(datos)
         att = self._create_attachment(resp["respuesta_xml"], resp["nombre_xml"], doc.id, tipo)
-        dte_email_id = doc.company_id.dte_email_id or self.env.user.company_id.dte_email_id
+        dte_email_id = doc.company_id.dte_email_id or self.env.company.dte_email_id
         values = {
             "res_id": doc.id,
             "email_from": dte_email_id.display_name,
@@ -208,7 +208,7 @@ class DTEClaim(models.Model):
         resp = fe.validacion_comercial(datos)
         doc.sii_message = resp["respuesta_xml"]
         att = self._create_attachment(resp["respuesta_xml"], resp["nombre_xml"], doc.id, tipo)
-        dte_email_id = doc.company_id.dte_email_id or self.env.user.company_id.dte_email_id
+        dte_email_id = doc.company_id.dte_email_id or self.env.company.dte_email_id
         values = {
             "res_id": doc.id,
             "email_from": dte_email_id.display_name,
@@ -264,7 +264,7 @@ class DTEClaim(models.Model):
             resp = fe.recepcion_mercaderias(datos)
             doc.sii_message = resp["respuesta_xml"]
             att = self._create_attachment(resp["respuesta_xml"], resp["nombre_xml"], doc.id, tipo)
-            dte_email_id = doc.company_id.dte_email_id or self.env.user.company_id.dte_email_id
+            dte_email_id = doc.company_id.dte_email_id or self.env.company.dte_email_id
             values = {
                 "res_id": doc.id,
                 "email_from": dte_email_id.display_name,

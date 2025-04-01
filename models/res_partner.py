@@ -34,7 +34,7 @@ class ResPartner(models.Model):
 
     @api.model
     def _get_default_country(self):
-        return self.env.user.company_id.country_id.id or self.env.user.partner_id.country_id.id
+        return self.env.company.country_id.id or self.env.user.partner_id.country_id.id
 
     @api.depends("child_ids")
     def _compute_dte_email(self):

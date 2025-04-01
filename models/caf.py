@@ -147,7 +147,7 @@ has been exhausted.""",
     )
     rut_n = fields.Char(string="RUT", compute='_load_data', store=True)
     company_id = fields.Many2one(
-        "res.company", string="Company", required=False, default=lambda self: self.env.user.company_id,
+        "res.company", string="Company", required=False, default=lambda self: self.env.company,
     )
     sequence_id = fields.Many2one("ir.sequence", string="Sequence",
         domain="[('is_dte', '=', True)]")

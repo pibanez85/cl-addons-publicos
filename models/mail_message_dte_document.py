@@ -50,7 +50,7 @@ class ProcessMailsDocument(models.Model):
     monto_no_facturable = fields.Monetary(string="Monto no Facturable", readonly=True,)
     currency_id = fields.Many2one(
         "res.currency", string="Moneda", readonly=True,
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
     )
     invoice_line_ids = fields.One2many("mail.message.dte.document.line", "document_id", string="Líneas del Documento",)
     global_descuentos_recargos = fields.One2many("mail.message.dte.document.gdr", "document_id", string="Líneas GDR",)
@@ -372,7 +372,7 @@ class ProcessMailsDocumentLines(models.Model):
     price_subtotal = fields.Monetary(string="Total", readonly=True,)
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure', readonly=True)
     currency_id = fields.Many2one(
-        "res.currency", string="Moneda", readonly=True, default=lambda self: self.env.user.company_id.currency_id,
+        "res.currency", string="Moneda", readonly=True, default=lambda self: self.env.company.currency_id,
     )
     ind_exe = fields.Selection([
             ('1', 'No afecto o exento de IVA (10)'),

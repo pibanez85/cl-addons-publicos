@@ -10,7 +10,7 @@ class SIISucursal(models.Model):
     name = fields.Char(string="Nombre de la Sucursal", required=True)
     sii_code = fields.Char(string="Código SII de la Sucursal",)
     company_id = fields.Many2one(
-        "res.company", "Company", required=True, default=lambda self: self.env.user.company_id.id,
+        "res.company", "Company", required=True, default=lambda self: self.env.company.id,
     )
     partner_id = fields.Many2one(
         'res.partner',

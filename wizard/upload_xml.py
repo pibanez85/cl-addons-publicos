@@ -185,7 +185,7 @@ class UploadXMLWizard(models.TransientModel):
         if self.dte_id:
             for r in respuesta:
                 att = self._create_attachment(r["respuesta_xml"], r["nombre_xml"], self.dte_id.id, "mail.message.dte")
-                dte_email_id = self.dte_id.company_id.dte_email_id or self.env.user.company_id.dte_email_id
+                dte_email_id = self.dte_id.company_id.dte_email_id or self.env.company.dte_email_id
                 email_to = self.sudo().dte_id.mail_id.email_from
                 if envio is not None:
                     RUT = envio.find("SetDTE/Caratula/RutEmisor").text
@@ -342,7 +342,7 @@ class UploadXMLWizard(models.TransientModel):
         uom = 'UnmdItem'
         price = float(line.find("PrcItem").text if line.find("PrcItem") is not None else line.find("MontoItem").text)
         if price_included:
-            price = imp.compute_all(price, self.env.user.company_id.currency_id, 1)["total_excluded"]
+            price = imp.compute_all(price, self.env.company.currency_id, 1)["total_excluded"]
         values = {
             "sale_ok": self.type == "ventas",
             "name": line.find("NmbItem").text,
@@ -429,7 +429,7 @@ class UploadXMLWizard(models.TransientModel):
                 line.find("PrcItem").text if line.find("PrcItem") is not None else line.find("MontoItem").text
             )
             if price_included:
-                price = product_id.supplier_taxes_id.compute_all(price, self.env.user.company_id.currency_id, 1)[
+                price = product_id.supplier_taxes_id.compute_all(price, self.env.company.currency_id, 1)[
                     "total_excluded"
                 ]
             supplier_info = {
@@ -552,8 +552,8 @@ class UploadXMLWizard(models.TransientModel):
                         price += base / (1 + (t.amount / 100.0))
                         price_subtotal += base_subtotal / (1 + (t.amount / 100.0))
             elif not price_included and tax_include:
-                price = tax_ids.compute_all(price, self.env.user.company_id.currency_id, 1)["total_included"]
-                price_subtotal = tax_ids.compute_all(price_subtotal, self.env.user.company_id.currency_id, 1)[
+                price = tax_ids.compute_all(price, self.env.company.currency_id, 1)["total_included"]
+                price_subtotal = tax_ids.compute_all(price_subtotal, self.env.company.currency_id, 1)[
                     "total_included"
                 ]
         data.update(

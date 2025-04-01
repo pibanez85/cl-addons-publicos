@@ -134,7 +134,7 @@ class Libro(models.Model):
     currency_id = fields.Many2one(
         "res.currency",
         string="Moneda",
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
         required=True,
     )
     total_afecto = fields.Monetary(string="Total Afecto", readonly=True, compute="set_resumen", store=True,)
@@ -155,7 +155,7 @@ class Libro(models.Model):
         "res.company",
         string="Compañía",
         required=True,
-        default=lambda self: self.env.user.company_id.id,
+        default=lambda self: self.env.company.id,
         readonly=True,
 
     )
@@ -267,7 +267,7 @@ class Libro(models.Model):
                         )
                     )
                     line = {
-                        "currency_id": self.env.user.company_id.currency_id,
+                        "currency_id": self.env.company.currency_id,
                         "tipo_boleta": tpo_doc.id,
                         "cantidad_boletas": det["cantidad"],
                         "neto": det["neto"] or det["monto_exento"],
@@ -307,7 +307,7 @@ class Libro(models.Model):
                             )
                             .id,
                             "credit": monto_iva,
-                            "currency_id": self.env.user.company_id.currency_id.id,
+                            "currency_id": self.env.company.currency_id.id,
                         },
                     ],
                     [
@@ -324,7 +324,7 @@ class Libro(models.Model):
                             )
                             .id,
                             "credit": monto_exento,
-                            "currency_id": self.env.user.company_id.currency_id.id,
+                            "currency_id": self.env.company.currency_id.id,
                         },
                     ],
                 ]
@@ -377,7 +377,7 @@ class Libro(models.Model):
                 [5,],
             ]
             for _key, i in imp.items():
-                i["currency_id"] = self.env.user.company_id.currency_id.id
+                i["currency_id"] = self.env.company.currency_id.id
                 lines.append([0, 0, i])
             self.impuestos = lines
 
@@ -554,7 +554,7 @@ class Boletas(models.Model):
     currency_id = fields.Many2one(
         "res.currency",
         string="Moneda",
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
         required=True,
     )
     tipo_boleta = fields.Many2one(
@@ -603,7 +603,7 @@ class ImpuestosLibro(models.Model):
     currency_id = fields.Many2one(
         "res.currency",
         string="Moneda",
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
         required=True,
     )
     book_id = fields.Many2one("account.move.book", string="Libro")

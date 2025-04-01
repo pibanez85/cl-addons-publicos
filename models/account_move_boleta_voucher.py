@@ -161,7 +161,7 @@ class SIIResumenBoletaVoucher(models.Model):
     company_id = fields.Many2one(
         'res.company',
         required=True,
-        default=lambda self: self.env.user.company_id.id,
+        default=lambda self: self.env.company.id,
     	readonly=True,
 
     )
@@ -174,7 +174,7 @@ class SIIResumenBoletaVoucher(models.Model):
     currency_id = fields.Many2one(
         'res.currency',
         string='Moneda',
-        default=lambda self: self.env.user.company_id.currency_id,
+        default=lambda self: self.env.company.currency_id,
         required=True,
     	readonly=True,
 

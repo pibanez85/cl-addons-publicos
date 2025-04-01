@@ -89,7 +89,7 @@ class SignatureCert(models.Model):
     priv_key = fields.Text(string="Private Key", readonly=True)
     user_ids = fields.Many2many("res.users", string="Authorized Users", default=lambda self: [self.env.uid],)
     company_ids = fields.Many2many(
-        "res.company", string="Authorized Companies", default=lambda self: [self.env.user.company_id.id], required=True,
+        "res.company", string="Authorized Companies", default=lambda self: [self.env.company.id], required=True,
     )
     priority = fields.Integer(string="Priority", default=1,)
     active = fields.Boolean(string="Active", default=True,)

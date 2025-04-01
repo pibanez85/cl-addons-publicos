@@ -31,7 +31,7 @@ class AccountJournalSiiDocumentClass(models.Model):
     )
     journal_id = fields.Many2one("account.journal", string="Journal", required=True,)
     sequence = fields.Integer(string="Sequence")
-    company_id = fields.Many2one("res.company", default=lambda self: self.env.user.company_id,)
+    company_id = fields.Many2one("res.company", default=lambda self: self.env.company,)
     qty_available = fields.Integer(string="Quantity Available", related="sequence_id.qty_available")
     is_dte = fields.Boolean(string="Is DTE", related="sii_document_class_id.dte")
 

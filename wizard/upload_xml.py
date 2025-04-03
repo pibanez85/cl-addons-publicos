@@ -286,9 +286,7 @@ class UploadXMLWizard(models.TransientModel):
 
     def _buscar_impuesto(self, type="purchase", name="Impuesto", amount=0,
                         sii_code=0, ind_exe=False, company_id=False, refund=False):
-        target = 'invoice_tax_id.'
-        if refund:
-            target = 'refund_tax_id.'
+        target = 'tax_id.'
         query = [
             (target + "amount", "=", amount),
             (target + "sii_code", "=", sii_code),

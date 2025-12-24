@@ -4,6 +4,7 @@ from odoo.tools.translate import _
 
 class AccountMoveComision(models.Model):
     _name = 'account.move.comision'
+    _description = 'Account Move Commission'
 
     name = fields.Char(string="Glosa")
     move_id = fields.Many2one(

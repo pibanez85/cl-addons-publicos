@@ -48,6 +48,25 @@ class AccountJournal(models.Model):
         if self.type == "sale" or self.type == "purchase":
             self.use_documents = True
 
+    @api.constrains('use_documents', 'type')
+    def _check_use_documents_type(self):
+        for journal in self:
+            if journal.use_documents and journal.type not in ('sale', 'purchase'):
+                raise UserError("El campo 'Use Documents' solo puede estar activo en diarios de tipo Venta o Compra.")
+
+    @api.onchange('type')
+    def _onchange_type_use_documents(self):
+        if self.type not in ('sale', 'purchase') and self.use_documents:
+            self.use_documents = False
+            if self.journal_document_class_ids:
+                raise UserError('Debe quitar los documentos de la pestaña "Documentos DTE"')
+
+    @api.onchange('use_documents')
+    def _onchange_use_documents(self):
+        if self.use_documents and self.type not in ('sale', 'purchase'):
+            self.use_documents = False
+            raise UserError("El campo 'Use Documents' solo puede estar activo en diarios de tipo Venta o Compra.")
+
     def name_get(self):
         res = []
         for journal in self:

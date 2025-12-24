@@ -4,6 +4,7 @@ from odoo import models
 class LibroXlsx(models.AbstractModel):
     _name = "report.l10n_cl_fe.libro_cv.xlsx"
     _inherit = "report.l10n_cl_fe.abstract"
+    _description = "Chilean Electronic Invoice Book CV XLSX Report"
 
     def generate_xlsx_report(self, workbook, data, libro):
         for obj in libro:

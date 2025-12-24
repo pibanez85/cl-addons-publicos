@@ -489,16 +489,19 @@ class AccountMove(models.Model):
 
     def _set_next_sequence(self):
         self.ensure_one()
-        if self.use_documents:
+        if self.use_documents and not self.document_class_id.es_voucher():
             if not (self.journal_id.restore_mode or self._context.get("restore_mode", False)):
                 self.sii_document_number = self.journal_document_class_id.sequence_id.next_by_id()
             self[self._sequence_field] = '%s%s' % (self.document_class_id.doc_code_prefix, self.sii_document_number)
         else:
+            self.use_documents = False
             super(AccountMove, self)._set_next_sequence()
 
     def _post(self, soft=True):
         to_post = super(AccountMove, self)._post(soft=soft)
         for inv in to_post:
+            if inv.document_class_id and inv.document_class_id.es_voucher():
+                inv.use_documents = False
             if not inv.is_invoice() or not inv.journal_document_class_id or not inv.use_documents:
                 continue
             if not inv.sii_document_number:

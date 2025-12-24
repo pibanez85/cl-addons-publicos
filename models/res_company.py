@@ -75,16 +75,16 @@ stamp to be legally valid.""",
     activity_description = fields.Many2one(
         string="Glosa Giro",
         related="partner_id.activity_description",
-        relation="sii.activity.description",
+        comodel_name="sii.activity.description",
         readonly=False,
     )
-    city_id = fields.Many2one(related="partner_id.city_id", relation="res.city", string="City", readonly=False,)
+    city_id = fields.Many2one(related="partner_id.city_id", comodel_name="res.city", string="City (SII)", readonly=False,)
     document_number = fields.Char(
         related="partner_id.document_number", string="Document Number", readonly=False,
     )
     document_type_id = fields.Many2one(
         related="partner_id.document_type_id",
-        relation="sii.document_type",
+        comodel_name="sii.document_type",
         string="Document type",
         default=lambda self: self._get_default_doc_type(),
         readonly=False,

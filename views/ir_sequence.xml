@@ -53,6 +53,10 @@
                           class="text-muted"
                       >Cantidad a solicitar por CAF cuando se llegue al mínimo de la secuencia</div>
                   <group>
+                      <field name="caf_bajo_pedido" invisible="not is_dte" />
+                  </group>
+                      <div class="text-muted">Solicita automáticamente un CAF cuando se requiere un folio y no hay disponibles</div>
+                  <group>
                       <field name="folios_sin_usar" readonly="True"/>
                   </group>
                   <field

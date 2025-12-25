@@ -67,6 +67,8 @@ class IRSequence(models.Model):
     nivel_minimo = fields.Integer(string="Nivel Mínimo de Folios", default=5,)  # @TODO hacerlo configurable
     autoreponer_caf = fields.Boolean(string="Reposición Automática de CAF", default=False)
     autoreponer_cantidad = fields.Integer(string="Cantidad de Folios a Reponer", default=2)
+    caf_bajo_pedido = fields.Boolean(string="CAF Bajo Pedido", default=False,
+        help="Solicita automáticamente un CAF cuando se requiere un folio y no hay disponibles")
     folios_sin_usar = fields.Integer(string="Folios sin usar", compute="set_folios_sin_usar", store=True)
 
     @api.model
@@ -97,7 +99,7 @@ class IRSequence(models.Model):
     def _auto_set_is_dte(self):
         self.is_dte = self.sii_document_class_id.dte
 
-    def solicitar_caf(self):
+    def solicitar_caf(self, cantidad=0):
         if self.qty_available == self.nivel_minimo:
             self.inspeccionar_folios_sin_usar()
             if self.qty_available >= self.nivel_minimo:
@@ -111,7 +113,8 @@ class IRSequence(models.Model):
         if not wiz_caf.id_peticion:
             alert_msg = "Problema al conectar con apicaf.cl"
         else:
-            cantidad = self.autoreponer_cantidad
+            if not cantidad:
+                cantidad = self.autoreponer_cantidad
             if wiz_caf.api_max_autor > 0 and cantidad > wiz_caf.api_max_autor:
                 cantidad = wiz_caf.api_max_autor
             elif wiz_caf.api_max_autor == 0:
@@ -225,12 +228,16 @@ suba un CAF o solicite uno en el SII."""
         if self.is_dte:
             folio = self.get_folio()
             if folio == 0:
-                raise UserError(
-                    """No hay más folios disponibles para el documento %s. \
-Por favor solicite y suba un CAF en el portal del SII o Utilice la opción \
-obtener folios en la secuencia (usando apicaf.cl)."""
-                    % (self.name)
-                )
+                if self.caf_bajo_pedido:
+                    self.solicitar_caf(cantidad=1)
+                    folio = self.get_folio()
+                if folio == 0:
+                    raise UserError(
+                        _("No hay más folios disponibles para el documento %s. "
+                        "Por favor solicite y suba un CAF en el portal del SII o Utilice la opción "
+                        "obtener folios en la secuencia (usando apicaf.cl).")
+                        % (self.name)
+                    )
             return self.get_next_char(folio)
         return super(IRSequence, self)._next_do()
 

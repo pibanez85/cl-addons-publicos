@@ -1,7 +1,7 @@
 {
     "name": """Facturación Electrónica para Chile\
     """,
-    "version": "0.46.4",
+    "version": "0.47.0",
     'countries': ['cl'],
     'category': 'Accounting/Localizations/Account Charts',
     "author": "Daniel Santibáñez Polanco, Cooperativa OdooCoop",

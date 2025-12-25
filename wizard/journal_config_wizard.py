@@ -103,6 +103,7 @@ Include unusual taxes documents, as transfer invoice, and reissue
             "autoreponer_caf": journal.company_id.dte_service_provider == 'SII',
             "autoreponer_cantidad": 1 if document_class.sii_code in [56, 61, 111, 112] else 10,
             "nivel_minimo": 1 if document_class.sii_code in [56, 61, 111, 112] else 5,
+            "caf_bajo_pedido": document_class.sii_code in [56, 61, 111, 112],
             "is_dte": True,
         }
         return vals

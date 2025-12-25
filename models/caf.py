@@ -19,6 +19,7 @@ except ImportError:
 
 class CAF(models.Model):
     _name = "dte.caf"
+    _inherit = ['mail.thread']
     _description = "Archivo CAF"
 
     @api.onchange('start_nm', 'final_nm', 'folio_actual')
@@ -333,7 +334,7 @@ to work properly!"""
                 break
         if not linea:
             raise UserError(_("No se encontró una línea disponible para los folios especificados."))
-        line.selected = True
+        linea.selected = True
         wiz.write({
             'folio_ini': desde,
             'folio_fin': hasta,
@@ -389,7 +390,15 @@ to work properly!"""
                     _logger.info(
                         f"Folios anulados automáticamente desde {desde} hasta {hasta} para CAF {record.id}."
                     )
+                    record.message_post(
+                        body=_("Folios anulados automáticamente desde %s hasta %s.") % (desde, hasta),
+                        message_type='notification',
+                    )
                 except Exception as e:
                     _logger.error(
                         f"Error al anular folios desde {desde} hasta {hasta} para CAF {record.id}: {e}"
+                    )
+                    record.message_post(
+                        body=_("Error al anular folios desde %s hasta %s: %s") % (desde, hasta, str(e)),
+                        message_type='notification',
                     )

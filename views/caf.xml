@@ -58,7 +58,7 @@
                           <page string="Mantención">
                             <header>
                               <button name="inspeccionar_folios_sin_usar" type="object" string="Inspeccionar folios sin usar" invisible="state == 'draft'"/>
-                              <button name="inspeccionar_folios_sin_usar" type="object" string="Exprirar Folios" invisible="state == 'draft'"/>
+                              <button name="expirar_folios" type="object" string="Expirar Folios" invisible="state == 'draft'"/>
                               <button name="auto_anular" type="object" string="Anular Automáticamente" class="btn-primary" invisible="state != 'in_use'"/>
                             </header>
                             <sheet>

@@ -2,7 +2,7 @@
 # For copyright and license notices, see __odoo__.py file in module root
 # directory
 ##############################################################################
-from odoo import _, api, fields, models
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 

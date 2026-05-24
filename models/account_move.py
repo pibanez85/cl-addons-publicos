@@ -1,14 +1,12 @@
 import decimal
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 import pytz
-from six import string_types
 from collections import defaultdict
 from odoo import api, fields, models, tools, Command
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
-from odoo.tools.misc import formatLang, format_date, get_lang
-from odoo.tools import frozendict
+from odoo.tools.misc import formatLang
 from contextlib import ExitStack, contextmanager
 import re
 
@@ -17,7 +15,6 @@ _logger = logging.getLogger(__name__)
 
 try:
     from facturacion_electronica import facturacion_electronica as fe
-    from facturacion_electronica import clase_util as util
 except Exception as e:
     _logger.warning("Problema al cargar Facturación electrónica: %s" % str(e))
 try:

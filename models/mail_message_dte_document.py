@@ -3,7 +3,6 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools.safe_eval import safe_eval
 from odoo.tools.translate import _
 from base64 import b64encode
 import logging

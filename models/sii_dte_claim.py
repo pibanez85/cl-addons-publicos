@@ -1,7 +1,7 @@
 import base64
 import logging
 
-from odoo import api, fields, models
+from odoo import fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
 

@@ -2,20 +2,11 @@
 from odoo import fields, models, api
 from odoo.tools.translate import _
 from odoo.exceptions import UserError
-from datetime import datetime, timedelta
+from datetime import datetime
 import dateutil.relativedelta as relativedelta
-from odoo.tools import DEFAULT_SERVER_DATETIME_FORMAT as DTF
 import logging
 _logger = logging.getLogger(__name__)
 
-try:
-    from io import BytesIO
-except:
-    _logger.warning("no se ha cargado io")
-try:
-    from facturacion_electronica import facturacion_electronica as fe
-except Exception as e:
-    _logger.warning("Problema al cargar Facturación electrónica: %s" % str(e))
 try:
     import pdf417gen
 except ImportError:

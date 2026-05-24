@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, models, fields, Command, _
+from odoo import models, fields, _
 
 
 class AccountTaxRepartitionLine(models.Model):

@@ -1,16 +1,13 @@
 import logging
 import re
 from datetime import datetime, time
-from collections import defaultdict
 import dateutil.relativedelta as relativedelta
 import pytz
 from lxml import html
 
 from odoo import api, models, fields, _, Command
-from odoo.tools.misc import formatLang
 from .currency import float_round_custom
 from odoo.tools.float_utils import float_round as round
-from odoo.tools import frozendict
 from odoo.exceptions import UserError
 import math
 

@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 from odoo import _, SUPERUSER_ID, api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import mute_logger
 
 _logger = logging.getLogger(__name__)
 

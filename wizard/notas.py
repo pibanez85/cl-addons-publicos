@@ -1,8 +1,6 @@
 import logging
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
-from odoo.tools.safe_eval import safe_eval
 from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
@@ -132,7 +130,7 @@ class AccountMoveReversal(models.TransientModel):
             if self.refund_method == 'modify':
                 moves_vals_list = []
                 for move in moves.with_context(include_business_fields=True):
-                    moves_vals_list.append(move.copy_data({'date': self.date if self.date_mode == 'custom' else move.date})[0])
+                    moves_vals_list.append(move.copy_data({'date': self.date or move.date})[0])
                 new_moves = self.env['account.move'].create(moves_vals_list)
             moves_to_redirect |= new_moves
 

@@ -201,7 +201,8 @@
                             </field>
                         </page>
                         <page string="XML DTE">
-                            <field name="xml" />
+                            <field name="dte_xml" filename="name" invisible="not dte_xml" />
+                            <field name="xml" invisible="dte_xml" />
                         </page>
                         <page string="Registro de Reclamo">
                             <header>

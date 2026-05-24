@@ -24,5 +24,7 @@ class masive_send_dte_wizard(models.TransientModel):
 
     
     def confirm(self):
-        self.documentos.with_context(set_pruebas=self.set_pruebas)\
-            .do_dte_send_invoice(self.numero_atencion)
+        self.documentos.with_context(
+            set_pruebas=self.set_pruebas,
+            n_atencion=self.numero_atencion,
+        ).do_dte_send_now()

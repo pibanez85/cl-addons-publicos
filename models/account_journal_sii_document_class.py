@@ -44,16 +44,16 @@ class AccountJournalSiiDocumentClass(models.Model):
             raise UserError("Las guías no es pueden agregar por esta área")
 
     @api.model
-    def name_search(self, name, args=None, operator="ilike", limit=100):
-        args = args or []
+    def _name_search(self, name, domain=None, operator="ilike", limit=100, order=None):
+        domain = domain or []
         recs = self.browse()
         if name:
             recs = self.search(
-                ["|", ("sequence_id.name", "=", name), ("sii_document_class_id.name", "=", name)] + args, limit=limit
+                ["|", ("sequence_id.name", "=", name), ("sii_document_class_id.name", "=", name)] + domain, limit=limit
             )
         if not recs:
             recs = self.search(
-                ["|", ("sequence_id.name", operator, name), ("sii_document_class_id.name", operator, name)] + args,
+                ["|", ("sequence_id.name", operator, name), ("sii_document_class_id.name", operator, name)] + domain,
                 limit=limit,
             )
-        return recs.name_get()
+        return recs.ids

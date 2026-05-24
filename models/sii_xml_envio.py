@@ -1,9 +1,13 @@
+import json
 import logging
+from datetime import datetime, timedelta
+
+import psycopg2
 from lxml import etree
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
-import json
 
 _logger = logging.getLogger(__name__)
 
@@ -11,6 +15,9 @@ try:
     from facturacion_electronica import facturacion_electronica as fe
 except Exception as e:
     _logger.warning("no se ha cargado FE %s" % str(e))
+
+
+_SII_SEND_RESULT_CACHE = {}
 
 
 status_dte = [
@@ -27,6 +34,7 @@ status_dte = [
 
 class SIIXMLEnvio(models.Model):
     _name = "sii.xml.envio"
+    _inherit = ['mail.thread']
     _description = "XML de envío DTE"
 
     name = fields.Char(string="Nombre de envío", required=True, readonly=True,)
@@ -60,11 +68,6 @@ class SIIXMLEnvio(models.Model):
         copy=False,
         readonly=False,
     )
-    user_id = fields.Many2one(
-        "res.users",
-        string="Usuario",
-        readonly=True,
-    )
     move_ids = fields.One2many(
         "account.move", "sii_xml_request", string="Facturas", readonly=True,
     )
@@ -75,14 +78,25 @@ class SIIXMLEnvio(models.Model):
     boleta_voucher_ids = fields.One2many(
         "account.move.boleta_voucher", "sii_xml_request", string="NC Vouchers Boletas", readonly=True,
     )
+    book_ids = fields.One2many(
+        "account.move.book", "sii_xml_request", string="Libros", readonly=True,
+    )
+    consumo_folios_ids = fields.One2many(
+        "account.move.consumo_folios", "sii_xml_request", string="Consumo Folios", readonly=True,
+    )
+    firma_id = fields.Many2one(
+        "sii.firma",
+        string="Firma",
+        ondelete="restrict",
+        readonly=True,
+        help="Firma electrónica que se usó para timbrar este envío",
+    )
 
 
-    def name_get(self):
-        result = []
+    @api.depends('name', 'sii_send_ident')
+    def _compute_display_name(self):
         for r in self:
-            name = r.name + " Código Envío: %s" % r.sii_send_ident if r.sii_send_ident else r.name
-            result.append((r.id, name))
-        return result
+            r.display_name = "{} Código Envío: {}".format(r.name, r.sii_send_ident) if r.sii_send_ident else r.name
 
 
     def unlink(self):
@@ -91,28 +105,31 @@ class SIIXMLEnvio(models.Model):
                 raise UserError(_("You can not delete a valid document on SII"))
         return super(SIIXMLEnvio, self).unlink()
 
-    def _emisor(self):
+    def _emisor(self, company=None):
+        if not company:
+            company = self.company_id
+        if not company.dte_resolution_date:
+            raise UserError(
+                _("La empresa %s no tiene configurada la fecha de resolución SII") % company.name
+            )
         Emisor = {}
-        Emisor["RUTEmisor"] = self.company_id.partner_id.rut()
-        Emisor["RznSoc"] = self.company_id.name
-        Emisor["Modo"] = "produccion" if self.company_id.dte_service_provider == "SII" else "certificacion"
-        Emisor["NroResol"] = self.company_id.dte_resolution_number
-        Emisor["FchResol"] = self.company_id.dte_resolution_date.strftime("%Y-%m-%d")
+        Emisor["RUTEmisor"] = company.partner_id.rut()
+        Emisor["RznSoc"] = company.name
+        Emisor["Modo"] = "produccion" if company.dte_service_provider == "SII" else "certificacion"
+        Emisor["NroResol"] = company.dte_resolution_number
+        Emisor["FchResol"] = company.dte_resolution_date.strftime("%Y-%m-%d")
         Emisor["ValorIva"] = 19
         return Emisor
 
-    def _get_datos_empresa(self, company_id):
-        signature_id = self.env.user.get_digital_signature(company_id)
-        if not signature_id:
-            raise UserError(
-                _(
-                    """There are not a Signature Cert Available for this user, please upload your signature or tell to someelse."""
-                )
-            )
-        emisor = self._emisor()
+    def _get_datos_empresa(self, company):
+        if not self.firma_id:
+            raise UserError(_(
+                "No hay firma electrónica disponible para esta operación. "
+                "Debe asignarse antes de invocar _get_datos_empresa."
+            ))
         return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
+            "Emisor": self._emisor(company),
+            "firma_electronica": self.firma_id.parametros_firma(),
         }
 
     def get_doc(self):
@@ -120,16 +137,39 @@ class SIIXMLEnvio(models.Model):
             return r
         return self.move_ids
 
-    def es_api(self, set_pruebas=False):
+    def es_api(self):
         doc = self.get_doc()
         api = doc.document_class_id.es_boleta()
-        if set_pruebas and self._context.get("set_pruebas", False):
+        if self.env.context.get("set_pruebas", False):
             api = False
         return api
+
+    def _postpone_colas(self, delay_seconds):
+        delay_seconds = max(int(delay_seconds), 60)
+        next_time = datetime.now() + timedelta(seconds=delay_seconds)
+        colas = self.env['sii.cola_envio'].search([('envio_id', '=', self.id)])
+        if not colas:
+            return
+        colas.write({'date_time': next_time})
+        _logger.warning(
+            "SII pidió esperar %ss; posponiendo %d cola(s) hasta %s",
+            delay_seconds, len(colas), next_time,
+        )
 
     def send_xml(self):
         if self.sii_send_ident:
             _logger.warning("XML %s ya enviado" % self.name)
+            return
+        try:
+            self.env.cr.execute(
+                "SELECT sii_send_ident FROM sii_xml_envio WHERE id = %s FOR UPDATE NOWAIT",
+                (self.id,),
+            )
+            row = self.env.cr.fetchone()
+        except psycopg2.errors.LockNotAvailable:
+            _logger.warning("XML %s ya está siendo enviado por otra tx; se omite", self.name)
+            return
+        if row and row[0]:
             return
         datos = self._get_datos_empresa(self.company_id)
         api = self.es_api()
@@ -144,7 +184,23 @@ class SIIXMLEnvio(models.Model):
                 "sii_xml_response": res.get("sii_xml_response", ""),
             }
         )
-        self.set_states()
+        retry_after = res.get("retry_after")
+        if retry_after:
+            try:
+                delay = int(retry_after)
+            except (TypeError, ValueError):
+                delay = 60
+            self._postpone_colas(delay)
+        if not self.env.registry.in_test_mode():
+            self.env.cr.commit()
+        try:
+            with self.env.cr.savepoint():
+                self.set_states()
+        except Exception as e:
+            _logger.warning(
+                f"No se pudo actualizar estados de hijos tras envío {self.name} ({self.sii_send_ident}): {e}",
+                exc_info=True,
+            )
 
     def do_send_xml(self):
         self.send_xml()
@@ -158,9 +214,9 @@ class SIIXMLEnvio(models.Model):
             )
         return json.loads(self.sii_receipt)
 
-    def get_send_status(self, user_id=False):
+    def get_send_status(self):
         datos = self._get_datos_empresa(self.company_id)
-        api = self.es_api(True)
+        api = self.es_api()
         datos.update(
             {"codigo_envio": self.sii_send_ident, "api": api,}
         )
@@ -168,10 +224,17 @@ class SIIXMLEnvio(models.Model):
         self.write(
             {"state": res["status"], "sii_receipt": res.get("xml_resp", False),}
         )
+        retry_after = res.get("retry_after")
+        if retry_after:
+            try:
+                delay = int(retry_after)
+            except (TypeError, ValueError):
+                delay = 60
+            self._postpone_colas(delay)
         self.set_states()
 
     def ask_for(self):
-        self.get_send_status(self.user_id)
+        self.get_send_status()
 
     def solicitar_reenvio_email(self):
         datos = self._get_datos_empresa(self.company_id)
@@ -218,3 +281,302 @@ class SIIXMLEnvio(models.Model):
         self.set_childs(state, detalle_rep_rech)
         if self.sii_send_ident and state in ("EnProceso", "Aceptado") and 'Libro' not in self.xml_envio:
             self.xml_envio = ""
+
+    def get_all_documents(self):
+        """Retorna todos los documentos del envío independiente del modelo"""
+        return self.move_ids or self.boleta_voucher_ids or self.book_ids or self.consumo_folios_ids
+
+    def _sort_docs_for_envio(self, docs_list):
+        def is_post_doc(doc):
+            return (
+                (hasattr(doc, 'es_nc') and doc.es_nc())
+                or (hasattr(doc, 'es_nd') and doc.es_nd())
+            )
+        normales = [d for d in docs_list if not is_post_doc(d)]
+        post = [d for d in docs_list if is_post_doc(d)]
+        return normales + post
+
+    def _build_envio_dte_data(self, docs_list, RUTRecep="60803000-K"):
+        self.ensure_one()
+        if not docs_list:
+            return {}
+        docs_list = self._sort_docs_for_envio(list(docs_list))
+        company = docs_list[0].company_id
+        for doc in docs_list:
+            if doc.company_id != company:
+                raise UserError(_("Todos los documentos deben ser de la misma empresa"))
+        pendientes = self.env[docs_list[0]._name]
+        for doc in docs_list:
+            if (
+                self._context.get("set_pruebas", False)
+                or doc.sii_result == "Rechazado"
+                or not doc.sii_xml_dte
+            ):
+                pendientes |= doc
+        firma_ctx = {'firma_id': self.firma_id.id} if self.firma_id else {}
+        if pendientes:
+            pendientes.with_context(**firma_ctx)._timbrar_batch()
+        grupos = {}
+        batch = 0
+        for doc in docs_list:
+            batch += 1
+            if hasattr(doc, 'sii_batch_number'):
+                if not doc.sii_batch_number or doc.sii_batch_number == 0:
+                    doc.sii_batch_number = batch
+            dte_data = doc.with_context(**firma_ctx)._prepare_dte_data()
+            if not dte_data:
+                continue
+            if hasattr(doc, 'sii_batch_number') and doc.sii_batch_number:
+                dte_data['NroDTE'] = doc.sii_batch_number
+            else:
+                dte_data['NroDTE'] = batch
+            grupos.setdefault(dte_data['TipoDTE'], []).append(dte_data)
+        datos = self._get_datos_empresa(company)
+        datos.update({
+            "RutReceptor": RUTRecep,
+            "Documento": [
+                {"TipoDTE": k, "documentos": v}
+                for k, v in grupos.items()
+            ],
+        })
+        return datos
+
+    @api.model
+    def crear_intercambio(self, documents, RUTRecep):
+        docs_list = list(documents)
+        if not docs_list:
+            return b""
+        company = docs_list[0].company_id
+        firma = docs_list[0]._resolve_firma()
+        envio_tmp = self.create({
+            'name': 'intercambio',
+            'xml_envio': 'temporal',
+            'company_id': company.id,
+            'firma_id': firma.id,
+        })
+        try:
+            datos = envio_tmp._build_envio_dte_data(docs_list, RUTRecep=RUTRecep)
+            if not datos.get("Documento"):
+                return b""
+            set_pruebas = self._context.get("set_pruebas", False)
+            codigos_boleta = [39, 41]
+            es_boleta = any(d["TipoDTE"] in codigos_boleta for d in datos["Documento"])
+            datos["api"] = es_boleta and not set_pruebas
+            result = fe.xml_envio(datos)
+            return result["sii_xml_request"].encode("ISO-8859-1")
+        finally:
+            envio_tmp.unlink()
+
+    @api.model
+    def crear_envio(self, documents, RUTRecep="60803000-K"):
+        """Crea envío unificado para cualquier modelo de documento."""
+        if not documents:
+            return self.browse()
+
+        docs_list = list(documents)
+        model = docs_list[0]._name
+
+        if model == 'account.move.book':
+            return self._crear_envio_libro(docs_list)
+        elif model == 'account.move.consumo_folios':
+            return self._crear_envio_consumo_folios(docs_list)
+        else:
+            return self._crear_envio_dte(docs_list, RUTRecep)
+
+    @api.model
+    def _crear_envio_dte(self, docs_list, RUTRecep="60803000-K"):
+        """Crea envío para documentos DTE."""
+        if not docs_list:
+            return self.browse()
+
+        envio_id = docs_list[0].sii_xml_request
+        if not envio_id:
+            for doc in docs_list:
+                if doc.sii_xml_request:
+                    envio_id = doc.sii_xml_request
+                    break
+        if envio_id and envio_id.sii_send_ident:
+            return envio_id
+        if (envio_id and envio_id.xml_envio
+                and envio_id.xml_envio not in ("temporal", "")
+                and not envio_id.sii_send_ident):
+            envio_id.send_xml()
+            return envio_id
+
+        company = docs_list[0].company_id
+        set_pruebas = self._context.get("set_pruebas", False)
+        firma = docs_list[0]._resolve_firma()
+
+        if not envio_id:
+            doc_field = docs_list[0]._dte_xml_envio_field
+            vals = {
+                'name': 'temporal',
+                'xml_envio': 'temporal',
+                'company_id': company.id,
+                'firma_id': firma.id,
+            }
+            if doc_field:
+                vals[doc_field] = [(6, 0, [d.id for d in docs_list])]
+            envio_id = self.create(vals)
+        elif not envio_id.firma_id:
+            envio_id.firma_id = firma.id
+
+        datos = envio_id._build_envio_dte_data(
+            docs_list,
+            RUTRecep=RUTRecep,
+        )
+        if not datos.get("Documento"):
+            return self.browse()
+
+        codigos_boleta = [39, 41]
+        es_boleta = any(d["TipoDTE"] in codigos_boleta for d in datos["Documento"])
+        datos["api"] = es_boleta and not set_pruebas
+
+        if envio_id.sii_send_ident:
+            _SII_SEND_RESULT_CACHE.pop(envio_id.id, None)
+            return envio_id
+
+        self.env.cr.execute(
+            "SELECT pg_advisory_xact_lock(hashtext('sii_xml_envio'), %s)",
+            (envio_id.id,),
+        )
+        envio_id.invalidate_recordset(['sii_send_ident'])
+        if envio_id.sii_send_ident:
+            _SII_SEND_RESULT_CACHE.pop(envio_id.id, None)
+            return envio_id
+
+        datos["ID"] = "Env%s" % envio_id.id
+        cached = _SII_SEND_RESULT_CACHE.get(envio_id.id)
+        if cached and cached.get("sii_send_ident"):
+            _logger.info(
+                "Reusando resultado SII en memoria para envío %s (retry tras SerializationFailure)",
+                envio_id.id,
+            )
+            result = cached
+        else:
+            result = fe.timbrar_y_enviar(datos)
+            _SII_SEND_RESULT_CACHE[envio_id.id] = result
+
+        send_ident = result.get("sii_send_ident")
+        if result.get("status") == "Rechazado" and send_ident == 1:
+            send_ident = False
+        envio_id.write({
+            "xml_envio": result.get("sii_xml_request", "temporal"),
+            "name": result.get("sii_send_filename", "temporal"),
+            "sii_send_ident": send_ident,
+            "sii_xml_response": result.get("sii_xml_response"),
+            "state": result.get("status"),
+        })
+
+        if not self.env.registry.in_test_mode():
+            try:
+                self.env.cr.commit()
+                if send_ident:
+                    _SII_SEND_RESULT_CACHE.pop(envio_id.id, None)
+            except psycopg2.errors.SerializationFailure:
+                _logger.warning(
+                    "SerializationFailure al persistir envío %s; resultado SII queda en caché para reintento.",
+                    envio_id.id,
+                )
+                raise
+
+        sii_result = result.get("sii_result")
+        if not sii_result and send_ident:
+            sii_result = "Enviado"
+        for doc in docs_list:
+            try:
+                with self.env.cr.savepoint():
+                    doc.sii_xml_request = envio_id
+                    if sii_result:
+                        doc.sii_result = sii_result
+            except Exception as e:
+                _logger.warning(
+                    f"No se pudo actualizar {doc._name} id={doc.id} tras envío {envio_id.name} ({envio_id.sii_send_ident}): {e}",
+                    exc_info=True,
+                )
+
+        return envio_id
+
+    @api.model
+    def _crear_envio_libro(self, documents):
+        """Crea envío para libros de compra/venta."""
+        doc = documents[0]
+
+        if doc.sii_xml_request and doc.sii_xml_request.state == "Rechazado":
+            if len(doc.sii_xml_request.book_ids) <= 1:
+                doc.sii_xml_request.unlink()
+            else:
+                doc.sii_xml_request = False
+            doc._validar()
+
+        envio = doc.sii_xml_request
+        if not envio:
+            raise UserError(_("El libro debe ser validado antes de enviar"))
+        if envio.sii_send_ident:
+            return envio
+
+        if not envio.firma_id:
+            envio.firma_id = doc._resolve_firma().id
+
+        datos = envio._get_datos_empresa(doc.company_id)
+        datos.update({
+            "Libro": {
+                "PeriodoTributario": doc.periodo_tributario,
+                "TipoOperacion": doc.tipo_operacion,
+                "TipoLibro": doc.tipo_libro,
+                "TipoEnvio": doc.tipo_envio,
+            },
+            "sii_xml_request": envio.xml_envio.replace(
+                '<?xml version="1.0" encoding="ISO-8859-1"?>\n', ""
+            ),
+            "ID": envio.name,
+        })
+
+        result = fe.libro(datos)
+
+        envio.write({
+            "xml_envio": result["sii_xml_request"],
+            "name": result["sii_send_filename"],
+            "company_id": doc.company_id.id,
+            "sii_send_ident": result.get("sii_send_ident"),
+            "sii_xml_response": result.get("sii_xml_response"),
+            "state": result.get("sii_result"),
+        })
+
+        if not self.env.registry.in_test_mode():
+            self.env.cr.commit()
+
+        try:
+            with self.env.cr.savepoint():
+                doc.state = "Enviado"
+        except Exception as e:
+            _logger.warning(
+                f"No se pudo actualizar estado del libro {doc._name} id={doc.id} tras envío {envio.name}: {e}",
+                exc_info=True,
+            )
+        return envio
+
+    @api.model
+    def _crear_envio_consumo_folios(self, documents):
+        """Crea envío para consumo de folios."""
+        doc = documents[0]
+
+        if not doc.sii_xml_request:
+            doc._validar()
+
+        if doc.sii_xml_request and doc.sii_xml_request.state == "Rechazado":
+            if len(doc.sii_xml_request.consumo_folios_ids) <= 1:
+                doc.sii_xml_request.unlink()
+            else:
+                doc.sii_xml_request = False
+            doc._validar()
+            doc.sii_xml_request.state = "NoEnviado"
+
+        envio = doc.sii_xml_request
+        if envio:
+            if not envio.firma_id:
+                envio.firma_id = doc._resolve_firma().id
+            if doc.state in ["NoEnviado", "EnCola"]:
+                envio.send_xml()
+
+        return envio

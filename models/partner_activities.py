@@ -6,21 +6,20 @@ class PartnerActivities(models.Model):
     _description = "SII Economical Activities"
 
 
-    def name_get(self):
-        res = []
+    @api.depends('code', 'name')
+    def _compute_display_name(self):
         for r in self:
-            res.append((r.id, (r.code and "[" + r.code + "] " + r.name or "")))
-        return res
+            r.display_name = r.code and "[" + r.code + "] " + r.name or ""
 
     @api.model
-    def name_search(self, name, args=None, operator="ilike", limit=100):
-        args = args or []
+    def _name_search(self, name, domain=None, operator="ilike", limit=100, order=None):
+        domain = domain or []
         recs = self.browse()
         if name:
-            recs = self.search(["|", ("name", "=", name), ("code", "=", name)] + args, limit=limit)
+            recs = self.search(["|", ("name", "=", name), ("code", "=", name)] + domain, limit=limit)
         if not recs:
-            recs = self.search(["|", ("name", operator, name), ("code", operator, name)] + args, limit=limit)
-        return recs.name_get()
+            recs = self.search(["|", ("name", operator, name), ("code", operator, name)] + domain, limit=limit)
+        return recs.ids
 
     code = fields.Char(string="Activity Code", required=True,)
     parent_id = fields.Many2one("partner.activities", string="Parent Activity", ondelete="cascade",)

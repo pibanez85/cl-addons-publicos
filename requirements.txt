@@ -1,5 +1,5 @@
 pip>=20.0.2
-facturacion_electronica>=0.18.0
+facturacion_electronica>=0.21.4
 num2words
 xlsxwriter
 pillow

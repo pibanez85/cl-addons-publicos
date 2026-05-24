@@ -1,5 +1,9 @@
 # l10n_cl_fe
 
+> [!IMPORTANT]
+> **AVISO CRÍTICO DE INSTALACIÓN**
+> Para poder instalar estos módulos, se debe **eliminar completamente** el módulo estándar `l10n_cl` (Localización Chilena oficial de Odoo) del sistema. De lo contrario, se producirán conflictos de dependencia y errores en la base de datos.
+
 Se crea este repositorio, para dar un enfoque de firma electrónica directa con el SII.
 
 - Se tomaron los inicios de github.com/odoo-chile/l10n_cl_dte y otros módulos de odoo-chile y la continuación de estos en github.com/dansanti/l10n_cl_dte.
@@ -79,6 +83,20 @@ E = Específico
 |   50   |    IVA instrumentos de prepago    |  19  |  N   |   X   |                                                                                                    |
 |   51   |          IVA gas natural          |      |  E   |   X   | Compuesto,Autosincronización MEPCO con diariooficial.cl                                            |
 |   53   |       Impuesto Suplementos        | 0.5  |  R   |   X   |                                                                                                    |
+
+- Sistema Autopack
+
+El sistema de envío por cola (sii.cola_envio) implementa autopack para agrupar documentos en paquetes de hasta 20 para envío masivo al SII.
+
+**Estructura:**
+- Usa campos Many2many por tipo de documento (`document_ids`, `picking_ids`, `order_ids`, etc.)
+- Método `queue()` para encolar documentos de forma consistente
+- Agrupa documentos por empresa, tipo de trabajo, set de pruebas y tipo de documento
+
+**Extensión en módulos adicionales:**
+- `l10n_cl_stock_picking`: Agrega `picking_ids` para guías de despacho
+- `l10n_cl_dte_point_of_sale`: Agrega `order_ids` para órdenes POS (boletas)
+- `l10n_cl_dte_factoring`: Agrega tipos de trabajo `cesion` y `cesion_consulta`
 
 - Otras Funcionalidades
 

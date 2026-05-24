@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Agregar columna XML en listado de facturas del portal -->
+    <template id="portal_my_invoices_xml" inherit_id="account.portal_my_invoices">
+        <xpath expr="//thead//tr/th[last()]" position="after">
+            <th class="text-center">XML</th>
+        </xpath>
+        <xpath expr="//tbody//tr/td[last()]" position="after">
+            <td class="text-center">
+                <a t-if="invoice.document_class_id and invoice.sii_xml_dte"
+                   t-attf-href="/download/xml/invoice_exchange/#{invoice.id}"
+                   title="Descargar XML DTE">
+                    <i class="fa fa-download"/>
+                </a>
+            </td>
+        </xpath>
+    </template>
+
+    <!-- Agregar botón XML en sidebar de detalle de factura -->
+    <template id="portal_invoice_page_xml" inherit_id="account.portal_invoice_page">
+        <xpath expr="//div[hasclass('o_download_pdf')]" position="after">
+            <div t-if="invoice.document_class_id and invoice.sii_xml_dte"
+                 class="btn-toolbar flex-sm-nowrap mt-1">
+                <div class="btn-group flex-grow-1 mb-1">
+                    <a class="btn btn-secondary btn-block"
+                       t-attf-href="/download/xml/invoice_exchange/#{invoice.id}"
+                       title="Descargar XML DTE">
+                        <i class="fa fa-file-code-o"/> XML DTE
+                    </a>
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>

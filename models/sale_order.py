@@ -65,9 +65,9 @@ class SO(models.Model):
         vals['referencias'] = []
         for r in self.referencia_ids:
             vals['referencias'].append(Command.create({
-                'origen': r.folio,
+                'folio': r.folio,
                 'fecha_documento': r.fecha_documento,
-                'sii_referencia_TpoDocRef': r.sii_referencia_TpoDocRef.id,
+                'ref_id': r.ref_id.id,
                 'motivo': r.motivo,
             }))
         return vals

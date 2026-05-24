@@ -83,9 +83,17 @@ class IRSequence(models.Model):
                 r.auto_anular()
             except:
                 _logger.warning("no se pudo auto anular")
-        self._cr.execute("SELECT id FROM ir_sequence WHERE autoreponer_caf")
+        self._cr.execute("SELECT id FROM ir_sequence WHERE is_dte")
         for r in self.env["ir.sequence"].sudo().browse([x[0] for x in self._cr.fetchall()]):
-            if r and r.qty_available < r.nivel_minimo:
+            for caf in r.dte_caf_ids.filtered(lambda c: c.state == 'in_use'):
+                try:
+                    caf.compute_folio_actual()
+                except Exception as e:
+                    _logger.warning(
+                        "Error refrescando folio_actual del CAF %s: %s",
+                        caf.id, str(e), exc_info=True,
+                    )
+            if r.autoreponer_caf and r.qty_available < r.nivel_minimo:
                 try:
                     r.solicitar_caf()
                 except Exception as e:
@@ -153,21 +161,51 @@ class IRSequence(models.Model):
         for caf in self.dte_caf_ids:
             caf.inspeccionar_folios_sin_usar()
 
-    def get_folio(self, number_next=False):
-        caf = self.env['dte.caf'].search([
-            ('sequence_id', '=', self.id),
-            ('folio_actual', '>=', number_next or self.number_next),
-        ],
-        order='folio_actual ASC',
-        limit=1)
+    def get_folio(self, number_next=False, readonly=False):
+        requested = int(number_next or self.number_next)
+        force = self._context.get('force_number_next')
+        caf = self.dte_caf_ids.filtered(
+            lambda c: c.start_nm <= requested <= c.final_nm and c.state != 'spent'
+        ).sorted(key=lambda c: c.start_nm)[:1]
+        range_match = bool(caf)
+        if not caf:
+            caf = self.env['dte.caf'].search([
+                ('sequence_id', '=', self.id),
+                ('folio_actual', '>=', requested),
+            ],
+            order='folio_actual ASC',
+            limit=1)
         if not caf:
             if not self.dte_caf_ids:
                 return 0
             caf = self.dte_caf_ids[0]
             if int(self.number_next) == caf.final_nm:
                 return 0
-        caf.compute_folio_actual()
-        folio_actual = caf.folio_actual
+        in_range = caf.start_nm <= requested <= caf.final_nm
+        honor_requested = (force or range_match) and in_range
+        if readonly:
+            if honor_requested and not caf._is_folio_used(requested):
+                folio_actual = requested
+            else:
+                folio_actual = caf._peek_folio_actual()
+            if folio_actual > caf.final_nm:
+                if caf == self.dte_caf_ids[0]:
+                    return 0
+                return self.get_folio(folio_actual + 1, readonly=True)
+            return folio_actual
+        caf.flush_recordset(['folio_actual'])
+        self._cr.execute(
+            "SELECT id FROM dte_caf WHERE id = %s FOR UPDATE NOWAIT",
+            [caf.id],
+        )
+        caf.invalidate_recordset(['folio_actual', 'qty_available', 'cantidad_folios_sin_usar'])
+        if honor_requested and not caf._is_folio_used(requested):
+            if caf.folio_actual != requested:
+                caf.folio_actual = requested
+            folio_actual = requested
+        else:
+            caf.compute_folio_actual()
+            folio_actual = caf.folio_actual
         if folio_actual != int(self.number_next):
             update_next_by_caf(self, folio_actual, caf)
         if caf.qty_available == 0:
@@ -213,11 +251,6 @@ obtener folios en la secuencia (usando apicaf.cl)."""
         """
         folio = int(folio or self.number_next_actual)
         if not self.dte_caf_ids:
-            _logger.warning(
-                """No hay CAFs disponibles para la secuencia de %s. Por favor \
-suba un CAF o solicite uno en el SII."""
-                % (self.name)
-            )
             return self.dte_caf_ids
         cafs = self.dte_caf_ids.filtered(
                 lambda caf: folio <= caf.final_nm
@@ -246,7 +279,7 @@ suba un CAF o solicite uno en el SII."""
         and number from postgres sequence when standard implementation.'''
         seq_dtes = self.filtered('is_dte')
         for seq in seq_dtes:
-            folio = seq.get_folio()
+            folio = seq.get_folio(readonly=True)
             if folio == 0:
                 folio = seq.number_next
             seq.number_next_actual = folio

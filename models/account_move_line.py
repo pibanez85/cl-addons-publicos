@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import math
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from .currency import float_round_custom
@@ -12,6 +13,16 @@ class AccountInvoiceLine(models.Model):
     _inherit = "account.move.line"
 
     sequence = fields.Integer(string="Sequence", default=-1,)
+
+    def _line_size(self):
+        if not self.name:
+            return 1
+        factor = self.move_id.company_id.dte_lines_factor or 50.0
+        size = 0
+        for l in self.name.split('\n'):
+            size += math.ceil(len(l) / factor) or 1
+        return size
+
     discount_amount = fields.Float(string="Monto Descuento", default=0.00,)
     is_gd_line = fields.Boolean(
         string="Es Línea descuento Global"
@@ -269,5 +280,14 @@ class AccountInvoiceLine(models.Model):
                     self.move_id.partner_id,
                     self.tax_ids,
                     self.move_id.move_type)
-            details['price_unit'] = taxes_res.get('price_subtotal', 0.0)
+            has_extra = any(
+                t.es_adicional() or t.es_especifico() for t in self.tax_ids
+            )
+            if (boleta or nc_boleta) and has_extra:
+                iva_tax = self.tax_ids.filtered(lambda t: t.es_iva())
+                iva_rate = (iva_tax[:1].amount if iva_tax else 19.0) or 19.0
+                iva_factor = 1 + iva_rate / 100.0
+                details['price_unit'] = taxes_res.get('price_total', 0.0) / iva_factor
+            else:
+                details['price_unit'] = taxes_res.get('price_subtotal', 0.0)
         return details

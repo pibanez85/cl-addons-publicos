@@ -10,7 +10,6 @@ from odoo.tools.translate import _
 from odoo.tools.misc import formatLang, format_date, get_lang
 from odoo.tools import frozendict
 from contextlib import ExitStack, contextmanager
-from .bigint import BigInt
 import re
 
 _logger = logging.getLogger(__name__)
@@ -44,40 +43,21 @@ tz_stgo = pytz.timezone("America/Santiago")
 
 class Referencias(models.Model):
     _name = "account.move.referencias"
+    _inherit = "l10n_cl_fe.dte.referencia.mixin"
     _description = "Línea de referencia de Documentos DTE"
 
-    origen = fields.Char(string="Origin",)
-    sii_referencia_TpoDocRef = fields.Many2one("sii.document_class", string="SII Reference Document Type",)
-    sii_referencia_CodRef = fields.Selection(
-        [("1", "Anula Documento de Referencia"), ("2", "Corrige texto Documento Referencia"), ("3", "Corrige montos")],
-        string="SII Reference Code",
-    )
-    motivo = fields.Char(string="Motivo",)
-    move_id = fields.Many2one("account.move", ondelete="cascade", index=True, copy=False, string="Documento",)
-    fecha_documento = fields.Date(string="Fecha Documento", required=True,)
-    sequence = fields.Integer(string="Secuencia", default=1,)
+    move_id = fields.Many2one("account.move", ondelete="cascade", index=True, copy=False, string="Documento")
 
-    _order = "sequence ASC"
+    def _dte_referencia_parent(self):
+        return self.move_id
 
 
 class AccountMove(models.Model):
-    _inherit = "account.move"
+    _name = "account.move"
+    _inherit = ["account.move", "l10n_cl_fe.dte.mixin"]
 
-    def get_barcode_img(self, columns=13, ratio=3, xml=False):
-        barcodefile = BytesIO()
-        if not xml:
-            xml = self.sii_barcode
-        image = self.pdf417bc(xml, columns, ratio)
-        image.save(barcodefile, "PNG")
-        data = barcodefile.getvalue()
-        return base64.b64encode(data)
-
-    def _get_barcode_img(self):
-        for r in self:
-            sii_barcode_img = False
-            if r.sii_barcode:
-                sii_barcode_img = r.get_barcode_img()
-            r.sii_barcode_img = sii_barcode_img
+    _dte_cola_field = 'document_ids'
+    _dte_xml_envio_field = 'move_ids'
 
     @api.onchange("use_documents")
     def get_dc_ids(self):
@@ -119,51 +99,9 @@ class AccountMove(models.Model):
         readonly=True,
         check_company=True,
     )
-    document_class_id = fields.Many2one(
-        "sii.document_class", string="Document Type", readonly=True,
-        index=True,
-    )
-    sii_code = fields.Integer(
-        related="document_class_id.sii_code", string="Document Code", copy=False, readonly=True, store=True,
-    )
-    sii_document_number = BigInt(
-        string="Document Number", copy=False, readonly=True,
-        index=True,
-    )
     sii_batch_number = fields.Integer(
         copy=False, string="Batch Number", readonly=True, help="Batch number for processing multiple invoices together",
     )
-    sii_barcode = fields.Char(
-        copy=False,
-        string=_("SII Barcode"),
-        help="SII Barcode Name",
-        readonly=True,
-    )
-    sii_barcode_img = fields.Binary(
-        string=_("SII Barcode Image"), help="SII Barcode Image in PDF417 format",
-        compute="_get_barcode_img"
-    )
-    sii_message = fields.Text(string="SII Message", copy=False,)
-    sii_xml_dte = fields.Text(string="SII XML DTE", copy=False, readonly=True, )
-    sii_xml_request = fields.Many2one("sii.xml.envio", string="SII XML Request", copy=False,)
-    sii_result = fields.Selection(
-        [
-            ("draft", "Borrador"),
-            ("NoEnviado", "No Enviado"),
-            ("EnCola", "En cola de envío"),
-            ("Enviado", "Enviado"),
-            ("EnProceso", "En Proceso"),
-            ("Aceptado", "Aceptado"),
-            ("Rechazado", "Rechazado"),
-            ("Reparo", "Reparo"),
-            ("Proceso", "Procesado"),
-            ("Anulado", "Anulado"),
-        ],
-        string="Estado SII",
-        help="Resultado del envío y Proceso del documento nn el SII",
-        copy=False,
-    )
-    canceled = fields.Boolean(string="Canceled?", readonly=True, )
     iva_uso_comun = fields.Boolean(string="Iva Uso Común", readonly=True, )
     no_rec_code = fields.Selection(
         [
@@ -177,9 +115,6 @@ class AccountMove(models.Model):
         readonly=True,
 
     )  # @TODO select 1 automático si es emisor 2Categoría
-    use_documents = fields.Boolean(string="Use Documents?",
-                                   readonly=True,
-                                   )
     referencias = fields.One2many(
         "account.move.referencias", "move_id", readonly=True,
     )
@@ -256,6 +191,14 @@ class AccountMove(models.Model):
         ]
     )
     claim_ids = fields.One2many("sii.dte.claim", "move_id", string="Historial de Reclamos")
+    amount_tax_retencion = fields.Monetary(string='Monto Retención', store=True, readonly=True,
+        compute='_compute_amount',
+        inverse='_inverse_amount_total',
+    )
+    amount_tax_retencion_signed = fields.Monetary(string='Monto Retención con signo', store=True, readonly=True,
+        compute='_compute_amount',
+        inverse='_inverse_amount_total',
+    )
     sequence_number_next = fields.Integer(
         compute='_get_sequence_number_next'
     )
@@ -290,6 +233,8 @@ class AccountMove(models.Model):
             total_tax, total_tax_currency = 0.0, 0.0
             total_residual, total_residual_currency = 0.0, 0.0
             total, total_currency = 0.0, 0.0
+            total_retencion, total_retencion_currency = 0.0, 0.0
+            sign = move.direction_sign
             for line in move.line_ids:
                 if move.is_invoice(True):
                     # === Invoices ===
@@ -299,6 +244,14 @@ class AccountMove(models.Model):
                         total_tax_currency += line.amount_currency
                         total += line.balance
                         total_currency += line.amount_currency
+                        if line.tax_repartition_line_id.es_retencion():
+                            total_retencion += line.balance
+                            total_retencion_currency += line.amount_currency
+                            if line.tax_repartition_line_id.credec:
+                                total_tax -= line.balance
+                                total_tax_currency -= line.amount_currency
+                            total -= (sign * line.balance)
+                            total_currency -= (sign * line.amount_currency)
                     elif line.display_type in ('product', 'rounding', 'C', 'D', 'R'):
                         # Untaxed amount.
                         total_untaxed += line.balance
@@ -314,7 +267,6 @@ class AccountMove(models.Model):
                     if line.debit:
                         total += line.balance
                         total_currency += line.amount_currency
-            sign = move.direction_sign
             move.amount_untaxed = sign * total_untaxed_currency
             move.amount_tax = sign * total_tax_currency
             move.amount_total = sign * total_currency
@@ -324,6 +276,8 @@ class AccountMove(models.Model):
             move.amount_total_signed = abs(total) if move.move_type == 'entry' else -total
             move.amount_residual_signed = total_residual
             move.amount_total_in_currency_signed = abs(move.amount_total) if move.move_type == 'entry' else -(sign * move.amount_total)
+            move.amount_tax_retencion = sign * total_retencion_currency
+            move.amount_tax_retencion_signed = -total_retencion
 
     @api.depends_context('lang')
     @api.depends(
@@ -491,14 +445,80 @@ class AccountMove(models.Model):
         self.ensure_one()
         if self.use_documents and not self.document_class_id.es_voucher():
             if not (self.journal_id.restore_mode or self._context.get("restore_mode", False)):
-                self.sii_document_number = self.journal_document_class_id.sequence_id.next_by_id()
+                sequence = self.journal_document_class_id.sequence_id
+                if not self._get_last_sequence():
+                    sequence = sequence.with_context(force_number_next=True)
+                self.sii_document_number = sequence.next_by_id()
             self[self._sequence_field] = '%s%s' % (self.document_class_id.doc_code_prefix, self.sii_document_number)
         else:
             self.use_documents = False
             super(AccountMove, self)._set_next_sequence()
 
+    def _consolidate_boleta_taxes_to_iva(self):
+        self.ensure_one()
+        if not self.is_sale_document():
+            return
+        if not (self.es_boleta() or self.es_nc_boleta()):
+            return
+        extra_tax_lines = self.line_ids.filtered(
+            lambda l: l.tax_line_id and (
+                l.tax_line_id.es_adicional() or l.tax_line_id.es_especifico()
+            )
+        )
+        if not extra_tax_lines:
+            return
+        iva_tax_lines = self.line_ids.filtered(
+            lambda l: l.tax_line_id and l.tax_line_id.es_iva()
+        )
+        if not iva_tax_lines:
+            return
+        iva_rate = iva_tax_lines[0].tax_line_id.amount or 19.0
+        iva_factor = 1 + iva_rate / 100.0
+        ctx = {"check_move_validity": False, "skip_invoice_sync": True}
+        currency = self.currency_id or self.company_id.currency_id
+        total_iva_signed = 0.0
+        any_changed = False
+        for base in self.invoice_line_ids:
+            has_iva = any(t.es_iva() for t in base.tax_ids)
+            if not has_iva:
+                continue
+            if not base.balance:
+                continue
+            sign = -1 if base.balance < 0 else 1
+            has_extra = any(
+                t.es_adicional() or t.es_especifico() for t in base.tax_ids
+            )
+            if has_extra:
+                bruto = currency.round(base.price_total)
+                neto = currency.round(bruto / iva_factor)
+                iva = bruto - neto
+                base.with_context(**ctx).write({
+                    "balance": sign * neto,
+                    "amount_currency": sign * neto,
+                    "price_subtotal": neto,
+                    "price_total": bruto,
+                })
+                any_changed = True
+            else:
+                iva = currency.round(base.price_total - base.price_subtotal)
+            total_iva_signed += sign * iva
+        if not any_changed:
+            return
+        iva_line = iva_tax_lines[0]
+        iva_amount = currency.round(total_iva_signed)
+        iva_line.with_context(**ctx).write({
+            "balance": iva_amount,
+            "amount_currency": iva_amount,
+        })
+        if len(iva_tax_lines) > 1:
+            iva_tax_lines[1:].with_context(**ctx).unlink()
+        extra_tax_lines.with_context(**ctx).unlink()
+
     def _post(self, soft=True):
+        for move in self:
+            move._consolidate_boleta_taxes_to_iva()
         to_post = super(AccountMove, self)._post(soft=soft)
+        invoices_to_queue = self.env['account.move']
         for inv in to_post:
             if inv.document_class_id and inv.document_class_id.es_voucher():
                 inv.use_documents = False
@@ -512,37 +532,12 @@ class AccountMove(models.Model):
             else:
                 inv._validaciones_uso_dte()
                 inv._timbrar()
-                ISCP = self.env["ir.config_parameter"].sudo()
-                metodo = ISCP.get_param("account.send_dte_method", default='diferido')
-                if metodo == 'manual':
-                    continue
-                tiempo_pasivo = datetime.now()
-                if metodo == 'diferido':
-                    tipo_trabajo = 'pasivo'
-                    tiempo_pasivo += timedelta(
-                        hours=int(ISCP.get_param("account.auto_send_dte", default=1))
-                    )
-                elif metodo == 'inmediato':
-                    tipo_trabajo = 'envio'
-                company = inv.company_id.parent_id or inv.company_id
-                self.env["sii.cola_envio"].create(
-                    {
-                        "company_id": inv.company_id.id,
-                        "doc_ids": [inv.id],
-                        "model": "account.move",
-                        "user_id": self.env.uid,
-                        "tipo_trabajo": tipo_trabajo,
-                        "date_time": tiempo_pasivo,
-                        "send_email": False
-                        if company.dte_service_provider == "SIICERT"
-                        or not ISCP.get_param("account.auto_send_email", default=True)
-                        else True,
-                    }
-                )
+                invoices_to_queue |= inv
             po = self.env['purchase.order'].browse(
                 inv._context.get('purchase_to_done', False))
             if po:
                 po.write({"state": "done"})
+        invoices_to_queue.queue()
         return to_post
 
     @contextmanager
@@ -560,7 +555,10 @@ class AccountMove(models.Model):
     @api.onchange('journal_id')
     def _onchange_journal_id(self):
         super(AccountMove, self)._onchange_journal_id()
-        self.use_documents = bool(self.journal_id.document_class_ids)
+        if self.move_type in ('in_invoice', 'in_refund'):
+            self.use_documents = False
+        else:
+            self.use_documents = bool(self.journal_id.document_class_ids)
         if self.is_invoice():
             self.get_dc_ids()
 
@@ -689,7 +687,7 @@ class AccountMove(models.Model):
     def copy(self, default=None):
         copied_am = super().copy(default)
         if default is not None and default["referencias"]:
-            if default["referencias"][0][2].get('sii_referencia_CodRef') == '2':
+            if default["referencias"][0][2].get('cod_ref') == '2':
                 copied_am.invoice_line_ids.unlink()
                 prod = self.env['product.product'].search(
                         [
@@ -784,12 +782,10 @@ class AccountMove(models.Model):
             self.forma_pago = self.invoice_payment_term_id.dte_sii_code
 
     @api.model
-    def name_search(self, name, args=None, operator="ilike", limit=100):
-        args = args or []
-        recs = self.browse()
-        if not recs:
-            recs = self.search([("name", operator, name)] + args, limit=limit)
-        return recs.name_get()
+    def _name_search(self, name, domain=None, operator="ilike", limit=100, order=None):
+        domain = domain or []
+        recs = self.search([("name", operator, name)] + domain, limit=limit)
+        return recs.ids
 
     def action_invoice_cancel(self):
         for r in self:
@@ -834,31 +830,22 @@ class AccountMove(models.Model):
             r.document_class_id = r.journal_document_class_id.sii_document_class_id
 
     def _validaciones_uso_dte(self):
-        if not self.document_class_id:
-            raise UserError("NO tiene seleccionado tipo de documento")
-        if (self.es_nc() or self.es_nd()) and not self.referencias:
-            raise UserError("Las Notas deben llevar por obligación una referencia al documento que están afectando")
-        if not self.env.user.get_digital_signature(self.company_id):
-            raise UserError(
-                _(
-                    "Usuario no autorizado a usar firma electrónica para esta compañia. Por favor solicitar autorización en la ficha de compañia del documento por alguien con los permisos suficientes de administrador"
-                )
-            )
-        if not self.env.ref("base.lang_es_CL").active:
-            raise UserError(_("Lang es_CL must be enabled"))
-        if not self.env.ref("base.CLP").active:
-            raise UserError(_("Currency CLP must be enabled"))
+        super()._validaciones_uso_dte()
         if self.move_type in ["out_refund", "in_refund"] and not self.es_nc():
-            raise UserError(_("El tipo de documento %s, no es de tipo Rectificativo" % self.document_class_id.name))
+            raise UserError(_(
+                "El tipo de documento %s, no es de tipo Rectificativo"
+            ) % self.document_class_id.name)
         if self.move_type in ["out_invoice", "in_invoice"] and self.es_nc():
-            raise UserError(_("El tipo de documento %s, no es de tipo Documento" % self.document_class_id.name))
+            raise UserError(_(
+                "El tipo de documento %s, no es de tipo Documento"
+            ) % self.document_class_id.name)
         for gd in self.global_descuentos_recargos:
             if gd.valor <= 0:
-                raise UserError(
-                    _("No puede ir una línea igual o menor que 0, elimine la línea o verifique el valor ingresado")
-                )
+                raise UserError(_(
+                    "No puede ir una línea igual o menor que 0, elimine la línea o verifique el valor ingresado"
+                ))
         if self.company_id.tax_calculation_rounding_method != "round_globally":
-            raise UserError("El método de redondeo debe ser Estríctamente Global")
+            raise UserError(_("El método de redondeo debe ser Estríctamente Global"))
 
     def _recompute_global_gdr_lines(self):
         self.ensure_one()
@@ -979,35 +966,14 @@ class AccountMove(models.Model):
         tz = pytz.timezone("America/Santiago")
         return datetime.now(tz_stgo).strftime(formato)
 
-    def crear_intercambio(self):
-        rut = self.partner_id.commercial_partner_id.rut()
-        envio = self._crear_envio(RUTRecep=rut)
-        result = fe.xml_envio(envio)
-        return result["sii_xml_request"].encode("ISO-8859-1")
-
-    def _create_attachment(self,):
-        url_path = "/download/xml/invoice/%s" % (self.id)
-        filename = ("%s.xml" % self.name).replace(" ", "_")
-        att = self.env["ir.attachment"].search(
-            [("name", "=", filename), ("res_id", "=", self.id), ("res_model", "=", "account.move")], limit=1,
-        )
-        self.env["sii.respuesta.cliente"].create(
-            {"exchange_id": att.id, "type": "RecepcionEnvio", "recep_envio": "no_revisado",}
-        )
-        if att:
-            return att
-        xml_intercambio = self.crear_intercambio()
-        data = base64.b64encode(xml_intercambio)
-        values = dict(
-            name=filename,
-            url=url_path,
-            res_model="account.move",
-            res_id=self.id,
-            type="binary",
-            datas=data,
-        )
-        att = self.env["ir.attachment"].sudo().create(values)
-        return att
+    def _create_attachment_respuesta_cliente(self, att):
+        if not att or not self._dte_requires_response_persistence():
+            return
+        self.env["sii.respuesta.cliente"].create({
+            "exchange_id": att.id,
+            "type": "RecepcionEnvio",
+            "recep_envio": "no_revisado",
+        })
 
 
     def action_invoice_sent(self):
@@ -1020,14 +986,8 @@ class AccountMove(models.Model):
         return result
 
 
-    def get_xml_file(self):
-        url_path = "/download/xml/invoice/%s" % (self.id)
-        return {
-            "type": "ir.actions.act_url",
-            "url": url_path,
-            "target": "self",
-        }
-
+    def _xml_download_path(self):
+        return "invoice"
 
     def get_xml_exchange_file(self):
         url_path = "/download/xml/invoice_exchange/%s" % (self.id)
@@ -1037,9 +997,6 @@ class AccountMove(models.Model):
             "target": "self",
         }
 
-    def get_folio(self):
-        # saca el folio directamente de la secuencia
-        return self.sii_document_number
 
     def format_vat(self, value, con_cero=False):
         ''' Se Elimina el 0 para prevenir problemas con el sii, ya que las muestras no las toma si va con
@@ -1053,12 +1010,6 @@ class AccountMove(models.Model):
         rut = rut.replace("CL", "")
         return rut
 
-    def pdf417bc(self, ted, columns=13, ratio=3):
-        bc = pdf417gen.encode(ted, security_level=5, columns=columns, encoding="ISO-8859-1",)
-        image = pdf417gen.render_image(bc, padding=15, scale=1, ratio=ratio,)
-        return image
-
-
     def get_related_invoices_data(self):
         """
         List related invoice information to fill CbtesAsoc.
@@ -1070,6 +1021,8 @@ class AccountMove(models.Model):
         return rel_invoices
 
     def _acortar_str(self, texto, size=1):
+        if not texto:
+            return ""
         c = 0
         cadena = ""
         while c < size and c < len(texto):
@@ -1077,40 +1030,6 @@ class AccountMove(models.Model):
             c += 1
         return cadena
 
-
-    def do_dte_send_invoice(self, n_atencion=None):
-        ids = []
-        envio_boleta = False
-        for inv in self.with_context(lang="es_CL"):
-            if inv.sii_result in ["", "NoEnviado", "Rechazado"]:
-                if inv.sii_result in ["Rechazado"]:
-                    inv._timbrar()
-                    if len(inv.sii_xml_request.move_ids) == 1:
-                        inv.sii_xml_request.unlink()
-                    else:
-                        inv.sii_xml_request = False
-                inv.sii_result = "EnCola"
-                inv.sii_message = ""
-                ids.append(inv.id)
-        if not isinstance(n_atencion, string_types):
-            n_atencion = ""
-        if ids:
-            company =  self[0].company_id.parent_id or self[0].company_id
-            self.env["sii.cola_envio"].create(
-                {
-                    "company_id": self[0].company_id.id,
-                    "doc_ids": ids,
-                    "model": "account.move",
-                    "user_id": self.env.user.id,
-                    "tipo_trabajo": "envio",
-                    "n_atencion": n_atencion,
-                    "set_pruebas": self._context.get("set_pruebas", False),
-                    "send_email": False
-                    if company.dte_service_provider == "SIICERT"
-                    or not self.env["ir.config_parameter"].sudo().get_param("account.auto_send_email", default=True)
-                    else True,
-                }
-            )
 
     def es_nc(self):
         if not self.referencias or self.move_type not in ["out_refund", "in_refund"]:
@@ -1128,7 +1047,7 @@ class AccountMove(models.Model):
     def es_nc_boleta(self):
         if not self.es_nc() and not self.es_nd():
             return False
-        return any(r.sii_referencia_TpoDocRef.es_boleta() for r in self.referencias)
+        return any(r.ref_id.es_boleta() for r in self.referencias)
 
     def es_factura_compra(self):
         return self.document_class_id.es_factura_compra()
@@ -1137,16 +1056,35 @@ class AccountMove(models.Model):
         if not self.es_nc() and not self.es_nd():
             return False
         for r in self.referencias:
-            if r.sii_referencia_TpoDocRef.es_factura_compra():
+            if r.ref_id.es_factura_compra():
                 return True
-            if r.sii_referencia_TpoDocRef.es_nc():
+            if r.ref_id.es_nc():
                 obj = self.env['account.move'].search([
-                    ('sii_document_number', '=', r.origen),
-                    ('document_class_id', '=', r.sii_referencia_TpoDocRef.id),
+                    ('sii_document_number', '=', r.folio),
+                    ('document_class_id', '=', r.ref_id.id),
                     ('use_documents', '=', True)
                 ])
                 return obj.es_nc_factura_compra()
         return False
+
+    def _dte_requires_response_persistence(self):
+        self.ensure_one()
+        return (
+            self.forma_pago == '2'
+            and bool(self.partner_id)
+            and bool(self.partner_id.dte_email)
+        )
+
+    def action_convert_to_dte(self):
+        return self.env["ir.actions.actions"]._for_xml_id("l10n_cl_fe.action_convert_to_dte")
+
+    def _get_name_invoice_report(self):
+        self.ensure_one()
+        if self.document_class_id:
+            if self.ticket:
+                return 'l10n_cl_fe.report_ticket'
+            return 'l10n_cl_fe.dte_external_layout'
+        return super()._get_name_invoice_report()
 
     def _actecos_emisor(self):
         actecos = []
@@ -1291,155 +1229,10 @@ class AccountMove(models.Model):
             })
         return Comisiones
 
-    def _totales_otra_moneda(self, currency_id, totales):
-        Totales = {}
-        Totales["TpoMoneda"] = self._acortar_str(currency_id.abreviatura, 15)
-        Totales["TpoCambio"] = round(currency_id.rate, 10)
-        if totales['MntNeto']:
-            MntNeto = totales['MntNeto']
-            if currency_id != self.currency_id:
-                MntNeto = currency_id._convert(totales['MntNeto'],
-                                               self.currency_id,
-                                               self.company_id,
-                                               self.invoice_date)
-            Totales["MntNetoOtrMnda"] = MntNeto
-        if totales['MntExe']:
-            MntExe = totales['MntExe']
-            if currency_id != self.currency_id:
-                MntExe = currency_id._convert(totales['MntExe'],
-                                                         self.currency_id,
-                                                         self.company_id,
-                                                         self.invoice_date)
-            Totales["MntExeOtrMnda"] = MntExe
-        if totales.get('MntBase', 0):
-            MntBase = totales['MntBase']
-            if currency_id != self.currency_id:
-                MntBase = currency_id._convert(totales['MntBase'],
-                                                         self.currency_id,
-                                                         self.company_id,
-                                                         self.invoice_date)
-            Totales["MntFaeCarneOtrMnda"] = MntBase
-        if totales['TasaIVA']:
-            IVA = totales['MntIVA']
-            if currency_id != self.currency_id:
-                IVA = currency_id._convert(totales['MntIVA'],
-                                                         self.currency_id,
-                                                         self.company_id,
-                                                         self.invoice_date)
-            Totales["IVAOtrMnda"] = IVA
-        MntTotal = totales['MntTotal']
-        if currency_id != self.currency_id:
-            MntTotal = currency_id._convert(totales['MntTotal'],
-                                            self.currency_id,
-                                            self.company_id,
-                                            self.invoice_date)
-        Totales["MntTotOtrMnda"] = MntTotal
-        # Totales['TotalPeriodo']
-        # Totales['SaldoAnterior']
-        return Totales
-
-    def _totales_normal(self, currency_id, totales):
-        Totales = {}
-        if totales['MntNeto']:
-            MntNeto = totales['MntNeto']
-            if currency_id != self.currency_id:
-                MntNeto = currency_id._convert(totales['MntNeto'],
-                                               self.currency_id,
-                                               self.company_id,
-                                               self.invoice_date)
-            Totales["MntNeto"] = currency_id.round(MntNeto)
-        if totales['MntExe']:
-            MntExe = totales['MntExe']
-            if currency_id != self.currency_id:
-                MntExe = currency_id._convert(totales['MntExe'],
-                                              self.currency_id,
-                                              self.company_id,
-                                              self.invoice_date)
-            Totales["MntExe"] = currency_id.round(MntExe)
-        if totales['MntBase']:
-            MntBase = totales['MntBase']
-            if currency_id != self.currency_id:
-                MntBase = currency_id._convert(totales['MntBase'],
-                                           self.currency_id,
-                                           self.company_id,
-                                           self.invoice_date)
-            Totales["MntBase"] = currency_id.round(totales['MntBase'])
-        if totales['TasaIVA']:
-            Totales["TasaIVA"] = totales['TasaIVA']
-            IVA = totales['MntIVA']
-            if currency_id != self.currency_id:
-                IVA = currency_id._convert(totales['MntIVA'],
-                                           self.currency_id,
-                                           self.company_id,
-                                           self.invoice_date)
-            Totales["IVA"] = currency_id.round(IVA)
-        if totales['CredEC']:
-            Totales["CredEC"] = currency_id.round(totales['CredEC'])
-        if totales['MntRet']:
-            Totales["MntRet"] = currency_id.round(totales['MntRet'])
-        if totales.get('ValComNeto'):
-            ValComNeto = totales['ValComNeto']
-            if currency_id != self.currency_id:
-                ValComNeto = currency_id._convert(
-                    totales['ValComNeto'],
-                    self.currency_id,
-                    self.company_id,
-                    self.invoice_date)
-            Totales['ValComNeto'] = currency_id.round(ValComNeto)
-        if totales.get('ValComExe'):
-            ValComExe = totales['ValComExe']
-            if currency_id != self.currency_id:
-                ValComExe = currency_id._convert(
-                    totales['ValComExe'],
-                    self.currency_id,
-                    self.company_id,
-                    self.invoice_date)
-            Totales['ValComExe'] = currency_id.round(ValComExe)
-        if totales.get('ValComIVA'):
-            ValComIVA = totales['ValComIVA']
-            if currency_id != self.currency_id:
-                ValComIVA = currency_id._convert(
-                    totales['ValComIVA'],
-                    self.currency_id,
-                    self.company_id,
-                    self.invoice_date)
-            Totales['ValComIVA'] = currency_id.round(ValComIVA)
-        MntTotal = totales['MntTotal']
-        if currency_id != self.currency_id:
-            MntTotal = currency_id._convert(
-                totales['MntTotal'],
-                self.currency_id,
-                self.company_id,
-                self.invoice_date)
-        Totales["MntTotal"] = currency_id.round(MntTotal)
-        if totales['MontoNF']:
-            Totales['MontoNF'] = currency.round(totales['MontoNF'])
-            if Totales.get('TotalPeriodo'):
-                Totales['TotalPeriodo'] = Totales['TotalPeriodo']
-            else:
-                Totales['MontoPeriodo'] = Totales['MontoPeriodo']
-        # Totales['SaldoAnterior']
-        VlrPagar = totales.get('VlrPagar', 0)
-        if currency_id != self.currency_id:
-            VlrPagar = currency_id._convert(
-                totales['VlrPagar'],
-                self.currency_id,
-                self.company_id,
-                self.invoice_date)
-        Totales["VlrPagar"] = currency_id.round(VlrPagar)
-        return Totales
-
-    def _es_exento(self):
-        return self.document_class_id.sii_code in [32, 34, 41, 110, 111, 112] or (
-            self.referencias and self.referencias[0].sii_referencia_TpoDocRef.sii_code in [32, 34, 41]
-        )
-
-    def _totales(self, resumen):
+    def _totales_intermedio(self, resumen):
         totales = dict(MntExe=0, MntNeto=0, MntIVA=0, TasaIVA=0,
                        MntTotal=0, MntBase=0, MntRet=0, MontoNF=0, OtrosImp=0,
                        CredEC=0)
-        if not resumen['product']:
-            return totales
         totales["MontoNF"] = resumen['MontoNF']
         totales['MntExe'] = resumen['MntExe']
         totales["MntNeto"] = resumen["MntNeto"]
@@ -1456,7 +1249,8 @@ class AccountMove(models.Model):
         elif self.amount_untaxed and self.amount_untaxed != 0:
             es_compra = resumen['es_compra']
             for t in self.line_ids.filtered(lambda x: x.display_type in ['tax', 'C', 'D', 'R']):
-                sii_code = t.tax_line_id.sii_code
+                tax_line = t.tax_line_id
+                sii_code = tax_line.sii_code
                 if es_compra and sii_code == 14:
                     continue
                 es_retencion = t.tax_repartition_line_id.es_retencion()
@@ -1470,9 +1264,9 @@ class AccountMove(models.Model):
                 if t.display_type in ['C', 'D', 'R']:
                     totales['MntNeto'] += balance
                     continue
-                if sii_code in [14, 15]:
+                if tax_line and tax_line.es_iva():
                     if totales['TasaIVA'] == 0:
-                        amount = t.tax_line_id.amount
+                        amount = tax_line.amount
                         totales['TasaIVA'] = round(amount if amount > 0 else (amount * -1), 2)
                     totales['MntIVA'] += balance
                     if t.tax_repartition_line_id.credec:
@@ -1524,41 +1318,16 @@ class AccountMove(models.Model):
             totales['VlrPagar'] = totales['MntTotal']
         return totales
 
-    def currency_base(self):
-        return self.env.ref("base.CLP")
-
-    def currency_target(self):
-        if self.currency_id != self.currency_base():
-            return self.currency_id
-        return False
-
-    def _encabezado(self, resumen):
-        Encabezado = {}
-        Encabezado["IdDoc"] = self._id_doc(resumen)
-        Encabezado["Emisor"] = self._emisor()
-        Encabezado["Receptor"] = self._receptor()
-        currency_base = self.currency_base()
-        another_currency_id = self.currency_target()
-        totales = self._totales(resumen)
-
-        Encabezado["Totales"] = self._totales_normal(currency_base, totales)
-        if another_currency_id:
-            Encabezado["OtraMoneda"] = self._totales_otra_moneda(
-                another_currency_id, totales
-            )
-        return Encabezado
-
     def _validaciones_caf(self, caf):
         fecha_timbre = fields.Date.context_today(self.with_context(tz=tz_stgo))
-        if (self.document_class_id.es_factura_afecta() or \
-            self.document_class_id.es_nc() or self.document_class_id.es_nd()) \
-             and fecha_timbre >= caf.expiration_date:
-            raise UserError(
-                """CAF para %s a utilizar ya vencido, por favor anular este folio  %s  y anular en el SII, luego retimbrar con un nuevo folio no vencido."""
-                % (caf.document_class_id.name, self.sii_document_number)
-            )
-        if fecha_timbre < caf.issued_date:
-            raise UserError("La fecha del timbraje no puede ser menor a la fecha de emisión del CAF")
+        if (self.document_class_id.es_factura_afecta()
+                or self.document_class_id.es_nc()
+                or self.document_class_id.es_nd()) \
+                and fecha_timbre >= caf.expiration_date:
+            raise UserError(_(
+                "CAF para %s a utilizar ya vencido, por favor anular este folio %s y anular en el SII, luego retimbrar con un nuevo folio no vencido."
+            ) % (caf.document_class_id.name, self.sii_document_number))
+        super()._validaciones_caf(caf)
 
     def is_price_included(self):
         if not self.invoice_line_ids or not self.invoice_line_ids[0].tax_ids:
@@ -1571,417 +1340,139 @@ class AccountMove(models.Model):
     def _get_lineas(self):
         return self.with_context(lang="es_CL").invoice_line_ids
 
-    def _detalle(self):
-        detalle = []
-        product = True
-        MntExe = 0
-        MontoNF = 0
-        MntNeto = 0
-        currency_base = self.currency_base()
-        currency_id = self.currency_target()
-        taxInclude = False
-        es_compra = False
-        #if (
-        #    self.env["account.move.line"]
-        #    .with_context(lang="es_CL")
-        #    .search(["|", ("sequence", "=", -1), ("sequence", "=", 0), ("move_id", "=", self.id)])
-        #):
-        #    self._onchange_invoice_line_ids()
+    def _get_referencias_dte(self):
+        return self.referencias
+
+    def _lineas_para_dte(self):
+        lineas = []
         desglose = self._context.get('force_desglose', False)
         for line in self._get_lineas():
             if not line.tpo_doc_liq and (not line.account_id or not line.product_id):
                 continue
             if not line.name and not line.product_id:
-                raise UserError("Debe ingrear un producto o una descripción/etiqueta de la línea")
-            product = line.product_id.default_code != "NO_PRODUCT"
-            lines = {}
-            lines["NroLinDet"] = line.sequence
-            if product and line.product_id.default_code or line.product_id.barcode:
-                lines["CdgItem"] = []
-                if line.product_id.default_code:
-                    lines["CdgItem"].append({
-                        "TpoCodigo": "INT1",
-                        "VlrCodigo": line.product_id.default_code
-                    })
-                if line.product_id.barcode:
-                    lines["CdgItem"].append({
-                        "TpoCodigo": "EAN13",
-                        "VlrCodigo": line.product_id.barcode
-                    })
+                raise UserError(_("Debe ingrear un producto o una descripción/etiqueta de la línea"))
+            no_product = line.product_id.default_code == "NO_PRODUCT"
             details = line.get_tax_detail(desglose)
-            es_compra = details['es_compra']
-            if len(detalle) > 0 and not desglose and details['desglose']:
-                """ Fuerzo desglose para todo el contexto """
-                return self.with_context(force_desglose=True)._detalle()
-            desglose = desglose or details['desglose']
-            lines["Impuesto"] = details['impuestos']
-            taxInclude = details['taxInclude']
-            if details.get('cod_imp_adic'):
-                lines['CodImpAdic'] = details['cod_imp_adic']
-            if line.tpo_doc_liq:
-                lines['TpoDocLiq'] = line.tpo_doc_liq.sii_code
-            if details['IndExe']:
-                lines['IndExe'] = details['IndExe']
-                if details['IndExe'] not in ['2', '6']:
-                    MntExe += details['MntExe']
-                else:
-                    if details['IndExe'] == "2":
-                        MontoNF += details['MntExe']
-                    else:
-                        MontoNF -= details['MntExe']
-            # if line.product_id.move_type == 'events':
-            #   lines['ItemEspectaculo'] =
-            #            if self.es_boleta():
-            #                lines['RUTMandante']
-            if line.product_id:
-                lines["NmbItem"] = line.product_id.with_context(
-                    display_default_code=False).name
-                if line.product_id.name != line.name:
-                    lines["DscItem"] = line.name.replace(line.name, lines['NmbItem'])
-            else:
-                lines['NmbItem'] = line.name
-            # lines['InfoTicket']
-            MontoItem = 0
-            qty = 0
-            if product:
-                qty = round(line.quantity, 4)
-                if qty == 0:
-                    qty = 1
-                elif qty < 0:
-                    raise UserError("Cantidad no puede ser menor que 0")
-                uom_name = line.product_uom_id.with_context(
-                        exportacion=self.document_class_id.es_exportacion()
-                    ).display_name
-                if uom_name:
-                    lines["UnmdItem"] = uom_name
-                if line.product_id:
-                    price_unit = details['price_unit']
-                    lines["PrcItem"] = round(price_unit, 6)
-                    if currency_id:
-                        lines["OtrMnda"] = {}
-                        lines["OtrMnda"]["PrcOtrMon"] = round(
-                            currency_base._convert(
-                                price_unit, currency_id, self.company_id, self.invoice_date, round=False
-                            ),
-                            6,
-                        )
-                        lines["OtrMnda"]["Moneda"] = self._acortar_str(currency_id.name, 3)
-                        lines["OtrMnda"]["FctConv"] = round(currency_id.rate, 4)
-                MontoItem = line.price_subtotal
-                if details['TasaIVA']:
-                    MntNeto += MontoItem
-                if taxInclude:
-                    MontoItem = line.price_total
-                if line.discount > 0:
-                    lines["DescuentoPct"] = line.discount
-                    DescMonto = line.discount_amount
-                    if desglose:
-                        taxes_res = line._get_price_total_and_subtotal_model(
-                            DescMonto,
-                            1,
-                            0,
-                            currency_base,
-                            line.product_id,
-                            self.partner_id,
-                            line.tax_ids,
-                            self.move_type)
-                        DescMonto = taxes_res.get('price_subtotal', 0.0)
-                    lines["DescuentoMonto"] = DescMonto
-                    if currency_id:
-                        lines["DescuentoMonto"] = currency_base._convert(
-                            DescMonto, currency_id, self.company_id, self.invoice_date
-                        )
-                        lines["OtrMnda"]["DctoOtrMnda"] = DescMonto
-                if line.discount < 0:
-                    lines["RecargoPct"] = line.discount * -1
-                    RecargoMonto = line.discount_amount * -1
-                    if desglose:
-                        taxes_res = line._get_price_total_and_subtotal_model(
-                            RecargoMonto,
-                            1,
-                            0,
-                            currency_base,
-                            line.product_id,
-                            self.partner_id,
-                            line.tax_ids,
-                            self.move_type)
-                        DescMonto = taxes_res.get('price_subtotal', 0.0)
-                    lines["RecargoMonto"] = RecargoMonto
-                    if currency_id:
-                        lines["OtrMnda"]["RecargoOtrMnda"] = currency_base._convert(
-                            RecargoMonto, currency_id, self.company_id, self.invoice_date
-                        )
-                if currency_id:
-                    lines["OtrMnda"]["MontoItemOtrMnda"] = currency_base._convert(
-                        MontoItem, currency_id, self.company_id, self.invoice_date
+            tax_include = details.get('taxInclude', False)
+            price_unit = details['price_unit']
+            MontoItem = line.price_total if tax_include else line.price_subtotal
+            descuento_amount = 0
+            disc_pct = line.discount or 0
+            if disc_pct:
+                base_amt = line.discount_amount if disc_pct > 0 else line.discount_amount * -1
+                if details.get('desglose'):
+                    taxes_res = line._get_price_total_and_subtotal_model(
+                        base_amt, 1, 0,
+                        self.currency_base(), line.product_id,
+                        self.partner_id, line.tax_ids, self.move_type,
                     )
-            lines["QtyItem"] = qty
-            lines["MontoItem"] = MontoItem
-            if MontoItem < 0 and not self.document_class_id.es_liquidacion():
-                raise UserError(_("No pueden ir valores negativos en las líneas de detalle"))
-            if lines.get("PrcItem", 1) == 0:
-                del lines["PrcItem"]
-            detalle.append(lines)
+                    base_amt = taxes_res.get('price_subtotal', 0.0)
+                descuento_amount = base_amt
+            nombre = (
+                line.product_id.with_context(display_default_code=False).name
+                if line.product_id else line.name
+            )
+            descripcion = False
+            if line.product_id and line.product_id.name != line.name:
+                descripcion = line.name.replace(nombre or '', '')
+            lineas.append({
+                'product': line.product_id or False,
+                'name': nombre,
+                'description': descripcion,
+                'qty': line.quantity,
+                'price_unit': price_unit,
+                'discount_pct': disc_pct,
+                'discount_amount': descuento_amount,
+                'subtotal': MontoItem,
+                'subtotal_exento': details.get('MntExe', 0),
+                'tax_include': tax_include,
+                'taxes': details.get('impuestos') or [],
+                'cod_imp_adic': details.get('cod_imp_adic'),
+                'ind_exe': details.get('IndExe'),
+                'no_product': no_product,
+                'tpo_doc_liq': line.tpo_doc_liq.sii_code if line.tpo_doc_liq else None,
+                'needs_desglose': bool(details.get('desglose')),
+                'nro_lin_det': line.sequence,
+            })
         if self.invoice_cash_rounding_id:
-            cash_rounding = self.line_ids.filtered(lambda l: l.display_type=='rounding')
+            cash_rounding = self.line_ids.filtered(lambda l: l.display_type == 'rounding')
             if cash_rounding:
                 sign = self.direction_sign
                 MontoItem = cash_rounding.balance * sign
-                MontoNF -= MontoItem
-                detalle.append({
-                    'NroLinDet': len(self.invoice_line_ids) +1,
-                    'NmbItem': cash_rounding.name,
-                    'QtyItem': 1,
-                    'MontoItem': MontoItem if MontoItem > 0 else MontoItem * -1,
-                    'IndExe': "2" if MontoItem > 0 else "6"
+                lineas.append({
+                    'product': False,
+                    'name': cash_rounding.name,
+                    'description': False,
+                    'qty': 1,
+                    'price_unit': 0,
+                    'discount_pct': 0,
+                    'discount_amount': 0,
+                    'subtotal': MontoItem if MontoItem > 0 else MontoItem * -1,
+                    'subtotal_exento': MontoItem,
+                    'tax_include': False,
+                    'taxes': [],
+                    'cod_imp_adic': None,
+                    'ind_exe': "2" if MontoItem > 0 else "6",
+                    'no_product': True,
+                    'tpo_doc_liq': None,
+                    'needs_desglose': False,
+                    'nro_lin_det': len(self.invoice_line_ids) + 1,
                 })
-        return {
-            "MntNeto": MntNeto,
-            "MntExe": MntExe,
-            "product": product,
-            "tax_include": taxInclude,
-            "MontoNF": MontoNF,
-            "Detalle": detalle,
-            "es_compra": es_compra,
-        }
+        return lineas
 
-    def _gdr(self):
+    def _gdr_lines(self):
+        ind_exe = None
+        if self.document_class_id.sii_code in [34] and (
+            self.referencias and self.referencias[0].ref_id.sii_code == "34"
+        ):
+            ind_exe = 1
         result = []
-        lin_dr = 1
-        currency_base = self.currency_base()
         for dr in self.global_descuentos_recargos:
-            dr_line = {}
-            dr_line["NroLinDR"] = lin_dr
-            dr_line["TpoMov"] = dr.type
-            if dr.gdr_detail:
-                dr_line["GlosaDR"] = dr.gdr_detail
-            disc_type = "%"
-            if dr.gdr_type == "amount":
-                disc_type = "$"
-            dr_line["TpoValor"] = disc_type
-            dr_line["ValorDR"] = currency_base.round(dr.valor)
-            if self.currency_id != currency_base:
-                currency_id = self.currency_id
-                dr_line["ValorDROtrMnda"] = currency_base._convert(
-                    dr.valor, currency_id, self.company_id, self.invoice_date
-                )
-            if self.document_class_id.sii_code in [34] and (
-                self.referencias and self.referencias[0].sii_referencia_TpoDocRef.sii_code == "34"
-            ):  # solamente si es exento
-                dr_line["IndExeDR"] = 1
-            result.append(dr_line)
-            lin_dr += 1
+            result.append({
+                'type': dr.type,
+                'valor': dr.valor,
+                'tipo_valor': '$' if dr.gdr_type == 'amount' else '%',
+                'glosa': dr.gdr_detail or False,
+                'ind_exe': ind_exe,
+            })
         return result
 
-    def _dte(self, n_atencion=None):
-        dte = {}
-        resumen = self._detalle()
-        dte["Encabezado"] = self._encabezado(resumen)
-        lin_ref = 1
-        ref_lines = []
-        if self._context.get("set_pruebas", False):
-            RazonRef = "CASO"
-            if not self.es_boleta() and n_atencion:
-                RazonRef += " " + n_atencion
-            RazonRef += "-" + str(self.sii_batch_number)
-            ref_line = {}
-            ref_line["NroLinRef"] = lin_ref
-            if self.es_boleta():
-                ref_line["CodRef"] = "SET"
-            else:
-                ref_line["TpoDocRef"] = "SET"
-                ref_line["FolioRef"] = self.get_folio()
-                ref_line["FchRef"] = datetime.strftime(datetime.now(), "%Y-%m-%d")
-            ref_line["RazonRef"] = RazonRef
-            lin_ref = 2
-            ref_lines.append(ref_line)
-        if self.referencias:
-            for ref in self.referencias:
-                ref_line = {}
-                ref_line["NroLinRef"] = lin_ref
-                if not self.es_boleta():
-                    if ref.sii_referencia_TpoDocRef:
-                        ref_line["TpoDocRef"] = (
-                            self._acortar_str(ref.sii_referencia_TpoDocRef.doc_code_prefix, 3)
-                            if ref.sii_referencia_TpoDocRef.use_prefix
-                            else ref.sii_referencia_TpoDocRef.sii_code
-                        )
-                        ref_line["FolioRef"] = ref.origen
-                    ref_line["FchRef"] = ref.fecha_documento or datetime.strftime(datetime.now(), "%Y-%m-%d")
-                if ref.sii_referencia_CodRef not in ["", "none", False]:
-                    ref_line["CodRef"] = ref.sii_referencia_CodRef
-                ref_line["RazonRef"] = ref.motivo
-                if self.es_boleta():
-                    ref_line['CodVndor'] = self.user_id.id
-                    ref_lines["CodCaja"] = self.journal_id.point_of_sale_id.name
-                ref_lines.append(ref_line)
-                lin_ref += 1
-        dte["Detalle"] = resumen["Detalle"]
-        dte["DscRcgGlobal"] = self._gdr()
-        dte["Referencia"] = ref_lines
+    def _dte(self):
+        dte = super()._dte()
         if self.comision_ids:
-            dte['Comisiones'] = self._comisiones()
+            dte["Comisiones"] = self._comisiones()
         dte["CodIVANoRec"] = self.no_rec_code
         dte["IVAUsoComun"] = self.iva_uso_comun
         dte["moneda_decimales"] = self.currency_id.decimal_places
         return dte
 
-    def _get_datos_empresa(self, company_id):
-        signature_id = self.env.user.get_digital_signature(company_id)
-        if not signature_id:
-            raise UserError(
-                _(
-                    """There are not a Signature Cert Available for this user, please upload your signature or tell to someelse."""
-                )
-            )
-        emisor = self._emisor()
+    def _prepare_dte_data(self):
+        self.ensure_one()
+
+        if self._context.get("set_pruebas", False) or self.sii_result == "Rechazado" or not self.sii_xml_dte:
+            self._timbrar()
+
+        if self.sii_result in ["Rechazado"] or (
+            self._context.get("set_pruebas", False) and
+            self.sii_xml_request and
+            self.sii_xml_request.state in ["", "draft", "NoEnviado"]
+        ):
+            if self.sii_xml_request and self.sii_xml_request.state in ["Aceptado", "Enviado", "EnProceso"]:
+                self.sii_xml_request = False
+            elif self.sii_xml_request:
+                if len(self.sii_xml_request.move_ids) == 1:
+                    self.sii_xml_request.unlink()
+                else:
+                    self.sii_xml_request = False
+            self.sii_message = ""
+
         return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
+            'TipoDTE': self.document_class_id.sii_code,
+            'sii_xml_request': self.sii_xml_dte,
+            'Folio': self.get_folio(),
         }
 
-    def _timbrar(self, n_atencion=None):
-        folio = self.get_folio()
-        datos = self._get_datos_empresa(self.company_id)
-        caf = self.env['dte.caf'].search([
-            ('start_nm', '<=', folio),
-            ('final_nm', '>=', folio),
-            ('document_class_id', '=', self.document_class_id.id)
-        ])
-        self._validaciones_caf(caf)
-        datos["Documento"] = [
-            {
-                "TipoDTE": self.document_class_id.sii_code,
-                "caf_file": [caf.caf_file],
-                "documentos": [self._dte(n_atencion)],
-            },
-        ]
-        result = fe.timbrar(datos)
-        if result[0].get("error"):
-            raise UserError(result[0].get("error"))
-        bci = self.get_barcode_img(xml=result[0]["sii_barcode"])
-        self.write(
-            {
-                "sii_xml_dte": result[0]["sii_xml_dte"],
-                "sii_barcode": result[0]["sii_barcode"],
-                "sii_barcode_img": bci,
-            }
-        )
-
-    def _crear_envio(self, n_atencion=None, RUTRecep="60803000-K"):
-        grupos = {}
-        batch = 0
-        api = False
-        for r in self:
-            batch += 1
-            # si viene una guía/nota referenciando una factura,
-            # que por numeración viene a continuación de la guia/nota,
-            # será recahazada la guía porque debe estar declarada la factura primero
-            if not r.sii_batch_number or r.sii_batch_number == 0:
-                r.sii_batch_number = batch
-            if r.es_boleta():
-                api = True
-            if r.sii_batch_number != 0 and r.es_boleta():
-                for i in grupos.keys():
-                    if i not in [39, 41]:
-                        raise UserError(
-                            "No se puede hacer envío masivo con contenido mixto, para este envío solamente boleta electrónica, boleta exenta electrónica o NC de Boleta ( o eliminar los casos descitos del set)"
-                        )
-            if (
-                self._context.get("set_pruebas", False) or r.sii_result == "Rechazado" or not r.sii_xml_dte
-            ):  # Retimbrar con número de atención y envío
-                r._timbrar(n_atencion)
-            grupos.setdefault(r.document_class_id.sii_code, [])
-            grupos[r.document_class_id.sii_code].append(
-                {"NroDTE": r.sii_batch_number, "sii_xml_request": r.sii_xml_dte, "Folio": r.get_folio(),}
-            )
-            if r.sii_result in ["Rechazado"] or (
-                self._context.get("set_pruebas", False) and r.sii_xml_request.state in ["", "draft", "NoEnviado"]
-            ):
-                if r.sii_xml_request:
-                    if len(r.sii_xml_request.move_ids) == 1:
-                        r.sii_xml_request.unlink()
-                    else:
-                        r.sii_xml_request = False
-                r.sii_message = ""
-        datos = self[0]._get_datos_empresa(self[0].company_id)
-        if self._context.get("set_pruebas", False):
-            api = False
-        datos.update({
-            "api": api,
-            "RutReceptor": RUTRecep, "Documento": []})
-        for k, v in grupos.items():
-            datos["Documento"].append(
-                {"TipoDTE": k, "documentos": v,}
-            )
-        return datos
-
-
-    def do_dte_send(self, n_atencion=None):
-        datos = self._crear_envio(n_atencion)
-        envio_id = self[0].sii_xml_request
-        if not envio_id:
-            envio_id = self.env["sii.xml.envio"].create({
-                'name': 'temporal',
-                'xml_envio': 'temporal',
-                'move_ids': [[6,0, self.ids]],
-            })
-        datos["ID"] = "Env%s" %envio_id.id
-        result = fe.timbrar_y_enviar(datos)
-        envio = {
-            "xml_envio": result.get("sii_xml_request", "temporal"),
-            "name": result.get("sii_send_filename", "temporal"),
-            "company_id": self[0].company_id.id,
-            "user_id": self.env.uid,
-            "sii_send_ident": result.get("sii_send_ident"),
-            "sii_xml_response": result.get("sii_xml_response"),
-            "state": result.get("status"),
-
-        }
-        envio_id.write(envio)
-        return envio_id
-
-    def _get_dte_status(self):
-        datos = self[0]._get_datos_empresa(self[0].company_id)
-        datos["Documento"] = []
-        docs = {}
-        api = False
-        for r in self:
-            api = r.es_boleta()
-            if r.sii_xml_request.state not in ["Aceptado", "Rechazado"]:
-                continue
-            docs.setdefault(r.document_class_id.sii_code, [])
-            docs[r.document_class_id.sii_code].append(r._dte())
-        if not docs:
-            _logger.warning("En get_dte_status, no docs")
-            return
-        if self._context.get("set_pruebas", False):
-            api = False
-        datos['api'] = api
-        for k, v in docs.items():
-            datos["Documento"].append({"TipoDTE": k, "documentos": v})
-        resultado = fe.consulta_estado_dte(datos)
-        if not resultado:
-            _logger.warning("En get_dte_status, no resultado")
-            return
-        for r in self:
-            id = "T{}F{}".format(r.document_class_id.sii_code, r.sii_document_number)
-            r.sii_result = resultado[id]["status"]
-            if resultado[id].get("xml_resp"):
-                r.sii_message = resultado[id].get("xml_resp")
-
-
-    def ask_for_dte_status(self):
-        for r in self:
-            if not r.sii_xml_request and not r.sii_xml_request.sii_send_ident:
-                raise UserError("No se ha enviado aún el documento, aún está en cola de envío interna en odoo")
-            if r.sii_xml_request.state not in ["Aceptado", "Rechazado"]:
-                r.sii_xml_request.with_context(
-                    set_pruebas=self._context.get("set_pruebas", False)).get_send_status(r.env.user)
-        try:
-            self._get_dte_status()
-        except Exception as e:
-            _logger.warning("Error al obtener DTE Status: %s" % str(e), exc_info=True)
+    def _post_dte_status_notify(self):
         for r in self:
             mess = False
             if r.sii_result == "Rechazado":
@@ -2011,7 +1502,7 @@ class AccountMove(models.Model):
             self.claim = claim
             return
         tipo_dte = self.document_class_id.sii_code
-        datos = self._get_datos_empresa(self.company_id)
+        datos = self._get_datos_empresa()
         partner_id = self.commercial_partner_id or self.partner_id.commercial_partner_id
         rut_emisor = partner_id.rut()
         datos["DTEClaim"] = [
@@ -2044,7 +1535,7 @@ class AccountMove(models.Model):
 
     def get_dte_claim(self):
         tipo_dte = self.document_class_id.sii_code
-        datos = self._get_datos_empresa(self.company_id)
+        datos = self._get_datos_empresa()
         company = self.company_id.parent_id or self.company_id
         rut_emisor = company.partner_id.rut()
         if self.move_type in ["in_invoice", "in_refund"]:
@@ -2126,7 +1617,7 @@ class AccountMove(models.Model):
             return
         values = {
             "res_id": self.id,
-            "email_from": dte_email_id.name_get()[0][1],
+            "email_from": dte_email_id.display_name,
             "email_to": email_to[:-1],
             "auto_delete": False,
             "model": "account.move",

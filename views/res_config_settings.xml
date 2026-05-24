@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Electronic Invoice" string="Electronic Invoice" name="l10n_cl_fe" groups="account.group_account_manager">
+                <app data-string="Facturación Electrónica" string="Facturación Electrónica" name="l10n_cl_fe" groups="account.group_account_manager">
 
                     <!-- Version Information -->
                     <block title="Versión de librería Facturación Electrónica" name="fe_version_block">
@@ -15,11 +15,11 @@
                             <div class="content-group">
                                 <div class="row mt16">
                                     <label for="fe_version" class="col-lg-3 o_light_label"/>
-                                    <field name="fe_version" readonly="1"/>
+                                    <field name="fe_version" readonly="True"/>
                                 </div>
                                 <div class="row mt8">
-                                    <label string="Versión Requerida" class="col-lg-3 o_light_label"/>
-                                    <span>0.19.0</span>
+                                    <span class="col-lg-3 o_light_label">Versión Requerida</span>
+                                    <span>0.21.4</span>
                                 </div>
                             </div>
                         </setting>
@@ -84,6 +84,115 @@
                                 </div>
                             </div>
                         </setting>
+                        <setting string="Cola de Envío" help="Cola de envío de documentos al SII">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.cola_envio)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Cola de Envío"
+                                            class="btn-link"/>
+                                    <div invisible="cola_envio_sin_firma_count == 0">
+                                        <span class="text-danger">⚠ </span>
+                                        <field name="cola_envio_sin_firma_count" class="text-danger"/>
+                                        <button
+                                            name="%(l10n_cl_fe.action_cola_envio_sin_firma)d"
+                                            type="action"
+                                            string="sin firma — Asignar"
+                                            class="btn-link text-danger"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Envíos XML" help="Historial de envíos XML al SII">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.xml_envio)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Envíos XML"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Clases de Documento" help="Tipos de documentos tributarios electrónicos">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_sii_document_class)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Clases de Documento"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Tipos de Documento" help="Tipos de documento para referencias">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_sii_document_type)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Tipos de Documento"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Responsabilidades" help="Tipos de contribuyente (Responsabilidad tributaria)">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_sii_responsability)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Responsabilidades"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Tipos de Concepto" help="Tipos de concepto para documentos">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_sii_concept_type)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Tipos de Concepto"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Descripciones de Actividad" help="Descripciones de actividad económica">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_sii_activity_description)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Descripciones de Actividad"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Actividades Económicas" help="Giros comerciales (actividades económicas)">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_partner_activities)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Actividades Económicas"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Oficinas Regionales SII" help="Oficinas regionales del SII">
+                            <div class="content-group">
+                                <div class="mt16">
+                                    <button name="%(l10n_cl_fe.act_sii_regional_offices)d"
+                                            icon="oi-arrow-right"
+                                            type="action"
+                                            string="Oficinas Regionales SII"
+                                            class="btn-link"/>
+                                </div>
+                            </div>
+                        </setting>
                     </block>
 
                     <!-- XML Reception -->
@@ -118,8 +227,28 @@
                                 </div>
                             </div>
                         </setting>
-                        <setting string="Limitar Líneas por Documento" help="Limitar cantidad de líneas por documento (legal: una por hoja)">
-                            <field name="limit_dte_lines"/>
+                        <setting string="Acción por límite de líneas">
+                            <field name="dte_lines_action"/>
+                            <div class="text-muted">
+                                <ul>
+                                    <li><b>Auto Crear</b>: divide en varios documentos cuando el detalle no cabe en la hoja impresa.</li>
+                                    <li><b>Detener</b>: bloquea el documento si el detalle excede la hoja impresa.</li>
+                                    <li><b>Agrupar en el XML</b>: mantiene todas las líneas en el move y la hoja impresa, pero en el XML al SII agrupa por impuesto cuando se supera el máximo legal.</li>
+                                </ul>
+                            </div>
+                        </setting>
+                        <setting string="Líneas por hoja impresa" help="Cantidad de líneas que caben en la hoja impresa" invisible="dte_lines_action == 'autopack'">
+                            <field name="dte_lines"/>
+                        </setting>
+                        <setting string="Factor de Cálculo Líneas" help="Factor para acomodar líneas largas" invisible="dte_lines_action == 'autopack'">
+                            <field name="dte_lines_factor"/>
+                        </setting>
+                        <setting string="Sucursales DTE" help="Sucursales DTE de la empresa (Código SII)">
+                            <button name="%(l10n_cl_fe.action_sii_sucursal)d"
+                                    icon="fa-arrow-right"
+                                    type="action"
+                                    string="Sucursales DTE"
+                                    class="btn-link"/>
                         </setting>
                         <setting string="Auto Enviar Consumo de Folios" help="Enviar automáticamente consumo de folios">
                             <field name="cf_autosend"/>

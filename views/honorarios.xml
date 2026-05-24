@@ -38,17 +38,17 @@
                     </div>
                         <span
                             class="o_form_label"
-                            invisible="state == 'draft' or type != 'out_refund'"
+                            invisible="state == 'draft' or move_type != 'out_refund'"
                         >Boleta de Honorarios</span>
                         <h1 class="mt0">
                             <div invisible="sequence_number_next_prefix">
                                 <span
                                     class="o_form_label"
-                                    invisible="state not in ['draft'] or type != 'out_invoice'"
+                                    invisible="state not in ['draft'] or move_type != 'out_invoice'"
                                 >Draft Invoice</span>
                                 <span
                                     class="o_form_label"
-                                    invisible="state not in ['draft'] or type != 'out_refund'"
+                                    invisible="state not in ['draft'] or move_type != 'out_refund'"
                                 >Draft Credit Note</span>
                                 <field
                                     name="name"
@@ -64,7 +64,7 @@
                                 <field name="sequence_number_next" class="oe_inline" />
                             </div>
                         </h1>
-                        <field name="type" invisible="True" />
+                        <field name="move_type" invisible="True" />
                         <group>
                             <group>
                                 <field
@@ -73,7 +73,7 @@
                                     context="{'default_customer': 0, 'search_default_supplier': 1}"
                                     domain="[('responsability_id.tp_sii_code','=','2')]"
                                 />
-                                <field name="reference" string="Vendor Reference" />
+                                <field name="ref" string="Vendor Reference" />
                             </group>
                             <group>
                                 <field name="origin" invisible="not origin" />
@@ -89,7 +89,7 @@
                         </group>
                         <notebook>
                             <page string="Bill">
-                                <field context="{'type': type, 'journal_id': journal_id}" name="invoice_line_ids">
+                                <field context="{'move_type': move_type, 'journal_id': journal_id}" name="invoice_line_ids">
                                     <tree string="Bill lines" editable="bottom">
                                         <field name="sequence" widget="handle" />
                                         <field name="product_id" context="{'partner_id': parent.partner_id}" />
@@ -167,7 +167,7 @@
                                             colspan="2"
                                             nolabel="1"
                                             widget="payment"
-                                            attrs="{'invisible': [('state', 'not in', 'open')]}"
+                                            invisible="state != 'posted'"
                                         />
                                     </group>
                                     <group string="Tratamiento del IVA">
@@ -239,17 +239,17 @@
                                 <field name="referencias" mode="tree">
                                     <form>
                                         <group>
-                                            <field name="origen" required="True" />
-                                            <field name="sii_referencia_TpoDocRef" required="True" />
-                                            <field name="sii_referencia_CodRef" />
+                                            <field name="folio" required="True" />
+                                            <field name="ref_id" required="True" />
+                                            <field name="cod_ref" />
                                             <field name="motivo" />
                                             <field name="fecha_documento" />
                                         </group>
                                     </form>
                                     <tree>
-                                        <field name="origen" required="True" />
-                                        <field name="sii_referencia_TpoDocRef" required="True" />
-                                        <field name="sii_referencia_CodRef" />
+                                        <field name="folio" required="True" />
+                                        <field name="ref_id" required="True" />
+                                        <field name="cod_ref" />
                                         <field name="motivo" />
                                         <field name="fecha_documento" />
                                     </tree>
@@ -257,10 +257,7 @@
                             </page>
                         </notebook>
                     </sheet>
-                    <div class="oe_chatter">
-                        <field name="message_follower_ids" widget="mail_followers" />
-                        <field name="message_ids" widget="mail_thread" />
-                    </div>
+                    <chatter/>
                 </form>
             </field>
         </record>
@@ -271,7 +268,7 @@
                 <tree decoration-info="state == 'draft'" decoration-muted="state == 'cancel'" string="Invoice">
                     <field name="partner_id" groups="base.group_user" string="Vendor" />
                     <field name="date" string="Bill Date" />
-                    <field name="number" />
+                    <field name="name" string="Number" />
                     <field name="reference" />
                     <field name="commercial_partner_id" invisible="True" />
                     <field name="name" invisible="True" />
@@ -284,20 +281,19 @@
                     <field name="currency_id" invisible="True" />
                     <field name="company_currency_id" invisible="True" />
                     <field name="state" />
-                    <field name="type" invisible="context.get('type',True)" />
+                    <field name="move_type" invisible="context.get('move_type',True)" />
                 </tree>
             </field>
         </record>
         <record id="honorarios_tree2" model="ir.actions.act_window">
             <field name="name">Boletas Honorarios</field>
             <field name="res_model">account.move</field>
-            <field name="view_type">form</field>
             <field name="view_mode">tree,kanban,form,calendar,pivot,graph</field>
             <field eval="False" name="view_id" />
-            <field name="domain">[('type','in',('in_invoice', 'in_refund'))]</field>
+            <field name="domain">[('move_type','in',('in_invoice', 'in_refund'))]</field>
             <field
                 name="context"
-            >{'default_type': 'in_invoice', 'type': 'in_invoice', 'journal_type': 'purchase', 'honorarios': True}</field>
+            >{'default_move_type': 'in_invoice', 'move_type': 'in_invoice', 'journal_type': 'purchase', 'honorarios': True}</field>
             <field name="search_view_id" ref="account.view_account_invoice_filter" />
             <field name="help" type="html">
                 <p class="oe_view_nocontent_create">
@@ -331,10 +327,10 @@ action = {
               "view_mode": "tree,kanban,form",
               "act_window_id": arbol.id,
               "res_model":  'account.move',
-              "domain": [('type','in',('in_invoice', 'in_refund')),
+              "domain": [('move_type','in',('in_invoice', 'in_refund')),
                           ('journal_id','in', ids)],
-              "context": {'default_type': 'in_invoice',
-                          'type': 'in_invoice',
+              "context": {'default_move_type': 'in_invoice',
+                          'move_type': 'in_invoice',
                           'journal_type': 'purchase',
                           'honorarios': True,
                           },

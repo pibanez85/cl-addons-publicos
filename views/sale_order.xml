@@ -21,7 +21,7 @@
                     <tree editable="bottom">
                         <field name="fecha_documento" />
                         <field name="folio" required="True" />
-                        <field name="sii_referencia_TpoDocRef" required="True" />
+                        <field name="ref_id" required="True" />
                         <field name="motivo" />
                     </tree>
                 </field>

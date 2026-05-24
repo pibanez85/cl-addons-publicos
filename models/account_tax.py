@@ -136,6 +136,9 @@ class SIITax(models.Model):
             elif pytesseract.__version__ < "0.3.10":
                 raise UserError("Debe actualizar la dependencia python pytesseract>=0.3.10 y luego reiniciar el servicio de odoo")
 
+    def es_iva(self):
+        return self.sii_code in [14, 15]
+
     def es_adicional(self):
         return self.sii_code in [24, 25, 26, 27, 271]
 

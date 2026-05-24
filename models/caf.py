@@ -47,7 +47,13 @@ class CAF(models.Model):
         }
         return where_string, param
 
-    def _get_folio_actual(self):
+    def _peek_folio_actual(self):
+        """Calcula el siguiente folio según el último documento usado.
+
+        Pure: solo lee account_move/folios_anulados/folios_vencidos.
+        No escribe state ni folio_actual. Retorna self.final_nm + 1 cuando el
+        rango está agotado, anulado-overflow o vencido (sentinela > final_nm).
+        Cualquier valor en [start_nm, final_nm] es un folio usable."""
         folio = 0
         if not self.document_class_id:
             return folio
@@ -63,43 +69,73 @@ class CAF(models.Model):
                 table=table,
                 where_string=where_string,
                 field='sii_document_number',
-                start_nm= self.start_nm,
-                final_nm= self.final_nm,
+                start_nm=self.start_nm,
+                final_nm=self.final_nm,
             ))
         if not where_clauses:
             return 0
         union = 'UNION ALL '.join(where_clauses)
-        query = '''SELECT MAX({field})
-FROM ({union}) AS combined'''.format(
-            field='sii_document_number',
-            union=union
+        query = 'SELECT MAX({field}) FROM ({union}) AS combined'.format(
+            field='sii_document_number', union=union,
         )
         self.env.cr.execute(query, param)
         folio = int((self.env.cr.fetchone() or [None])[0] or 0)
+        exhausted = self.final_nm + 1
         if self.start_nm <= folio < self.final_nm:
             folios_anulados = ast.literal_eval(self.folios_anulados or '[]')
-            def check_anulado(folio_check):
-                folio_check += 1
-                if folio_check in folios_anulados:
-                    return check_anulado(folio_check)
-                if folio_check > self.final_nm:
-                    return self.final_nm
-                return folio_check
+            def check_anulado(f):
+                f += 1
+                if f in folios_anulados:
+                    return check_anulado(f)
+                if f > self.final_nm:
+                    return exhausted
+                return f
             folio = check_anulado(folio)
             if folio > self.final_nm:
-                self.write({"state": 'spent', 'qty_available': 0})
-                return self.final_nm
+                return exhausted
             if self.document_class_id.es_factura_afecta() or self.document_class_id.es_nc() or self.document_class_id.es_nd():
                 folios_vencidos = ast.literal_eval(self.folios_vencidos or '[]')
                 tz = pytz.timezone("America/Santiago")
                 if folio in folios_vencidos or fields.Date.context_today(self.with_context(tz=tz)) >= self.expiration_date:
-                    self.write({"state": 'spent', 'qty_available': 0})
-                    return self.final_nm
+                    return exhausted
             return folio
         if folio > 0:
-            self.write({"state": 'spent', 'qty_available': 0})
-            return self.final_nm
+            return exhausted
         return self.start_nm
+
+    def _get_folio_actual(self):
+        folio = self._peek_folio_actual()
+        if folio > self.final_nm:
+            self._mark_spent()
+            return self.final_nm
+        return folio
+
+    def _is_folio_used(self, folio):
+        if not self.document_class_id or not (self.start_nm <= folio <= self.final_nm):
+            return False
+        tables = self._get_tables()
+        where_clauses = []
+        param = {}
+        for table in tables:
+            where_string, params = getattr(self, "_%s_where_string_and_param" % table)()
+            where_clauses.append("""
+                SELECT 1 FROM {table}
+                {where_string}
+                AND {field} = %(folio)s
+                LIMIT 1
+            """.format(table=table, where_string=where_string, field='sii_document_number'))
+            param.update(params)
+        if not where_clauses:
+            return False
+        param['folio'] = folio
+        union = ' UNION ALL '.join(where_clauses)
+        self.env.cr.execute('SELECT 1 FROM ({}) AS combined LIMIT 1'.format(union), param)
+        return bool(self.env.cr.fetchone())
+
+    def _mark_spent(self):
+        if self.state == 'spent' and self.qty_available == 0:
+            return
+        self.write({"state": 'spent', 'qty_available': 0})
 
     def compute_folio_actual(self):
         folio_actual = self._get_folio_actual()
@@ -119,7 +155,7 @@ FROM ({union}) AS combined'''.format(
             if r.caf_file:
                 r.load_caf()
 
-    name = fields.Char(string="File Name", readonly=True, related="filename",)
+    name = fields.Char(string="Nombre", readonly=True, related="filename",)
     filename = fields.Char(string="File Name", required=True,)
     caf_file = fields.Binary(string="CAF XML File", help="Upload the CAF XML File in this holder",)
     caf_string = fields.Text(string="Archivo CAF")
@@ -282,7 +318,9 @@ to work properly!"""
 
     def _used_level(self):
         for r in self:
-            r.use_level = float(100 * r.cantidad_usados) / r.cantidad_folios
+            r.use_level = 0.0
+            if r.cantidad_folios > 0:
+                r.use_level = float(100 * r.cantidad_usados) / r.cantidad_folios
 
     def decode_caf(self):
         return etree.fromstring(self.caf_string)

@@ -4,19 +4,93 @@
         <field name="name">sii.cola_envio.form</field>
         <field name="model">sii.cola_envio</field>
         <field name="arch" type="xml">
-            <form string="SII queue">
-                <group>
-                    <field name="company_id" />
-                    <field name="doc_ids" />
-                    <field name="model" />
-                    <field name="user_id" />
-                    <field name='tipo_trabajo' />
-                    <field name="date_time" />
-                    <field name="send_email" />
-                    <field name="active" />
-                    <field name="set_pruebas"/>
-                    <field name="intento" />
-                </group>
+            <form string="Cola de Envío DTE">
+                <header>
+                    <button name="action_procesar" string="Procesar Ahora" type="object" class="oe_highlight"/>
+                    <button name="action_reset_intentos" string="Resetear Intentos" type="object" invisible="intento == 0"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="True"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="General">
+                            <field name="company_id"/>
+                            <field name="firma_id"/>
+                            <field name="tipo_trabajo"/>
+                            <field name="date_time"/>
+                            <field name="n_atencion"/>
+                        </group>
+                        <group string="Estado">
+                            <field name="document_count"/>
+                            <field name="intento"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Opciones">
+                            <field name="manual"/>
+                            <field name="es_boleta"/>
+                            <field name="set_pruebas"/>
+                            <field name="send_email"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="page_documents" string="Facturas">
+                            <field name="document_ids" nolabel="1">
+                                <tree>
+                                    <field name="name" string="Documento"/>
+                                    <field name="partner_id" string="Cliente"/>
+                                    <field name="document_class_id" string="Tipo Doc"/>
+                                    <field name="sii_document_number" string="Folio"/>
+                                    <field name="amount_total" string="Total" sum="Total"/>
+                                    <field name="sii_result" string="Estado DTE"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="page_boleta_voucher" string="Boletas Voucher" invisible="not boleta_voucher_ids">
+                            <field name="boleta_voucher_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="sii_document_number" string="Folio"/>
+                                    <field name="sii_result" string="Estado"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="page_books" string="Libros" invisible="not book_ids">
+                            <field name="book_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="tipo_libro" string="Tipo"/>
+                                    <field name="periodo_tributario" string="Período"/>
+                                    <field name="sii_result" string="Estado"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="page_consumo_folios" string="Consumo Folios" invisible="not consumo_folios_ids">
+                            <field name="consumo_folios_ids" nolabel="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="fecha_inicio" string="Desde"/>
+                                    <field name="fecha_final" string="Hasta"/>
+                                    <field name="sii_result" string="Estado"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="XML Envío" name="xml_envio" invisible="not envio_id">
+                            <group>
+                                <field name="envio_id" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>
@@ -24,25 +98,78 @@
         <field name="name">sii.cola_envio.tree</field>
         <field name="model">sii.cola_envio</field>
         <field name="arch" type="xml">
-            <tree string="SII queue">
-                <field name="doc_ids" />
-                <field name="model" />
-                <field name="user_id" />
-                <field name='tipo_trabajo' />
-                <field name="date_time" />
-                <field name="send_email" />
-                <field name="active" />
-                <field name="intento" />
+            <tree string="Cola de Envío DTE" decoration-danger="intento &gt; 5" decoration-muted="not active">
+                <field name="sequence" widget="handle"/>
+                <field name="company_id" optional="hide"/>
+                <field name="document_count" string="Docs"/>
+                <field name="tipo_trabajo"/>
+                <field name="firma_id"/>
+                <field name="n_atencion" optional="show"/>
+                <field name="date_time" optional="show"/>
+                <field name="intento"/>
+                <field name="manual"/>
+                <field name="es_boleta"/>
+                <field name="set_pruebas" optional="hide"/>
+                <field name="send_email" optional="hide"/>
+                <field name="active" optional="hide"/>
             </tree>
         </field>
     </record>
+    <record id="view_sii_cola_envio_search" model="ir.ui.view">
+        <field name="name">sii.cola_envio.search</field>
+        <field name="model">sii.cola_envio</field>
+        <field name="arch" type="xml">
+            <search string="Cola de Envío">
+                <field name="company_id"/>
+                <field name="firma_id"/>
+                <field name="n_atencion"/>
+                <filter name="filter_active" string="Activos" domain="[('active', '=', True)]"/>
+                <filter name="filter_manual" string="Manuales" domain="[('manual', '=', True)]"/>
+                <filter name="filter_envio" string="Envío" domain="[('tipo_trabajo', '=', 'envio')]"/>
+                <filter name="filter_consulta" string="Consulta" domain="[('tipo_trabajo', '=', 'consulta')]"/>
+                <filter name="filter_pasivo" string="Pasivo" domain="[('tipo_trabajo', '=', 'pasivo')]"/>
+                <separator/>
+                <filter name="filter_con_errores" string="Con errores" domain="[('intento', '&gt;', 5)]"/>
+                <group>
+                    <filter name="group_tipo" string="Tipo Trabajo" domain="[]" context="{'group_by': 'tipo_trabajo'}"/>
+                    <filter name="group_company" string="Compañía" domain="[]" context="{'group_by': 'company_id'}"/>
+                    <filter name="group_manual" string="Manual" domain="[]" context="{'group_by': 'manual'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
     <record model="ir.actions.act_window" id="cola_envio">
-        <field name="name">SII queue</field>
+        <field name="name">Cola de Envío DTE</field>
         <field name="res_model">sii.cola_envio</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_sii_cola_envio_search"/>
     </record>
+
+    <record model="ir.actions.act_window" id="action_cola_envio_sin_firma">
+        <field name="name">Cola sin firma</field>
+        <field name="res_model">sii.cola_envio</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('firma_id', '=', False), ('active', '=', True)]</field>
+        <field name="context">{'search_default_sin_firma': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay colas pendientes sin firma electrónica.</p>
+        </field>
+    </record>
+
+    <record model="ir.actions.server" id="action_asignar_firma_masiva">
+        <field name="name">Asignar mi firma electrónica</field>
+        <field name="model_id" ref="model_sii_cola_envio"/>
+        <field name="binding_model_id" ref="model_sii_cola_envio"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+if records:
+    records.action_asignar_firma_actual()
+        </field>
+    </record>
+
     <menuitem
-        name="SII queue"
+        name="Cola de Envío"
         action="cola_envio"
         id="menu_action_sii_cola_envio"
         parent="l10n_cl_fe.menu_sii_config"

@@ -19,6 +19,13 @@ class DTECompany(models.Model):
         except Exception:
             return self.env["sii.document_type"]
 
+    sii_firma_ids = fields.Many2many(
+        "sii.firma",
+        relation="res_company_sii_firma_rel",
+        column1="res_company_id",
+        column2="sii_firma_id",
+        string="Firmas Electrónicas",
+    )
     dte_email_id = fields.Many2one(
         "mail.alias",
         string="DTE EMail",
@@ -103,9 +110,22 @@ stamp to be legally valid.""",
         string="Medios de pago Electrónico",
         domain=[('type', 'not in', ['sale', 'purchase'])],
     )
-    limit_dte_lines = fields.Boolean(
-        string="Limitar Cantidad de líneas por documento",
-        default=False,
+    dte_lines = fields.Integer(
+        string="Cantidad de Líneas",
+        default=60,
+    )
+    dte_lines_factor = fields.Float(
+        string="Factor de Cálculo Líneas",
+        default=50.0,
+    )
+    dte_lines_action = fields.Selection(
+        [
+            ('create', 'Auto Crear otro documento'),
+            ('stop', 'Detener Creación'),
+            ('autopack', 'Agrupar líneas en el XML (auto-pack)'),
+        ],
+        string="Acción a ejecutar",
+        default="autopack",
     )
     url_remote_partners = fields.Char(
         string="Url Remote Partners",

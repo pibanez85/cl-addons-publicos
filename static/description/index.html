@@ -1,6 +1,15 @@
 <section class="oe_container oe_dark">
     <div class="oe_row oe_spaced">
         <h2 class="oe_slogan oe_mb32">Facturaci&oacute;n Electr&oacute;nica para Chile</h2>
+        <div class="alert alert-danger" style="border: 2px solid #ff0000; padding: 20px; border-radius: 10px; background-color: #fff5f5; color: #721c24; margin-bottom: 32px;">
+            <h3 style="color: #721c24; font-weight: bold; text-align: center; margin-top: 0;">&iexcl;AVISO CR&Iacute;TICO DE INSTALACI&Oacute;N!</h3>
+            <p style="font-size: 1.1em; text-align: center; margin-bottom: 0;">
+                Para poder instalar estos m&oacute;dulos, se debe <strong>eliminar completamente</strong> el m&oacute;dulo est&aacute;ndar <strong>l10n_cl</strong> (Localizaci&oacute;n Chilena oficial de Odoo) del sistema.
+            </p>
+            <p style="font-size: 1em; text-align: center; margin-top: 10px;">
+                De lo contrario, se producir&aacute;n conflictos de dependencia y errores graves en la base de datos.
+            </p>
+        </div>
         <div class="oe_span6">
             <!--<img class="oe_picture" src="png" />-->
         </div>
@@ -431,6 +440,19 @@
                     </tr>
                 </tbody>
             </table>
+            <h3>Sistema Autopack</h3>
+            <p>El sistema de env&iacute;o por cola (<code>sii.cola_envio</code>) implementa autopack para agrupar documentos en paquetes de hasta 20 para env&iacute;o masivo al SII.</p>
+            <ul>
+                <li><strong>Estructura:</strong> Usa campos Many2many por tipo de documento (<code>document_ids</code>, <code>picking_ids</code>, <code>order_ids</code>, etc.)</li>
+                <li><strong>M&eacute;todo queue():</strong> Para encolar documentos de forma consistente</li>
+                <li><strong>Agrupaci&oacute;n:</strong> Por empresa, tipo de trabajo, set de pruebas y tipo de documento</li>
+            </ul>
+            <p><strong>Extensi&oacute;n en m&oacute;dulos adicionales:</strong></p>
+            <ul>
+                <li><code>l10n_cl_stock_picking</code>: Agrega <code>picking_ids</code> para gu&iacute;as de despacho</li>
+                <li><code>l10n_cl_dte_point_of_sale</code>: Agrega <code>order_ids</code> para &oacute;rdenes POS (boletas)</li>
+                <li><code>l10n_cl_dte_factoring</code>: Agrega tipos de trabajo <code>cesion</code> y <code>cesion_consulta</code></li>
+            </ul>
             <h3>Otras Funcionalidades</h3>
             <table class="table table-sm">
                 <thead>

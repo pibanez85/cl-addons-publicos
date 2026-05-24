@@ -5,7 +5,7 @@ from datetime import datetime
 import dateutil.relativedelta as relativedelta
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
@@ -25,13 +25,122 @@ class SignatureCert(models.Model):
     _name = "sii.firma"
     _description = "Certificado Digital para Firma Electrónica SII"
 
+    def _expiration_message(self, days_left):
+        return _(
+            "La firma electrónica '%(name)s' (RUT %(rut)s) vence el %(date)s "
+            "(%(days)s días restantes). ⚠ Si no la renueva a tiempo, NO podrá "
+            "emitir documentos tributarios electrónicos (facturas, boletas, "
+            "notas de crédito/débito, guías) al SII hasta que se actualice."
+        ) % {
+            "name": self.name,
+            "rut": self.subject_serial_number or "-",
+            "date": self.expire_date.strftime("%d-%m-%Y"),
+            "days": days_left,
+        }
+
     def alerta_vencimiento(self):
-        if self.expire_date < (datetime.now() + relativedelta.relativedelta(days=30)):
-            alert_msg = "Firma pronto a vencer"
+        self.ensure_one()
+        if not self.expire_date or not self.user_ids:
+            return
+        today = fields.Date.context_today(self)
+        days_left = (self.expire_date - today).days
+        if days_left > 30:
+            return
+        Activity = self.env["mail.activity"].sudo()
+        activity_type = self.env.ref(
+            "mail.mail_activity_data_warning", raise_if_not_found=False,
+        ) or self.env.ref(
+            "mail.mail_activity_data_todo", raise_if_not_found=False,
+        )
+        if not activity_type:
+            return
+        summary = _("Firma Electrónica próxima a vencer")
+        res_model_id = self.env["ir.model"]._get(self._name).id
+        note = self._expiration_message(days_left)
+        last_week = days_left <= 7
+        for user in self.user_ids:
+            base_domain = [
+                ("res_model_id", "=", res_model_id),
+                ("res_id", "=", self.id),
+                ("user_id", "=", user.id),
+                ("activity_type_id", "=", activity_type.id),
+                ("summary", "=", summary),
+            ]
+            if last_week:
+                day_start = datetime.combine(today, datetime.min.time())
+                day_end = day_start + relativedelta.relativedelta(days=1)
+                today_activity = Activity.search(
+                    base_domain + [
+                        ("create_date", ">=", day_start),
+                        ("create_date", "<", day_end),
+                    ], limit=1,
+                )
+                if today_activity:
+                    today_activity.write({
+                        "date_deadline": self.expire_date, "note": note,
+                    })
+                    continue
+                Activity.create({
+                    "res_model_id": res_model_id,
+                    "res_id": self.id,
+                    "user_id": user.id,
+                    "activity_type_id": activity_type.id,
+                    "summary": summary,
+                    "note": note,
+                    "date_deadline": self.expire_date,
+                })
+                continue
+            existing = Activity.search(base_domain, limit=1)
+            if existing:
+                existing.write({
+                    "date_deadline": self.expire_date, "note": note,
+                })
+                continue
+            Activity.create({
+                "res_model_id": res_model_id,
+                "res_id": self.id,
+                "user_id": user.id,
+                "activity_type_id": activity_type.id,
+                "summary": summary,
+                "note": note,
+                "date_deadline": self.expire_date,
+            })
+
+    def notify_use_expiration(self):
+        self.ensure_one()
+        if not self.expire_date:
+            return
+        today = fields.Date.context_today(self)
+        days_left = (self.expire_date - today).days
+        if days_left > 30:
+            return
+        message = self._expiration_message(days_left)
+        notif_type = "danger" if days_left <= 7 else "warning"
+        try:
             self.env["bus.bus"]._sendone(
-                self.env.user.partner_id, 'sii.firma/display_notification',
-                {"title": "Alerta sobre Firma Electrónica", "message": alert_msg, "type": "dte_notif",},
+                self.env.user.partner_id,
+                "simple_notification",
+                {
+                    "title": _("Firma Electrónica por vencer"),
+                    "message": message,
+                    "type": notif_type,
+                    "sticky": True,
+                },
             )
+        except Exception as e:
+            _logger.warning("No se pudo enviar toast de firma: %s", e)
+
+    @api.model
+    def _cron_alerta_vencimiento(self):
+        firmas = self.search([("active", "=", True), ("state", "=", "valid")])
+        for firma in firmas:
+            try:
+                firma.alerta_vencimiento()
+            except Exception as e:
+                _logger.warning(
+                    "No se pudo crear alerta de vencimiento para firma %s: %s",
+                    firma.display_name, e,
+                )
 
     def check_signature(self):
         for s in self.sudo():
@@ -94,10 +203,23 @@ class SignatureCert(models.Model):
     priority = fields.Integer(string="Priority", default=1,)
     active = fields.Boolean(string="Active", default=True,)
 
-    _sql_constraints = [
-        ("name", "unique(name, subject_serial_number, active)", "Name must be unique!"),
-    ]
     _order = "priority DESC"
+
+    @api.constrains("name", "subject_serial_number", "active")
+    def _check_unique_active(self):
+        for rec in self:
+            if not rec.active:
+                continue
+            duplicate = self.search([
+                ("id", "!=", rec.id),
+                ("name", "=", rec.name),
+                ("subject_serial_number", "=", rec.subject_serial_number),
+                ("active", "=", True),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    "Ya existe una firma activa con el mismo archivo y RUT (%s)."
+                ) % rec.name)
 
 
     def action_process(self):

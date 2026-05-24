@@ -5,7 +5,6 @@
             <field name="name">Cron de envío y consulta estado documento en el sii</field>
             <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="model_sii_cola_envio" />
             <field name="state">code</field>
             <field name="code">model._cron_procesar_cola()</field>
@@ -15,7 +14,6 @@
             <field name="name">Cron AutoAceptación Documentos</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="model_mail_message_dte_document" />
             <field name="state">code</field>
             <field name="code">model.auto_accept_documents(50)</field>
@@ -29,10 +27,23 @@
             <field name="name">Cron Verificación de Partners</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="model_res_partner" />
             <field name="state">code</field>
             <field name="code">model._check_need_update(100)</field>
+            <field name="active" eval="True" />
+            <field
+                name="nextcall"
+                eval="(datetime.now() + relativedelta(days=1, hour=8, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"
+            />
+        </record>
+        <record id="ir_cron_alerta_firma_vencimiento" model="ir.cron">
+            <field name="name">Cron Alerta vencimiento Firma Electrónica</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="model_id" ref="model_sii_firma" />
+            <field name="state">code</field>
+            <field name="code">model._cron_alerta_vencimiento()</field>
             <field name="active" eval="True" />
             <field
                 name="nextcall"
@@ -44,7 +55,6 @@
         <field name="name">Cron AutoReponer CAF</field>
         <field name="interval_number">1</field>
         <field name="interval_type">minutes</field>
-        <field name="numbercall">-1</field>
         <field name="model_id" ref="model_ir_sequence" />
         <field name="state">code</field>
         <field name="code">model.check_cafs()</field>

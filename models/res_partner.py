@@ -80,6 +80,13 @@ class ResPartner(models.Model):
             rut = str(int(d[0])) + "-" + d[1]
         return rut
 
+    @api.model
+    def _name_search(self, name, domain=None, operator='ilike', limit=100, order=None):
+        domain = list(domain or [])
+        if name:
+            domain = ['|', ('document_number', operator, name)] + domain
+        return super()._name_search(name, domain, operator, limit, order)
+
     def _address_fields(self):
         vals = super()._address_fields()
         vals.append('city_id')

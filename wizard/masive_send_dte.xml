@@ -10,13 +10,24 @@
                     <field name="documentos" widget="one2many">
                         <tree string="DTes a enviar" editable="top/bottom">
                             <field name="state" invisible="True" />
+                            <field name="company_id" invisible="True" />
+                            <field name="invoice_date" />
+                            <field name="document_class_id" />
+                            <field name="sii_document_number" />
                             <field name="name" />
+                            <field name="partner_id" />
                             <field name="amount_total" />
                             <field name="sii_batch_number" readonly="False" />
+                            <field name="sii_result" widget="badge"
+                                decoration-muted="sii_result in ['draft', 'NoEnviado', 'Anulado']"
+                                decoration-info="sii_result in ['Enviado', 'EnProceso', 'EnCola']"
+                                decoration-success="sii_result in ['Proceso', 'Aceptado']"
+                                decoration-danger="sii_result == 'Rechazado'"
+                                decoration-warning="sii_result == 'Reparo'"/>
                         </tree>
                     </field>
-                    <field name="numero_atencion" />
-                    <field name="set_pruebas" />
+                    <field name="set_pruebas" invisible="1" />
+                    <field name="numero_atencion" invisible="not set_pruebas" />
                 </group>
                 <footer>
                         <button string="Confirm" name="confirm" type="object" class="oe_highlight" />

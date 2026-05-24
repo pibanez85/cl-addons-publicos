@@ -14,37 +14,14 @@ except Exception as e:
 
 class ConsumoFolios(models.Model):
     _name = "account.move.consumo_folios"
+    _inherit = ['l10n_cl_fe.dte.book.mixin']
     _description = "Consumo Diario de Folios"
-    order = "fecha_inicio desc"
+    _order = "fecha_inicio desc"
 
-    sii_xml_request = fields.Many2one(
-        "sii.xml.envio", string="SII XML Request", copy=False, readonly=True,
-    )
-    state = fields.Selection(
-        [
-            ("draft", "Borrador"),
-            ("NoEnviado", "No Enviado"),
-            ("EnCola", "En Cola"),
-            ("Enviado", "Enviado"),
-            ('EnProceso', 'EnProceso'),
-            ("Aceptado", "Aceptado"),
-            ("Rechazado", "Rechazado"),
-            ("Reparo", "Reparo"),
-            ("Proceso", "Procesado"),
-            ("Reenviar", "Reenviar"),
-            ("Anulado", "Anulado"),
-        ],
-        string="Resultado",
-        index=True,
-        readonly=True,
-        default="draft",
-        copy=False,
-        help=" * The 'Draft' status is used when a user is encoding a new and unconfirmed Invoice.\n"
-        " * The 'Pro-forma' status is used the invoice does not have an invoice number.\n"
-        " * The 'Open' status is used when user create invoice, an invoice number is generated. Its in open status till user does not pay invoice.\n"
-        " * The 'Paid' status is set automatically when the invoice is paid. Its related journal entries may or may not be reconciled.\n"
-        " * The 'Cancelled' status is used when user cancel invoice.",
-    )
+    _dte_cola_field = 'consumo_folios_ids'
+    _dte_xml_envio_field = 'consumo_folios_ids'
+    _dte_label = "Consumo de Folios"
+
     move_ids = fields.Many2many("account.move", readonly=True, )
     fecha_inicio = fields.Date(
         string="Fecha Inicio",
@@ -99,7 +76,7 @@ class ConsumoFolios(models.Model):
     anulaciones = fields.One2many(
         "account.move.consumo_folios.anulaciones",
         "cf_id",
-        string="Detalle Impuestos",
+        string="Cancellation Details",
         readonly=True,
 
     )
@@ -111,23 +88,6 @@ class ConsumoFolios(models.Model):
         readonly=True,
 
     )
-    responsable_envio = fields.Many2one("res.users",)
-    sii_result = fields.Selection(
-        [
-            ("draft", "Borrador"),
-            ("NoEnviado", "No Enviado"),
-            ("Enviado", "Enviado"),
-            ('EnProceso', 'EnProceso'),
-            ("Aceptado", "Aceptado"),
-            ("Rechazado", "Rechazado"),
-            ("Reparo", "Reparo"),
-            ("Proceso", "Proceso"),
-            ("Reenviar", "Reenviar"),
-            ("Anulado", "Anulado"),
-        ],
-        related="state",
-    )
-
     _order = "fecha_inicio desc"
 
     @api.model
@@ -279,7 +239,7 @@ class ConsumoFolios(models.Model):
         consumo = self.search(
             [
                 ("fecha_inicio", "=", self.fecha_inicio),
-                ("state", "not in", ["draft", "Rechazado"]),
+                ("sii_result", "not in", ["draft", "Rechazado"]),
                 ("company_id", "=", self.company_id.id),
             ],
             limit=1,
@@ -295,54 +255,26 @@ class ConsumoFolios(models.Model):
 
     def unlink(self):
         for libro in self:
-            if libro.state not in ("draft", "cancel"):
+            if libro.sii_result not in ("draft", "cancel"):
                 raise UserError(_("You cannot delete a Validated book."))
         return super(ConsumoFolios, self).unlink()
 
-    def get_xml_file(self):
-        return {
-            "type": "ir.actions.act_url",
-            "url": "/download/xml/cf/%s" % (self.id),
-            "target": "self",
-        }
+    def _xml_download_path(self):
+        return "cf"
 
     def validar_consumo_folios(self):
         self._validar()
         consumos = self.search(
             [
                 ("fecha_inicio", "=", self.fecha_inicio),
-                ("state", "not in", ["draft", "Rechazado", "Anulado"]),
+                ("sii_result", "not in", ["draft", "Rechazado", "Anulado"]),
                 ("company_id", "=", self.company_id.id),
                 ("id", "!=", self.id),
             ]
         )
         for r in consumos:
-            r.state = "Anulado"
-        return self.write({"state": "NoEnviado"})
-
-    def _emisor(self):
-        Emisor = {}
-        Emisor["RUTEmisor"] = self.company_id.partner_id.rut()
-        Emisor["RznSoc"] = self.company_id.name
-        Emisor["Modo"] = "produccion" if self.company_id.dte_service_provider == "SII" else "certificacion"
-        Emisor["NroResol"] = self.company_id.dte_resolution_number
-        Emisor["FchResol"] = self.company_id.dte_resolution_date.strftime("%Y-%m-%d")
-        Emisor["ValorIva"] = 19
-        return Emisor
-
-    def _get_datos_empresa(self):
-        signature_id = self.env.user.get_digital_signature(self.company_id)
-        if not signature_id:
-            raise UserError(
-                _(
-                    """There are not a Signature Cert Available for this user, please upload your signature or tell to someelse."""
-                )
-            )
-        emisor = self._emisor()
-        return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
-        }
+            r.sii_result = "Anulado"
+        return self.write({"sii_result": "NoEnviado"})
 
     def _validar(self):
         if not self.impuestos:
@@ -358,53 +290,6 @@ class ConsumoFolios(models.Model):
             .create({"xml_envio": envio_dte, "name": doc_id, "company_id": self.company_id.id,})
             .id
         )
-
-    def do_dte_send_consumo_folios(self):
-        if self.state not in ["draft", "NoEnviado", "Rechazado"]:
-            raise UserError("El Consumo de Folios ya ha sido enviado")
-        if not self.sii_xml_request or self.sii_xml_request.state == "Rechazado":
-            if self.sii_xml_request:
-                self.sii_xml_request.unlink()
-            self._validar()
-        self.env["sii.cola_envio"].create(
-            {
-                "company_id": self.company_id.id,
-                "doc_ids": [self.id],
-                "model": "account.move.consumo_folios",
-                "user_id": self.env.user.id,
-                "tipo_trabajo": "envio",
-            }
-        )
-        self.state = "EnCola"
-
-    def do_dte_send(self, n_atencion=""):
-        if not self.sii_xml_request:
-            self._validar()
-        if self.sii_xml_request and self.sii_xml_request.state == "Rechazado":
-            self.sii_xml_request.unlink()
-            self._validar()
-            self.sii_xml_request.state = "NoEnviado"
-        if self.state in ["NoEnviado", "EnCola"]:
-            self.sii_xml_request.send_xml()
-        return self.sii_xml_request
-
-    def _get_send_status(self):
-        self.sii_xml_request.get_send_status()
-        if self.sii_xml_request.state == "Aceptado":
-            self.state = "Proceso"
-        else:
-            self.state = self.sii_xml_request.state
-
-
-    def ask_for_dte_status(self):
-        self._get_send_status()
-
-    def get_sii_result(self):
-        for r in self:
-            if r.sii_xml_request.state == "NoEnviado":
-                r.state = "EnCola"
-                continue
-            r.state = r.sii_xml_request.state
 
 
 class DetalleCOnsumoFolios(models.Model):

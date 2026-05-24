@@ -23,13 +23,10 @@ class ProcessMails(models.Model):
     _inherit = "mail.message"
 
     def _parse_xml(self, string_xml):
-        string_xml = b64decode(string_xml).decode("ISO-8859-1")
-        xml = string_xml.replace('<?xml version="1.0" encoding="ISO-8859-1"?>', "").replace(
-            '<?xml version="1.0" encoding="ISO-8859-1" ?>', ""
-        )
-        xml = xml.replace(' xmlns="http://www.sii.cl/SiiDte"', "")
+        raw = b64decode(string_xml)
+        raw = raw.replace(b' xmlns="http://www.sii.cl/SiiDte"', b'')
         parser = etree.XMLParser(remove_blank_text=True)
-        return etree.fromstring(xml, parser=parser)
+        return etree.fromstring(raw, parser=parser)
 
     def _format_rut(self, text):
         rut = text.replace("-", "")

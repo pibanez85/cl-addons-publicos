@@ -1,3 +1,7 @@
+from . import dte_envio_mixin
+from . import dte_book_mixin
+from . import dte_mixin
+from . import dte_referencia_mixin
 from . import account_move
 from . import account_move_boleta_voucher
 from . import account_move_comision

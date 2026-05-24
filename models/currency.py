@@ -1,8 +1,6 @@
 from odoo import api, fields, models
 from odoo.tools import float_round
 
-from odoo.addons import decimal_precision as dp
-
 
 def float_round_custom(value, precision_digits=None, precision_rounding=None, rounding_method="HALF-UP"):
     result = float_round(value, precision_digits, precision_rounding, rounding_method)
@@ -19,7 +17,7 @@ class ResCurrency(models.Model):
     rate = fields.Float(
         compute="_compute_current_rate",
         string="Current Rate",
-        digits=dp.get_precision("Currency Rate"),
+        digits="Currency Rate",
         help="The rate of the currency to the currency of rate 1.",
     )
     rounding = fields.Float(string="Rounding Factor", digits=(12, 14), default=0.01)
@@ -43,5 +41,5 @@ class CurrencyRate(models.Model):
     _inherit = "res.currency.rate"
 
     rate = fields.Float(
-        digits=dp.get_precision("Currency Rate"), help="The rate of the currency to the currency of rate 1"
+        digits="Currency Rate", help="The rate of the currency to the currency of rate 1"
     )

@@ -94,8 +94,8 @@ class Honorarios(models.Model):
                     imp[l.tax_ids[0].id]["credit"] += l.credit
                     imp[l.tax_ids[0].id]["debit"] += l.debit
         if self.impuestos and isinstance(self.id, int):
-            self._cr.execute("DELETE FROM account_move_book_tax WHERE book_id=%s", (self.id,))
-            self.invalidate_cache()
+            self.env.cr.execute("DELETE FROM account_move_book_tax WHERE book_id=%s", (self.id,))
+            self.invalidate_recordset()
         lines = [
             [5,],
         ]

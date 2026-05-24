@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="l10n_cl_fe.JournalUploadLinkDte" t-inherit="account.JournalUploadLink" t-inherit-mode="extension" owl="1">
+        <xpath expr="//a" position="after">
+            <small class="d-block text-muted">XML DTE SII</small>
+        </xpath>
+    </t>
+
+</templates>

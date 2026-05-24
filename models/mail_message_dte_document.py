@@ -20,7 +20,7 @@ except ImportError:
 class ProcessMailsDocument(models.Model):
     _name = "mail.message.dte.document"
     _description = "Pre Documento Recibido"
-    _inherit = ["mail.thread"]
+    _inherit = ["mail.thread", "l10n_cl_fe.dte.mixin"]
 
     def _get_dtes(self, xml):
         if xml.tag == "SetDTE":
@@ -115,40 +115,10 @@ class ProcessMailsDocument(models.Model):
             else:
                 line.purchase_line_id = False
 
-    def _emisor(self, company_id):
-        Emisor = {}
-        Emisor["RUTEmisor"] = company_id.document_number
-        Emisor["RznSoc"] = company_id.partner_id.name
-        Emisor["GiroEmis"] = company_id.activity_description.name
-        if company_id.phone:
-            Emisor["Telefono"] = company_id.phone
-        Emisor["CorreoEmisor"] = company_id.dte_email_id.display_name
-        # Emisor['Actecos'] = self._actecos_emisor()
-        Emisor["DirOrigen"] = company_id.street + " " + (company_id.street2 or "")
-        if not company_id.city_id:
-            raise UserError("Debe ingresar la Comuna de compañía emisora")
-        Emisor["CmnaOrigen"] = company_id.city_id.name
-        if not company_id.city:
-            raise UserError("Debe ingresar la Ciudad de compañía emisora")
-        Emisor["CiudadOrigen"] = company_id.city
-        Emisor["Modo"] = "produccion" if company_id.dte_service_provider == "SII" else "certificacion"
-        Emisor["NroResol"] = company_id.dte_resolution_number
-        Emisor["FchResol"] = company_id.dte_resolution_date.strftime("%Y-%m-%d")
+    def _emisor(self):
+        Emisor = super()._emisor()
+        Emisor["RUTEmisor"] = self.company_id.document_number
         return Emisor
-
-    def _get_datos_empresa(self, company_id):
-        signature_id = self.env.user.get_digital_signature(company_id)
-        if not signature_id:
-            raise UserError(
-                _(
-                    """There are not a Signature Cert Available for this user, please upload your signature or tell to someelse."""
-                )
-            )
-        emisor = self._emisor(company_id)
-        return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
-        }
 
     def _id_doc(self):
         IdDoc = {}
@@ -179,19 +149,16 @@ class ProcessMailsDocument(models.Model):
     def _totales(self):
         return {"MntTotal": self.amount}
 
-    def _encabezado(self,):
+    def _encabezado(self):
         Encabezado = {}
         Encabezado["IdDoc"] = self._id_doc()
+        Encabezado["Emisor"] = {"RUTEmisor": self.get_doc_rut()}
         Encabezado["Receptor"] = self._receptor()
         Encabezado["Totales"] = self._totales()
         return Encabezado
 
     def _dte(self):
-        if self.move_id:
-            return self.move_id._dte()
-        dte = {}
-        dte["Encabezado"] = self._encabezado()
-        return dte
+        return {"Encabezado": self._encabezado()}
 
     @api.onchange("move_id")
     def update_claim(self):
@@ -200,6 +167,9 @@ class ProcessMailsDocument(models.Model):
 
     @api.model
     def auto_accept_documents(self, limit=50):
+        dte_receipt_method = self.env["ir.config_parameter"].sudo().get_param(
+            "account.dte_receipt_method", default='manual'
+        )
         self.env.cr.execute(
             """
             select
@@ -215,9 +185,21 @@ class ProcessMailsDocument(models.Model):
                 limit
             )
         )
-        self.browse([line.get("id") for line in self.env.cr.dictfetchall()]).accept_document()
+        ids = [line.get("id") for line in self.env.cr.dictfetchall()]
+        for d in self.browse(ids):
+            d = d.with_company(d.company_id)
+            if dte_receipt_method == 'manual':
+                try:
+                    d.get_dte_claim()
+                except Exception as e:
+                    _logger.warning("Problema al obtener claim manual %s" % str(e), exc_info=True)
+                continue
+            if d.action != dte_receipt_method:
+                d.sudo().action = dte_receipt_method
+            d.accept_document()
 
     def _process_document(self):
+        self = self.with_company(self.company_id)
         xml = self.xml
         filename = self.dte_id.name
         if self.dte_xml:
@@ -241,14 +223,25 @@ class ProcessMailsDocument(models.Model):
     def accept_document(self):
         created = []
         for r in self:
+            r = r.with_company(r.company_id)
             try:
                 r.get_dte_claim()
             except Exception as e:
                 _logger.warning("Problema al obtener claim desde accept %s" % str(e), exc_info=True)
-            if r.move_id and r.state != "draft":
+            if r.move_id and r.claim not in ["N/D", False]:
                 continue
             if r.move_id:
                 resp = r.move_id.ids
+                if r.claim in ["N/D", False]:
+                    vals = {
+                        "move_ids": [(6, 0, r.move_id.ids)],
+                        "action": "ambas",
+                        "claim": "ACD",
+                        "estado_dte": "0",
+                        "tipo": "account.move",
+                    }
+                    val = self.env["sii.dte.validar.wizard"].sudo().create(vals)
+                    val.confirm()
             else:
                 resp = r._process_document()
             created.extend(resp)
@@ -288,7 +281,7 @@ class ProcessMailsDocument(models.Model):
             return
         folio = self.number
         tipo_dte = self.document_class_id.sii_code
-        datos = self._get_datos_empresa(self.company_id)
+        datos = self._get_datos_empresa()
         rut_emisor = self.get_doc_rut()
         datos["DTEClaim"] = [
             {
@@ -318,7 +311,7 @@ class ProcessMailsDocument(models.Model):
     def get_dte_claim(self):
         folio = self.number
         tipo_dte = self.document_class_id.sii_code
-        datos = self._get_datos_empresa(self.company_id)
+        datos = self._get_datos_empresa()
         rut_emisor = self.get_doc_rut()
         datos["DTEClaim"] = [
             {
@@ -331,9 +324,10 @@ class ProcessMailsDocument(models.Model):
             key = "RUT%sT%sF%s" % (rut_emisor, tipo_dte, folio)
             respuesta = fe.consulta_reclamo_documento(datos)[key]
             self.claim_description = respuesta
-            if respuesta.get(key,
-                             {'respuesta': {'codResp': 9}})['respuesta']["codResp"] in [15]:
-                for res in respuesta.listaEventosDoc:
+            claim_anterior = self.claim
+            resp_data = respuesta.get('respuesta', False)
+            if resp_data and resp_data.codResp in [15]:
+                for res in resp_data.listaEventosDoc:
                     if self.claim != "ACD":
                         if self.claim != "ERM":
                             self.claim = res.codEvento
@@ -342,6 +336,8 @@ class ProcessMailsDocument(models.Model):
                 self.state = "accepted"
             elif date_end <= datetime.now() and self.claim == "N/D":
                 self.state = "accepted"
+            elif self.claim in ["RCD", "RFP", "RFT"]:
+                self.state = "rejected"
         except Exception as e:
             _logger.warning("Error al obtener aceptación %s" % (str(e)), exc_info=True)
             if self.company_id.dte_service_provider == "SII":

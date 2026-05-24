@@ -87,9 +87,9 @@ class AccountMoveReversal(models.TransientModel):
             i = 1
             referencias.append([0,0, {
                     'sequence': i,
-                    'origen': move.sii_document_number,
-                    'sii_referencia_TpoDocRef': move.document_class_id.id,
-                    'sii_referencia_CodRef': self.cl_refund,
+                    'folio': move.sii_document_number,
+                    'ref_id': move.document_class_id.id,
+                    'cod_ref': self.cl_refund,
                     'motivo': self.reason or move.name,
                     'fecha_documento': move.invoice_date
                 }])

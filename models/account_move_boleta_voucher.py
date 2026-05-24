@@ -28,110 +28,36 @@ except ImportError:
 
 class SIIResumenBoletaVoucher(models.Model):
     _name = 'account.move.boleta_voucher'
-    _description = "Resumen Mensual Boletas Electronica con pagos Electronico"
+    _inherit = ['l10n_cl_fe.dte.mixin']
+    _description = "Resumen Mensual para crear NC de Boletas Electrónicas con pagos Electrónicos"
 
+    _dte_cola_field = 'boleta_voucher_ids'
+    _dte_xml_envio_field = 'boleta_voucher_ids'
 
-    def get_barcode_img(self, columns=13, ratio=3):
-        barcodefile = BytesIO()
-        image = self.pdf417bc(self.sii_barcode, columns, ratio)
-        image.save(barcodefile, 'PNG')
-        data = barcodefile.getvalue()
-        return base64.b64encode(data)
-
-    def _get_barcode_img(self):
-        for r in self:
-            sii_barcode_img = False
-            if r.sii_barcode:
-                sii_barcode_img = r.get_barcode_img()
-            r.sii_barcode_img = sii_barcode_img
-
-    sii_document_number = fields.Integer(
-        string="Folio del Documento",
-        copy=False,
-        readonly=True,
-
-    )
-    sii_xml_request = fields.Many2one(
-        'sii.xml.envio',
-        string='SII XML Request',
-        copy=False,
-        readonly=True,
-
-    )
-    state = fields.Selection(
-        [
-            ('draft', 'Borrador'),
-            ('NoEnviado', 'No Enviado'),
-            ('EnCola', 'En Cola'),
-            ('Enviado', 'Enviado'),
-            ('Aceptado', 'Aceptado'),
-            ('Rechazado', 'Rechazado'),
-            ('Reparo', 'Reparo'),
-            ('Proceso', 'Proceso'),
-            ('Reenviar', 'Reenviar'),
-            ('Anulado', 'Anulado')],
-        string='Resultado',
-        index=True,
-        readonly=True,
-        default='draft',
-        copy=False,
-        help=" * The 'Draft' status is used when a user is encoding a new and unconfirmed Invoice.\n"
-             " * The 'Pro-forma' status is used the invoice does not have an invoice number.\n"
-             " * The 'Open' status is used when user create invoice, an invoice number is generated. Its in open status till user does not pay invoice.\n"
-             " * The 'Paid' status is set automatically when the invoice is paid. Its related journal entries may or may not be reconciled.\n"
-             " * The 'Cancelled' status is used when user cancel invoice.")
-    sii_barcode = fields.Char(
-        copy=False,
-        string=_('SII Barcode'),
-        help='SII Barcode Name',
-        readonly=True,
-
-    )
-    sii_barcode_img = fields.Binary(
-        string=_('SII Barcode Image'),
-        help='SII Barcode Image in PDF417 format',
-        compute="_get_barcode_img",
-    )
-    sii_message = fields.Text(
-            string='SII Message',
-            copy=False,
-        )
-    sii_xml_dte = fields.Text(
-        string='SII XML DTE',
-        copy=False,
-        readonly=True,
-
-    )
     move_ids = fields.Many2many(
         'account.move',
     	readonly=True,
-
     )
     fecha_emision = fields.Date(
         string="Fecha Emisión",
         readonly=True,
-
         default=lambda self: fields.Date.context_today(self),
     )
     total_neto = fields.Monetary(
         string="Total Neto",
         readonly=True,
-
     )
     total_iva = fields.Monetary(
         string="Total IVA",
         readonly=True,
-
     )
     total_exento = fields.Monetary(
         string="Total Exento",
         readonly=True,
-
     )
     total = fields.Monetary(
         string="Monto Total",
         readonly=True,
-
     )
     total_neto_calculado = fields.Monetary(
         string="Total Neto Calculado",
@@ -163,13 +89,11 @@ class SIIResumenBoletaVoucher(models.Model):
         required=True,
         default=lambda self: self.env.company.id,
     	readonly=True,
-
     )
     name = fields.Char(
         string="Detalle" ,
         required=True,
     	readonly=True,
-
     )
     currency_id = fields.Many2one(
         'res.currency',
@@ -177,16 +101,11 @@ class SIIResumenBoletaVoucher(models.Model):
         default=lambda self: self.env.company.currency_id,
         required=True,
     	readonly=True,
-
-    )
-    sii_result = fields.Selection(
-        related="state",
     )
     sequence_id = fields.Many2one(
         'ir.sequence',
         required=True,
         readonly=True,
-
     )
     document_class_id = fields.Many2one(
         'sii.document_class',
@@ -198,20 +117,17 @@ class SIIResumenBoletaVoucher(models.Model):
         string="Folio que será anulado",
         required=True,
         readonly=True,
-
     )
     periodo = fields.Char(
         string='Periodo a generar',
         required=True,
         readonly=True,
-
         default=lambda *a: (datetime.now() - relativedelta.relativedelta(months=1)).strftime('%Y-%m'),
     )
     medios_de_pago = fields.Many2many(
         'account.journal',
         string="Medios de pago Electrónicos",
         readonly=True,
-
         default=lambda self: self.company_id.medios_de_pago_electronico.ids,
     )
 
@@ -265,8 +181,8 @@ class SIIResumenBoletaVoucher(models.Model):
         current = datetime.strptime( self.periodo + '-01', '%Y-%m-%d' )
         next_month = current + relativedelta.relativedelta(months=1)
         query = [
-            ('sii_referencia_TpoDocRef.sii_code', 'in', [39, 41]),
-            ('sii_referencia_CodRef', 'in', ['1', '3']),
+            ('ref_id.sii_code', 'in', [39, 41]),
+            ('cod_ref', 'in', ['1', '3']),
             ('move_id.invoice_date' , '>=', current),
             ('move_id.invoice_date' , '<=', next_month),
             ('move_id.journal_id', 'in', self.medios_de_pago.ids),
@@ -284,8 +200,8 @@ class SIIResumenBoletaVoucher(models.Model):
         nc_invs = self.env['account.move']
         for nc in ncs:
             o = self.env['account.move.referencias'].search([
-                ('sii_document_number', '=', nc.origen),
-                ('document_class_id', '=', nc.sii_referencia_TpoDocRef.id),
+                ('sii_document_number', '=', nc.folio),
+                ('document_class_id', '=', nc.ref_id.id),
             ])
             nc_invs += o
         if nc_invs:
@@ -297,109 +213,33 @@ class SIIResumenBoletaVoucher(models.Model):
                     moves += aml.move_id
         self.move_ids = moves
 
-    def pdf417bc(self, ted, columns=13, ratio=3):
-        bc = pdf417gen.encode(
-            ted,
-            security_level=5,
-            columns=columns,
-            encoding='ISO-8859-1',
-        )
-        image = pdf417gen.render_image(
-            bc,
-            padding=15,
-            scale=1,
-            ratio=ratio,
-        )
-        return image
 
-    def _acortar_str(self, texto, size=1):
-        c = 0
-        cadena = ""
-        while c < size and c < len(texto):
-            cadena += texto[c]
-            c += 1
-        return cadena
-
-    def _actecos_emisor(self):
-        actecos = []
-        for a  in self.company_id.company_activities_ids[:4]:
-            actecos.append(a.code)
-        return actecos
 
     def _emisor(self):
-        company_id = self.company_id
-        Emisor = {}
-        Emisor['RUTEmisor'] = company_id.document_number
-        Emisor['RznSoc'] = company_id.partner_id.name
-        Emisor['GiroEmis'] = company_id.activity_description.name
-        if company_id.phone:
-            Emisor['Telefono'] = company_id.phone
-        Emisor['CorreoEmisor'] = company_id.dte_email_id.name_get()[0][1]
-        Emisor['Actecos'] = self._actecos_emisor()
-        Emisor['DirOrigen'] = company_id.street + ' ' + (company_id.street2 or '')
-        if not company_id.city_id:
-            raise UserError("Debe ingresar la Comuna de compañía emisora")
-        Emisor['CmnaOrigen'] = company_id.city_id.name
-        if not company_id.city:
-            raise UserError("Debe ingresar la Ciudad de compañía emisora")
-        Emisor['CiudadOrigen'] = company_id.city
-        Emisor["Modo"] = "produccion" if company_id.dte_service_provider == 'SII'\
-                  else 'certificacion'
-        Emisor["NroResol"] = company_id.dte_resolution_number
-        Emisor["FchResol"] = company_id.dte_resolution_date.strftime("%Y-%m-%d")
+        Emisor = super()._emisor()
+        Emisor['RUTEmisor'] = self.company_id.document_number
         return Emisor
 
-    def _get_datos_empresa(self):
-        signature_id = self.env.user.get_digital_signature(self.company_id)
-        if not signature_id:
-            raise UserError(_('''There are not a Signature Cert Available for this user, please upload your signature or tell to someelse.'''))
-        emisor = self._emisor()
-        return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
-        }
+    def _dte_partner_recep(self):
+        return self.company_id.partner_id.commercial_partner_id
 
-    def _receptor(self):
-        Receptor = {}
-        commercial_partner_id = self.company_id.partner_id.commercial_partner_id
-        Receptor['RUTRecep'] = commercial_partner_id.rut()
-        Receptor['RznSocRecep'] = self._acortar_str( commercial_partner_id.name, 100)
-        GiroRecep = self.company_id.activity_description.name
-        if not GiroRecep:
+    def _dte_recep_giro(self, partner):
+        if not self.company_id.activity_description:
             raise UserError(_('Seleccione giro del partner'))
-        Receptor['GiroRecep'] = self._acortar_str(GiroRecep, 40)
-        if commercial_partner_id.phone:
-            Receptor['Contacto'] = self._acortar_str(commercial_partner_id.phone, 80)
-        if commercial_partner_id.email or commercial_partner_id.dte_email:
-            Receptor['CorreoRecep'] = commercial_partner_id.email or commercial_partner_id.dte_email
-        street_recep = (commercial_partner_id.street or '')
-        if not street_recep:
-        # or self.indicador_servicio in [1, 2]:
-            raise UserError('Debe Ingresar dirección del cliente')
-        street2_recep = (commercial_partner_id.street2 or '')
-        if street_recep or street2_recep:
-            Receptor['DirRecep'] = self._acortar_str(street_recep + (' ' + street2_recep if street2_recep else ''), 70)
-        cmna_recep = commercial_partner_id.city_id.name
-        if not cmna_recep:
-            raise UserError('Debe Ingresar Comuna del cliente')
-        Receptor['CmnaRecep'] = cmna_recep
-        ciudad_recep = commercial_partner_id.city
-        if ciudad_recep:
-            Receptor['CiudadRecep'] = ciudad_recep
-        return Receptor
+        return self.company_id.activity_description.name
 
-    def get_folio(self):
-        return self.sii_document_number
+    def _dte_recep_correo(self, partner):
+        return partner.email or partner.dte_email or False
 
-    def _id_doc(self):
-        return {
-            'TipoDTE': self.document_class_id.sii_code,
-            'Folio': self.get_folio(),
-            'FchEmis': self.fecha_emision.strftime("%Y-%m-%d"),
-            'MntBruto': 1,
-            'FmaPago': 1,
-            'FchVenc': self.fecha_emision.strftime("%Y-%m-%d"),
-        }
+
+    def _dte_fch_emis(self):
+        return self.fecha_emision.strftime("%Y-%m-%d")
+
+    def _id_doc(self, resumen):
+        IdDoc = super()._id_doc(resumen)
+        IdDoc['MntBruto'] = 1
+        IdDoc['FchVenc'] = self.fecha_emision.strftime("%Y-%m-%d")
+        return IdDoc
 
     def currency_base(self):
         return self.env.ref('base.CLP').with_context(date=self.fecha_emision)
@@ -409,68 +249,44 @@ class SIIResumenBoletaVoucher(models.Model):
             return self.currency_id.with_context(date=self.fecha_emision)
         return False
 
-    def _totales_normal(self, currency_id, MntExe, MntNeto, IVA,
-                        MntTotal=0):
-        Totales = {}
-        if currency_id != self.currency_base():
-            Totales['TpoMoneda'] = self._acortar_str(currency_id.abreviatura, 15)
-        if MntNeto > 0:
-            if currency_id != self.currency_id:
-                    MntNeto = currency_id.compute(MntNeto, self.currency_id)
-            Totales['MntNeto'] = currency_id.round(MntNeto)
-        if MntExe:
-            if currency_id != self.currency_id:
-                MntExe = currency_id.compute(MntExe, self.currency_id)
-            Totales['MntExe'] = currency_id.round(MntExe)
-        Totales['TasaIVA'] = self.env['account.tax'].search([
-            ('sii_code', '=', 14),
-            ('type_tax_use', '=', 'sale')]).amount
-        if currency_id != self.currency_id:
-            IVA = currency_id.compute(IVA, self.currency_id)
-        Totales['IVA'] = currency_id.round(IVA)
-        if currency_id != self.currency_id:
-            MntTotal = currency_id.compute(MntTotal, self.currency_id)
-        Totales['MntTotal'] = currency_id.round(MntTotal)
-        return Totales
+    def _encabezado_incluye_emisor(self):
+        return False
 
-    def _encabezado(self):
-        Encabezado = {
-            'IdDoc': self._id_doc(),
-            'Receptor': self._receptor(),
+    def _totales_intermedio(self, resumen):
+        return {
+            'MntExe': 0,
+            'MntNeto': self.total_neto,
+            'MntIVA': self.total_iva,
+            'TasaIVA': self.env['account.tax'].search([
+                ('sii_code', '=', 14),
+                ('type_tax_use', '=', 'sale')]).amount,
+            'MntTotal': self.total,
         }
-        currency_base = self.currency_base()
-        another_currency_id = self.currency_target()
-        MntExe = 0
-        MntNeto = self.total_neto
-        IVA = self.total_iva
-        MntTotal = self.total
-        Encabezado['Totales'] = self._totales_normal(currency_base, MntExe,
-                                                     MntNeto, IVA, MntTotal)
-        if another_currency_id:
-            Encabezado['OtraMoneda'] = self._totales_otra_moneda(
-                            another_currency_id, MntExe, MntNeto, IVA,
-                            MntTotal)
-        return Encabezado
 
-    def _detalle_linea(self):
-        prod = self.env['product.product'].search(
-                [
-                        ('product_tmpl_id', '=', self.env.ref('l10n_cl_fe.no_product').id),
-                ]
-            )
-        return [
-            {
+    def _detalle_sii(self):
+        return {
+            'Detalle': [{
                 'NroLinDet': 1,
                 'NmbItem': 'Anula Doucmento',
                 'DscItem': 'Anula ventas con comprobante electrónico',
                 'QtyItem': 1,
                 'MontoItem': self.total,
                 'IndExe': 1,
-            }
-        ]
+            }],
+            'MntExe': 0,
+            'MontoNF': 0,
+            'tax_include': False,
+            'no_product': False,
+            'TasaIVA': 0,
+        }
 
+    def _lineas_para_dte(self):
+        return []
 
-    def _linea_referencia(self):
+    def _get_referencias_dte(self):
+        return self.env['account.move.boleta_voucher']
+
+    def _referencias_dte(self):
         return [{
             'NroLinRef': 1,
             'TpoDocRef': 39,
@@ -481,30 +297,18 @@ class SIIResumenBoletaVoucher(models.Model):
         }]
 
     def _dte(self):
-        return {
-            'Encabezado': self._encabezado(),
-            'Detalle': self._detalle_linea(),
-            'Referencia': self._linea_referencia(),
-            'moneda_decimales': self.currency_id.decimal_places,
-        }
+        dte = super()._dte()
+        dte['moneda_decimales'] = self.currency_id.decimal_places
+        return dte
 
-    def _timbrar(self):
-        folio = self.get_folio()
-        dte = self._get_datos_empresa()
-        dte['Documento'] = [{
-            'TipoDTE': self.document_class_id.sii_code,
-            'caf_file': [self.sequence_id.get_caf_file(
-                            folio, decoded=False).decode()],
-            'documentos': [self._dte()]
-            },
-        ]
-        result = fe.timbrar(dte)
-        if result[0].get('error'):
-            raise UserError(result[0].get('error'))
-        self.write({
-            'sii_xml_dte': result[0]['sii_xml_dte'],
-            'sii_barcode': result[0]['sii_barcode'],
-        })
+    def _get_caf(self, folio):
+        return self.sequence_id
+
+    def _caf_file(self, caf, folio):
+        return caf.get_caf_file(folio, decoded=False).decode()
+
+    def _validaciones_caf(self, caf):
+        return
 
     def validar_boleta_voucher(self):
         if not self.sii_document_number:
@@ -516,122 +320,71 @@ class SIIResumenBoletaVoucher(models.Model):
         prefix = self.document_class_id.doc_code_prefix
         self.name = (prefix + str(self.sii_document_number)).replace(' ', '')
         self._timbrar()
-        self.env['sii.cola_envio'].create({
-                        'company_id': self.company_id.id,
-                        'doc_ids': [self.id],
-                        'model': 'account.move.boleta_voucher',
-                        'user_id': self.env.uid,
-                        'tipo_trabajo': 'envio',
-                        'send_email': False,
-                    })
-        self.state = 'EnCola'
-
-    def _crear_envio(self, RUTRecep="60803000-K"):
-        if self.sii_result == "Rechazado" or not self.sii_xml_dte: #Retimbrar con número de atención y envío
-            self._timbrar()
-        if self.sii_result in ['Rechazado'] or self.sii_xml_request.state in ["", "draft", "NoEnviado"]:
-            self.sii_xml_request.unlink()
-            self.state = 'NoEnviado'
-            self.sii_message = ''
-        datos = self._get_datos_empresa()
-        datos.update({
-            "RutReceptor": RUTRecep,
-            'Documento': [{
-                    'TipoDTE': self.document_class_id.sii_code,
-                    'documentos': [{
-                        'NroDTE': 1,
-                        'sii_xml_request': self.sii_xml_dte,
-                        'Folio': self.get_folio(),
-                        }],
-                }]
+        self.queue({
+            'company_id': self.company_id.id,
+            'tipo_trabajo': 'envio',
+            'send_email': False,
         })
-        return datos
+        self.sii_result = 'EnCola'
 
+    def _prepare_dte_data(self):
+        self.ensure_one()
+        if self.sii_result not in ["", "NoEnviado", "Rechazado", "EnCola"]:
+            return False
 
-    def do_dte_send(self, n_atencion=None):
-        datos = self._crear_envio()
-        envio_id = self.sii_xml_request
-        if not envio_id:
-            envio_id = self.env["sii.xml.envio"].create({
-                'name': 'temporal',
-                'xml_envio': 'temporal',
-                'boleta_voucher_ids': [[6,0, self.ids]],
-            })
-        datos["ID"] = "Env%s" %envio_id.id
-        result = fe.timbrar_y_enviar(datos)
-        envio = {
-                'xml_envio': result.get('sii_xml_request', "temporal"),
-                'name': result.get("sii_send_filename", "temporal"),
-                'company_id': self.company_id.id,
-                'user_id': self.env.uid,
-                'sii_send_ident': result.get('sii_send_ident'),
-                'sii_xml_response': result.get('sii_xml_response'),
-                'state': result.get('status'),
-            }
-        envio_id.write(envio)
-        return envio_id
+        if self.sii_result == "Rechazado" or not self.sii_xml_dte:
+            self._timbrar()
 
-    def _get_dte_status(self):
-        datos = self[0]._get_datos_empresa()
-        datos['Documento'] = []
-        docs = {}
-        if self.sii_xml_request.state not in ['Aceptado', 'Rechazado']:
-            return
-        for r in self:
-            datos['Documento'].append({
-                'TipoDTE': self.document_class_id.sii_code,
-                'documentos': [self._dte()],
-            })
-        resultado = fe.consulta_estado_dte(datos)
-        if not resultado:
-            _logger.warning("En get_dte_status, no resultado")
-            return
-        for r in self:
-            id = "T{}F{}".format(r.document_class_id.sii_code,
-                                 r.get_folio())
-            r.state = resultado[id]['status']
-            if resultado[id].get('xml_resp'):
-                r.sii_message = resultado[id].get('xml_resp')
-
-
-    def set_draft(self):
-        if self.sii_result in ['Rechazado'] or self.sii_xml_request.state in ["", "draft", "NoEnviado"]:
-            self.sii_xml_request.unlink()
-            self.state = 'draft'
+        if self.sii_result in ['Rechazado'] or (
+            self.sii_xml_request and
+            self.sii_xml_request.state in ["", "draft", "NoEnviado"]
+        ):
+            if self.sii_xml_request and self.sii_xml_request.state in ["Aceptado", "Enviado", "EnProceso"]:
+                self.sii_xml_request = False
+            elif self.sii_xml_request:
+                self.sii_xml_request.unlink()
+            self.sii_result = 'NoEnviado'
             self.sii_message = ''
 
+        return {
+            'TipoDTE': self.document_class_id.sii_code,
+            'sii_xml_request': self.sii_xml_dte,
+            'Folio': self.get_folio(),
+        }
 
-    def ask_for_dte_status(self):
-        for r in self:
-            if not r.sii_xml_request and not r.sii_xml_request.sii_send_ident:
-                raise UserError('No se ha enviado aún el documento, aún está en cola de envío interna en odoo')
-            if r.sii_xml_request.state not in ['Aceptado', 'Rechazado']:
-                r.sii_xml_request.get_send_status(r.env.user)
-        try:
-            self._get_dte_status()
-        except Exception as e:
-            _logger.warning("Error al obtener DTE Status: %s" %str(e))
+    def _dte_status_folio_key(self, record):
+        return record.get_folio()
+
+    def _dte_status_apply(self, record, result):
+        record.sii_result = result['status']
+        if result.get('xml_resp'):
+            record.sii_message = result['xml_resp']
+
+    def _post_dte_status_notify(self):
         for r in self:
             mess = False
             if r.sii_result == 'Rechazado':
-                mess = {
-                            'title': "Documento Rechazado",
-                            'message': "%s" % r.name,
-                            'type': 'dte_notif',
-                        }
+                mess = {'title': "Documento Rechazado", 'message': r.name, 'type': 'dte_notif'}
             if r.sii_result == 'Anulado':
                 r.canceled = True
                 try:
                     r.action_invoice_cancel()
-                except:
+                except Exception:
                     _logger.warning("Error al cancelar Documento")
-                mess = {
-                            'title': "Documento Anulado",
-                            'message': "%s" % r.name,
-                            'type': 'dte_notif',
-                        }
+                mess = {'title': "Documento Anulado", 'message': r.name, 'type': 'dte_notif'}
             if mess:
-                self.env['bus.bus'].sendone((self._cr.dbname,
-                                            'account.move.boleta_voucher',
-                                            r.env.user.partner_id.id),
-                                            mess)
+                self.env['bus.bus'].sendone(
+                    (self._cr.dbname, 'account.move.boleta_voucher', r.env.user.partner_id.id),
+                    mess,
+                )
+
+    def set_draft(self):
+        if self.sii_result in ['Rechazado'] or self.sii_xml_request.state in ["", "draft", "NoEnviado"]:
+            if self.sii_xml_request and self.sii_xml_request.state in ["Aceptado", "Enviado", "EnProceso"]:
+                self.sii_xml_request = False
+            elif self.sii_xml_request:
+                self.sii_xml_request.unlink()
+            self.sii_result = 'draft'
+            self.sii_message = ''
+
+

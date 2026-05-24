@@ -195,15 +195,15 @@
                                         <t t-foreach="o.referencias" t-as="l">
                                             <tr class="table-row-reference">
                                                 <td class="table-cell-ref">
-                                                    <span t-if="l.origen" t-field="l.origen"/>
+                                                    <span t-if="l.folio" t-field="l.folio"/>
                                                 </td>
                                                 <td class="table-cell-ref">
-                                                    <span t-if="l.sii_referencia_TpoDocRef" t-field="l.sii_referencia_TpoDocRef.name"/>
+                                                    <span t-if="l.ref_id" t-field="l.ref_id.name"/>
                                                 </td>
                                                 <td name="reference" class="table-cell-ref">
-                                                    <t t-if="l.sii_referencia_CodRef">
-                                                      <span t-esc="l.sii_referencia_CodRef[0]"/>
-                                                      <span t-field="l.sii_referencia_CodRef"/>:
+                                                    <t t-if="l.cod_ref">
+                                                      <span t-esc="l.cod_ref[0]"/>
+                                                      <span t-field="l.cod_ref"/>:
                                                     </t>
                                                     <span t-if="l.motivo" t-field="l.motivo"/>
                                                 </td>
@@ -613,13 +613,13 @@
                               <t t-foreach="o.referencias" t-as="l">
                                   <tr style="max-height:8px; font-size:10px !important;">
                                       <td style="border-top: 0px !important; padding:0px 5px !important;">
-                                          <span t-if="l.origen" t-field="l.origen"/>
+                                          <span t-if="l.folio" t-field="l.folio"/>
                                       </td>
                                       <td style="border-top: 0px !important; padding:0px 5px !important;">
-                                          <span t-if="l.sii_referencia_TpoDocRef" t-field="l.sii_referencia_TpoDocRef.name"/>
+                                          <span t-if="l.ref_id" t-field="l.ref_id.name"/>
                                       </td>
                                       <td style="border-top:0px !important;padding:0px !important;">
-                                          <t t-if="l.sii_referencia_CodRef"><span t-esc="l.sii_referencia_CodRef[0]"/> <span t-field="l.sii_referencia_CodRef"/>: </t>
+                                          <t t-if="l.cod_ref"><span t-esc="l.cod_ref[0]"/> <span t-field="l.cod_ref"/>: </t>
                                           <span t-if="l.motivo" t-field="l.motivo"/>
                                       </td>
                                       <td style="border-top: 0px !important; padding:0px 5px !important;">
@@ -939,18 +939,18 @@
                         <line>
                             <left>Folio:</left>
                             <right>
-                                <t t-if="l.origen" t-esc="l.origen" />
+                                <t t-if="l.folio" t-esc="l.folio" />
                             </right>
                         </line>
                         <line>
                             <left>Referencia:</left>
                             <right>
-                                <t t-if="l.sii_referencia_TpoDocRef" t-esc="l.sii_referencia_TpoDocRef.name" />
+                                <t t-if="l.ref_id" t-esc="l.ref_id.name" />
                             </right>
                         </line>
                         <line>
                             <left>Motivo/observación:</left>
-                            <right><t t-if="l.sii_referencia_CodRef" t-esc="l.sii_referencia_CodRef[0]" /> <t t-if="l.sii_referencia_CodRef" t-esc="l.sii_referencia_CodRef" />: <span
+                            <right><t t-if="l.cod_ref" t-esc="l.cod_ref[0]" /> <t t-if="l.cod_ref" t-esc="l.cod_ref" />: <span
                                     t-if="l.motivo"
                                     t-field="l.motivo"
                                 /></right>

@@ -11,6 +11,7 @@ class Binary(http.Controller):
         headers = [
             ("Content-Type", "application/xml"),
             ("Content-Disposition", content_disposition(filename)),
+            ("X-Robots-Tag", "noindex"),
             ("charset", "utf-8"),
         ]
         return request.make_response(filecontent, headers=headers, cookies=None)

@@ -154,7 +154,7 @@ class AccountMoveConvertDTE(models.TransientModel):
             record.warning_message = message
 
     def convert(self):
-        to_send = {}
+        to_send = self.env['account.move']
         for inv in self.move_ids:
             inv.journal_document_class_id = self.jdc_id
             inv.document_class_id = self.jdc_id.sii_document_class_id
@@ -166,23 +166,5 @@ class AccountMoveConvertDTE(models.TransientModel):
             else:
                 inv._validaciones_uso_dte()
                 inv._timbrar()
-                to_send.setdefault(inv.company_id, self.env['account.move'])
-                to_send[inv.company_id] += inv
-        for company, invoices in to_send.items():
-            ISCP = self.env["ir.config_parameter"].sudo()
-            tiempo_pasivo = datetime.now()
-            tipo_trabajo = 'envio'
-            self.env["sii.cola_envio"].create(
-                {
-                    "company_id": company.id,
-                    "doc_ids": invoices.ids,
-                    "model": "account.move",
-                    "user_id": self.env.uid,
-                    "tipo_trabajo": tipo_trabajo,
-                    "date_time": tiempo_pasivo,
-                    "send_email": False
-                    if company.dte_service_provider == "SIICERT"
-                    or not ISCP.get_param("account.auto_send_email", default=True)
-                    else True,
-                }
-            )
+                to_send |= inv
+        to_send.queue({"tipo_trabajo": "envio", "manual": True})

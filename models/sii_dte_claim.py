@@ -42,41 +42,6 @@ class DTEClaim(models.Model):
     user_id = fields.Many2one("res.users")
     claim_description = fields.Char(string="Detalle Reclamo",)
 
-    def _emisor(self, company_id):
-        Emisor = {}
-        Emisor["RUTEmisor"] = company_id.document_number
-        Emisor["RznSoc"] = company_id.partner_id.name
-        Emisor["GiroEmis"] = company_id.activity_description.name
-        if company_id.phone:
-            Emisor["Telefono"] = company_id.phone
-        Emisor["CorreoEmisor"] = company_id.dte_email_id.display_name
-        # Emisor['Actecos'] = self._actecos_emisor()
-        Emisor["DirOrigen"] = company_id.street + " " + (company_id.street2 or "")
-        if not company_id.city_id:
-            raise UserError("Debe ingresar la Comuna de compañía emisora")
-        Emisor["CmnaOrigen"] = company_id.city_id.name
-        if not company_id.city:
-            raise UserError("Debe ingresar la Ciudad de compañía emisora")
-        Emisor["CiudadOrigen"] = company_id.city
-        Emisor["Modo"] = "produccion" if company_id.dte_service_provider == "SII" else "certificacion"
-        Emisor["NroResol"] = company_id.dte_resolution_number
-        Emisor["FchResol"] = company_id.dte_resolution_date.strftime("%Y-%m-%d")
-        return Emisor
-
-    def _get_datos_empresa(self, company_id):
-        signature_id = self.env.user.get_digital_signature(company_id)
-        if not signature_id:
-            raise UserError(
-                _(
-                    """There are not a Signature Cert Available for this user, please upload your signature or tell to someelse."""
-                )
-            )
-        emisor = self._emisor(company_id)
-        return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
-        }
-
     def send_claim(self):
         doc = self.move_id
         if doc:
@@ -85,7 +50,7 @@ class DTEClaim(models.Model):
         doc = self.document_id
         folio = doc.number
         tipo_dte = doc.document_class_id.sii_code
-        datos = doc._get_datos_empresa(doc.company_id)
+        datos = doc._get_datos_empresa()
         rut_emisor = doc.get_doc_rut()
         datos["DTEClaim"] = [
             {
@@ -130,7 +95,7 @@ class DTEClaim(models.Model):
         IdRespuesta = id_seq.next_by_id()
         NroDetalles = 1
         doc = self.move_id or self.document_id
-        datos = doc._get_datos_empresa(doc.company_id)
+        datos = doc._get_datos_empresa()
         """ @TODO separar estos dos"""
         dte = {
             "xml": doc.xml,
@@ -180,7 +145,7 @@ class DTEClaim(models.Model):
             doc = self.document_id
         if doc.claim in ["ACD"] or (self.move_id and doc.move_type in ["out_invoice", "out_refund"]):
             return
-        datos = doc._get_datos_empresa(doc.company_id) if self.move_id else self._get_datos_empresa(doc.company_id)
+        datos = doc._get_datos_empresa()
         dte = doc._dte()
         """ @TODO separar estos dos"""
         dte["CodEnvio"] = IdRespuesta
@@ -245,9 +210,7 @@ class DTEClaim(models.Model):
         if doc.claim in ["ACD"]:
             return
         if self.claim == "ERM":
-            datos = (
-                doc._get_datos_empresa(doc.company_id) if self.move_id else self._get_datos_empresa(doc.company_id)
-            )
+            datos = doc._get_datos_empresa()
             receptor = doc._receptor()
             datos["RecepcionMer"] = {
                 "EstadoRecepDTE": self.estado_dte,

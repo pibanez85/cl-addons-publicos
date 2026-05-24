@@ -73,35 +73,14 @@ allowed_docs = [
 
 class Libro(models.Model):
     _name = "account.move.book"
+    _inherit = ['l10n_cl_fe.dte.book.mixin']
     _description = "Libro de Compra / Venta DTE"
 
-    sii_xml_request = fields.Many2one("sii.xml.envio", string="SII XML Request", copy=False)
-    state = fields.Selection(
-        [
-            ("draft", "Borrador"),
-            ("NoEnviado", "No Enviado"),
-            ("EnCola", "En Cola"),
-            ("Enviado", "Enviado"),
-            ('EnProceso', 'EnProceso'),
-            ("Aceptado", "Aceptado"),
-            ("Rechazado", "Rechazado"),
-            ("Reparo", "Reparo"),
-            ("Proceso", "Procesado"),
-            ("Reenviar", "Reenviar"),
-            ("Anulado", "Anulado"),
-        ],
-        string="Resultado",
-        index=True,
-        readonly=True,
-        default="draft",
-        copy=False,
-        help=" * The 'Draft' status is used when a user is encoding a new and unconfirmed Invoice.\n"
-        " * The 'Pro-forma' status is used the invoice does not have an invoice number.\n"
-        " * The 'Open' status is used when user create invoice, an invoice number is generated. Its in open status till user does not pay invoice.\n"
-        " * The 'Paid' status is set automatically when the invoice is paid. Its related journal entries may or may not be reconciled.\n"
-        " * The 'Cancelled' status is used when user cancel invoice.",
-    )
-    move_ids = fields.Many2many("account.move", readonly=True,)
+    _dte_cola_field = 'book_ids'
+    _dte_xml_envio_field = 'book_ids'
+    _dte_label = "Libro"
+
+    move_ids = fields.Many2many("account.move")
 
     tipo_libro = fields.Selection(
         [("ESPECIAL", "Especial"), ("MENSUAL", "Mensual"), ("RECTIFICA", "Rectifica"),],
@@ -143,7 +122,7 @@ class Libro(models.Model):
     total_otros_imps = fields.Monetary(
         string="Total Otros Impuestos", readonly=True, compute="set_resumen", store=True,
     )
-    total = fields.Monetary(string="Total Otros Impuestos", readonly=True, compute="set_resumen", store=True,)
+    total = fields.Monetary(string="Grand Total", readonly=True, compute="set_resumen", store=True,)
     periodo_tributario = fields.Char(
         string="Periodo Tributario",
         required=True,
@@ -176,9 +155,6 @@ class Libro(models.Model):
 
     )
     codigo_rectificacion = fields.Char(string="Código de Rectificación",)
-    sii_result = fields.Selection(
-        related="state",
-    )
 
     @api.onchange("periodo_tributario", "tipo_operacion", "company_id")
     def set_movimientos(self):
@@ -211,7 +187,7 @@ class Libro(models.Model):
         if self.tipo_operacion in ["VENTA"]:
             cfs = self.env["account.move.consumo_folios"].search(
                 [
-                    ("state", "not in", ["draft", "Anulado", "Rechazado"]),
+                    ("sii_result", "not in", ["draft", "Anulado", "Rechazado"]),
                     ("fecha_inicio", ">=", current),
                     ("fecha_inicio", "<", next_month),
                 ]
@@ -280,7 +256,7 @@ class Libro(models.Model):
             docs = [35, 38, 39, 41]
             cfs = self.env["account.move.consumo_folios"].search(
                 [
-                    ("state", "not in", ["draft", "Anulado", "Rechazado"]),
+                    ("sii_result", "not in", ["draft", "Anulado", "Rechazado"]),
                     ("fecha_inicio", ">=", current),
                     ("fecha_inicio", "<", next_month),
                 ]
@@ -371,8 +347,8 @@ class Libro(models.Model):
                         imp[bol.impuesto.id] = {"credit": 0}
                     imp[bol.impuesto.id]["credit"] += bol.monto_impuesto
             if self.impuestos and isinstance(self.id, int):
-                self._cr.execute("DELETE FROM account_move_book_tax WHERE book_id=%s", (self.id,))
-                self.invalidate_cache()
+                self.env.cr.execute("DELETE FROM account_move_book_tax WHERE book_id=%s", (self.id,))
+                self.invalidate_recordset()
             lines = [
                 [5,],
             ]
@@ -383,17 +359,13 @@ class Libro(models.Model):
 
     def unlink(self):
         for libro in self:
-            if libro.state not in ("draft", "cancel"):
+            if libro.sii_result not in ("draft", "cancel"):
                 raise UserError(_("You cannot delete a Validated book."))
         return super(Libro, self).unlink()
 
 
-    def get_xml_file(self):
-        return {
-            "type": "ir.actions.act_url",
-            "url": "/download/xml/libro/%s" % (self.id),
-            "target": "self",
-        }
+    def _xml_download_path(self):
+        return "libro"
 
     @api.onchange("periodo_tributario", "tipo_operacion")
     def _setName(self):
@@ -403,7 +375,7 @@ class Libro(models.Model):
 
     def validar_libro(self):
         self._validar()
-        return self.write({"state": "NoEnviado"})
+        return self.write({"sii_result": "NoEnviado"})
 
     def _get_moves(self):
         recs = self.with_context(lang="es_CL").move_ids.filtered(
@@ -412,32 +384,8 @@ class Libro(models.Model):
         )
         return recs
 
-    def _emisor(self):
-        Emisor = {}
-        Emisor["RUTEmisor"] = self.company_id.partner_id.rut()
-        Emisor["RznSoc"] = self.company_id.name
-        Emisor["Modo"] = "produccion" if self.company_id.dte_service_provider == "SII" else "certificacion"
-        Emisor["NroResol"] = self.company_id.dte_resolution_number
-        Emisor["FchResol"] = self.company_id.dte_resolution_date.strftime("%Y-%m-%d")
-        Emisor["ValorIva"] = 19
-        return Emisor
-
-    def _get_datos_empresa(self, company_id):
-        signature_id = self.env.user.get_digital_signature(company_id)
-        if not signature_id:
-            raise UserError(
-                _(
-                    """There are not a Signature Cert Available for this user, please upload your signature or tell to someelse."""
-                )
-            )
-        emisor = self._emisor()
-        return {
-            "Emisor": emisor,
-            "firma_electronica": signature_id.parametros_firma(),
-        }
-
     def _validar(self):
-        datos = self._get_datos_empresa(self.company_id)
+        datos = self._get_datos_empresa()
         grupos = {}
         boletas = []
         recs = self._get_moves()
@@ -469,82 +417,6 @@ class Libro(models.Model):
             .id
         )
 
-    def do_dte_send_book(self):
-        if self.state not in ["draft", "NoEnviado", "Rechazado"]:
-            raise UserError("El Libro ya ha sido enviado")
-        if not self.sii_xml_request or self.sii_xml_request.state == "Rechazado":
-            if self.sii_xml_request:
-                self.sii_xml_request.unlink()
-            self._validar()
-        self.env["sii.cola_envio"].create(
-            {
-                "company_id": self.company_id.id,
-                "doc_ids": [self.id],
-                "model": "account.move.book",
-                "user_id": self.env.user.id,
-                "tipo_trabajo": "envio",
-            }
-        )
-        self.state = "EnCola"
-
-    def do_dte_send(self, n_atencion=""):
-        if self.sii_xml_request and self.sii_xml_request.state == "Rechazado":
-            self.sii_xml_request.unlink()
-            self._validar()
-            self.sii_xml_request.state = "NoEnviado"
-        if self.state in ["NoEnviado", "EnCola"]:
-            envio_id = self.sii_xml_request
-            datos = self._get_datos_empresa(self.company_id)
-            datos.update(
-                {
-                    "Libro": {
-                        "PeriodoTributario": self.periodo_tributario,
-                        "TipoOperacion": self.tipo_operacion,
-                        "TipoLibro": self.tipo_libro,
-                        "TipoEnvio": self.tipo_envio,
-                    },
-                    "sii_xml_request": envio_id.xml_envio.replace(
-                        """<?xml version="1.0" encoding="ISO-8859-1"?>\n""", ""
-                    ),
-                    "ID": envio_id.name,
-                }
-            )
-            result = fe.libro(datos)
-            envio = {
-                "xml_envio": result["sii_xml_request"],
-                "name": result["sii_send_filename"],
-                "company_id": self.company_id.id,
-                "user_id": self.env.uid,
-                "sii_send_ident": result.get("sii_send_ident"),
-                "sii_xml_response": result.get("sii_xml_response"),
-                "state": result.get("sii_result"),
-            }
-            if not envio_id:
-                envio_id = self.env["sii.xml.envio"].create(envio)
-                for i in self:
-                    i.sii_xml_request = envio_id.id
-                    i.state = "Enviado"
-            else:
-                envio_id.write(envio)
-        return self.sii_xml_request
-
-    def _get_send_status(self):
-        self.sii_xml_request.get_send_status()
-        if self.sii_xml_request.state == "Aceptado":
-            self.state = "Proceso"
-        else:
-            self.state = self.sii_xml_request.state
-
-
-    def ask_for_dte_status(self):
-        self._get_send_status()
-
-    def get_sii_result(self):
-        for r in self:
-            if r.sii_xml_request.state == "NoEnviado":
-                r.state = "EnCola"
-                continue
-            r.state = r.sii_xml_request.state
 
 
 class Boletas(models.Model):

@@ -10,12 +10,23 @@ except ImportError:
 class ResConfigSettings(models.TransientModel):
     _inherit = "res.config.settings"
 
-    send_dte_method = fields.Selection([('manual', 'Manual'), ('inmediato', 'Inmediato'), ('diferido', 'Diferido')], string="Tiempo de Espera para Enviar DTE automático al SII (en horas)", default='diferido',)
+    send_dte_method = fields.Selection([('manual', 'Manual'), ('inmediato', 'Inmediato'), ('diferido', 'Diferido')], string="Método de Envío DTE al SII", default='diferido',)
     auto_send_dte = fields.Integer(string="Tiempo de Espera para Enviar DTE automático al SII (en horas)", default=1,)
     auto_send_email = fields.Boolean(string="Enviar Email automático al Auto Enviar DTE al SII", default=True,)
     auto_send_persistencia = fields.Integer(string="Enviar Email automático al Cliente cada  n horas", default=24,)
     dte_email_id = fields.Many2one("mail.alias", related="company_id.dte_email_id", readonly=False)
-    limit_dte_lines = fields.Boolean(related="company_id.limit_dte_lines", string="Limitar Cantidad de líneas por documento", readonly=False)
+    dte_lines = fields.Integer(related="company_id.dte_lines", string="Cantidad de Líneas", readonly=False)
+    dte_lines_factor = fields.Float(related="company_id.dte_lines_factor", string="Factor de Cálculo Líneas", readonly=False)
+    dte_lines_action = fields.Selection(
+        [
+            ('create', 'Auto Crear otro documento'),
+            ('stop', 'Detener Creación'),
+            ('autopack', 'Agrupar líneas en el XML (auto-pack)'),
+        ],
+        related="company_id.dte_lines_action",
+        string="Acción a ejecutar",
+        readonly=False,
+    )
     url_remote_partners = fields.Char(related="company_id.url_remote_partners", string="Url Remote Partners", readonly=False)
     token_remote_partners = fields.Char(related="company_id.token_remote_partners", string="Token Remote Partners", readonly=False)
     sync_remote_partners = fields.Boolean(related="company_id.sync_remote_partners", string="Sync Remote Partners", readonly=False)
@@ -29,6 +40,17 @@ class ResConfigSettings(models.TransientModel):
         string="Medios de pago Electrónico",
     )
     dte_receipt_method = fields.Selection([('manual', 'Manual'), ('create_move', 'Crear Factura Solamente'), ('create_po', 'Crear Orden Compra'), ('both', 'Ambas (Factura y OC)')], default='manual', string="Método Recepción DTE")
+    cola_envio_sin_firma_count = fields.Integer(
+        string="Cola sin firma", compute="_compute_cola_envio_sin_firma_count",
+    )
+
+    def _compute_cola_envio_sin_firma_count(self):
+        Cola = self.env["sii.cola_envio"]
+        for rec in self:
+            rec.cola_envio_sin_firma_count = Cola.search_count([
+                ("firma_id", "=", False),
+                ("active", "=", True),
+            ])
 
     @api.model
     def get_values(self):

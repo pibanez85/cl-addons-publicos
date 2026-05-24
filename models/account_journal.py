@@ -67,12 +67,12 @@ class AccountJournal(models.Model):
             self.use_documents = False
             raise UserError("El campo 'Use Documents' solo puede estar activo en diarios de tipo Venta o Compra.")
 
-    def name_get(self):
-        res = []
+    @api.depends('name', 'currency_id', 'company_id', 'sucursal_id')
+    def _compute_display_name(self):
+        super()._compute_display_name()
         for journal in self:
             currency = journal.currency_id or journal.company_id.currency_id
             name = "{} ({})".format(journal.name, currency.name)
             if journal.sucursal_id and self.env.context.get("show_full_name", False):
                 name = "{} ({})".format(name, journal.sucursal_id.name)
-            res.append((journal.id, name))
-        return res
+            journal.display_name = name

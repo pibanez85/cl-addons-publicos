@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_users_form_sii_firma" model="ir.ui.view">
+        <field name="name">res.users.form.sii.firma</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Firmas Electrónicas" name="sii_firmas" groups="account.group_account_manager">
+                    <field name="sii_firma_ids" options="{'no_create': True}">
+                        <tree>
+                            <field name="name"/>
+                            <field name="subject_serial_number"/>
+                            <field name="subject_common_name"/>
+                            <field name="company_ids" widget="many2many_tags"/>
+                            <field name="emision_date"/>
+                            <field name="expire_date"/>
+                            <field name="state"/>
+                            <field name="active" invisible="1"/>
+                        </tree>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

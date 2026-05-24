@@ -88,11 +88,14 @@
                         >
                             <tree string="Journal SII Documents" editable="bottom">
                                 <field name="sequence" widget="handle" />
-                                <field name="sii_document_class_id" options="{'no_open': True, 'no_create': True}" />
+                                <field name="is_dte" invisible="1" />
+                                <field name="sii_document_class_id" options="{'no_open': True, 'no_create': True}" domain="['|', ('dte', '=', True), ('sii_code', '=', 48)]" />
                                 <field
                                     name='sequence_id'
                                     context="{'default_sii_document_class_id': sii_document_class_id, 'is_dte': True}"
                                     domain="[('is_dte', '=', True)]"
+                                    readonly="not is_dte"
+                                    required="is_dte"
                                 />
                                 <field name="qty_available" />
                             </tree>

@@ -1,14 +1,15 @@
 <section class="oe_container oe_dark">
     <div class="oe_row oe_spaced">
         <h2 class="oe_slogan oe_mb32">Facturaci&oacute;n Electr&oacute;nica para Chile</h2>
-        <div class="alert alert-danger" style="border: 2px solid #ff0000; padding: 20px; border-radius: 10px; background-color: #fff5f5; color: #721c24; margin-bottom: 32px;">
-            <h3 style="color: #721c24; font-weight: bold; text-align: center; margin-top: 0;">&iexcl;AVISO CR&Iacute;TICO DE INSTALACI&Oacute;N!</h3>
-            <p style="font-size: 1.1em; text-align: center; margin-bottom: 0;">
-                Para poder instalar estos m&oacute;dulos, se debe <strong>eliminar completamente</strong> el m&oacute;dulo est&aacute;ndar <strong>l10n_cl</strong> (Localizaci&oacute;n Chilena oficial de Odoo) del sistema.
-            </p>
-            <p style="font-size: 1em; text-align: center; margin-top: 10px;">
-                De lo contrario, se producir&aacute;n conflictos de dependencia y errores graves en la base de datos.
-            </p>
+        <div class="oe_span12">
+            <div style="background:#fff3cd;border:1px solid #ffeeba;color:#856404;padding:12px 16px;border-radius:4px;margin-bottom:16px;">
+                <strong>Compatibilidad:</strong> Compatible con <strong>Odoo Community</strong> y <strong>Odoo Enterprise</strong>.<br/>
+                <strong>Importante</strong>: para evitar conflictos de modelos, datos y vistas, antes de instalar este m&oacute;dulo deben <strong>eliminarse</strong> los m&oacute;dulos oficiales de localizaci&oacute;n chilena de Odoo:
+                <ul style="margin-bottom:0;">
+                    <li><code>l10n_cl</code></li>
+                    <li>cualquier <code>l10n_latam*</code> (<code>l10n_latam_base</code>, <code>l10n_latam_invoice_document</code>, etc.)</li>
+                </ul>
+            </div>
         </div>
         <div class="oe_span6">
             <!--<img class="oe_picture" src="png" />-->
@@ -22,9 +23,185 @@
                     <li> Se integra la consulta de datos de empresas al repositorio <a href="https://sre.cl">https://sre.cl</a>, para permitir obtener datos digitando el rut</li>
                     <li> Al instalar este m&oacute;dulo acepta que por defecto estar&aacute; activa la sincronizaci&oacute;n de datos de partners al repositorio <a href="https://sre.cl">https://sre.cl</a>, sin embargo puede desactivarlo en todo momento desde el panel de configuraci&oacute;n general</li>
                     <li> Integraci&oacute;n con <a href="https://apicaf.cl">https://apicaf.cl</a>, Api que permite emitir folios v&iacute;a api, sin pasar por la p&aacute;gina del SII. El uso El uso y condiciones de la api es seg&uacute;n pol&iacute;ticas expuestas en el sitio web mismo de la api.</li>
-                    <li> Se integra c&oacute;digo desde l10_cl_chart_of_account, ya que desde la versi&oacute;n 17.0 est&aacute; archivado: https://github.com/KonosCL/addons-konos</li>
                 </ul>
             </p>
+            <h3>Capacidades del M&oacute;dulo</h3>
+            <h4>Correcci&oacute;n de Redondeo</h4>
+            <ul>
+                <li><strong>Compatibilidad SII:</strong> Corrige las diferencias de redondeo entre Odoo y los c&aacute;lculos exigidos por el SII de Chile</li>
+                <li><strong>Redondeo por l&iacute;nea:</strong> Aplica el redondeo correcto en cada l&iacute;nea de detalle seg&uacute;n normativa chilena</li>
+                <li><strong>Totales exactos:</strong> Garantiza que los totales del documento coincidan con los c&aacute;lculos del SII</li>
+                <li><strong>Ejemplo:</strong> Un producto a $1.000 + 19% IVA en Odoo calcula $1.190, pero si son 3 unidades Odoo hace 3x1190=$3.570, mientras Chile exige (3x1000)x1.19=$3.570 o l&iacute;nea por l&iacute;nea con redondeo distinto. Este m&oacute;dulo ajusta estos c&aacute;lculos para cumplir con la normativa</li>
+            </ul>
+            <h4>Ley de Redondeo (Ley 20.956)</h4>
+            <ul>
+                <li><strong>Aplicaci&oacute;n autom&aacute;tica:</strong> Implementa la Ley 20.956 que establece el redondeo del total a pagar en transacciones en efectivo</li>
+                <li><strong>Redondeo a $10:</strong> Los totales se redondean a la decena m&aacute;s cercana (ej: $1.234 &rarr; $1.230, $1.236 &rarr; $1.240)</li>
+                <li><strong>Solo efectivo:</strong> El redondeo aplica &uacute;nicamente a pagos en efectivo, no a transferencias, tarjetas u otros medios electr&oacute;nicos</li>
+                <li><strong>Campo separado:</strong> El monto de redondeo se registra en un campo independiente para mantener la trazabilidad contable</li>
+                <li><strong>Declaraci&oacute;n en XML:</strong> El redondeo se declara en el campo <code>MontoNF</code> (Monto No Facturable) del DTE:
+                    <ul>
+                        <li><strong>MontoNF positivo (+):</strong> El cliente paga menos que el total calculado (ej: total $1.234, paga $1.230, MontoNF=4). Representa un "descuento" por redondeo a favor del cliente</li>
+                        <li><strong>MontoNF negativo (-):</strong> El cliente paga m&aacute;s que el total calculado (ej: total $1.236, paga $1.240, MontoNF=-4). Representa un "cargo" por redondeo a favor del emisor</li>
+                        <li>El MontoNF no afecta la base imponible ni el IVA, solo ajusta el monto final a pagar</li>
+                    </ul>
+                </li>
+                <li><strong>Sin PPM:</strong> Como el MontoNF no afecta la base imponible ni el IVA, no se paga Pago Provisional Mensual (PPM) por los valores positivos de MontoNF</li>
+                <li><strong>Propinas (m&oacute;dulo Point of Sale):</strong> Las propinas en el punto de venta se declaran usando el mismo mecanismo de MontoNF con valor negativo, ya que representan un monto adicional que paga el cliente pero que no forma parte del precio de los productos vendidos. La propina no afecta la base imponible ni genera IVA</li>
+            </ul>
+            <h4>Conversi&oacute;n autom&aacute;tica de otros impuestos en boletas</h4>
+            <p class="oe_mt8">
+                En boletas afectas (DTE 39 / NC de boleta) los impuestos adicionales o espec&iacute;ficos (ILA, ISL, IVA Anticipado, etc.) <strong>se consolidan autom&aacute;ticamente dentro del IVA</strong> a nivel de asiento contable, aunque el producto est&eacute; configurado con dos impuestos (IVA + adicional). <strong>No se requiere duplicar productos</strong> ni mantener variantes espec&iacute;ficas para boleta y factura: el mismo producto sirve para ambos documentos.
+            </p>
+            <ul>
+                <li><strong>Factura (DTE 33):</strong> el producto con <code>neto + IVA + adicional = bruto</code> genera <strong>dos cuentas contables separadas</strong>, una por el IVA y otra por el adicional, seg&uacute;n la configuraci&oacute;n de cada impuesto.</li>
+                <li><strong>Boleta (DTE 39 y NC de boleta):</strong> se mantiene fijo el <strong>bruto</strong> (lo que paga el cliente) y se <strong>recalcula</strong> el desglose como si solo existiera IVA: <code>neto = bruto / 1.19</code> y <code>IVA = neto &times; 0.19</code>. Se crea <strong>una sola cuenta de impuesto (IVA)</strong> y no se separa el adicional.</li>
+                <li><strong>Por qu&eacute;:</strong> el formato del DTE de boleta no acepta el campo <code>OtrosImp</code>; el SII espera todo el impuesto consolidado en <code>IVA</code>. Reflejarlo as&iacute; en la contabilidad evita la divergencia entre el monto declarado y el asiento, y evita tener que armar productos distintos o flujos paralelos para cada tipo de documento.</li>
+                <li><strong>Configuraci&oacute;n del producto:</strong> el producto se mantiene con sus dos impuestos (IVA + adicional). El m&oacute;dulo decide autom&aacute;ticamente, seg&uacute;n el tipo de documento del move, si separa o consolida &mdash; sin intervenci&oacute;n del usuario.</li>
+            </ul>
+            <h4>B&uacute;squeda Inteligente</h4>
+            <ul>
+                <li><strong>Partners:</strong> B&uacute;squeda por nombre, email, referencia, VAT y <strong>RUT (document_number)</strong> con formato con puntos</li>
+                <li><strong>Tipos de Documento SII:</strong> B&uacute;squeda por nombre, c&oacute;digo SII y prefijo del documento</li>
+            </ul>
+            <h4>Configuraci&oacute;n de Diarios</h4>
+            <ul>
+                <li>Configuraci&oacute;n manual de tipos de documento (Journal Document Class)</li>
+                <li>Soporte para documentos DTE y Voucher (c&oacute;digo 48)</li>
+                <li>Secuencias DTE requeridas solo para documentos electr&oacute;nicos</li>
+                <li>Cuentas por defecto para Descuento Global, Recargo Global y Comisiones</li>
+            </ul>
+            <h4>Emisi&oacute;n de Documentos</h4>
+            <ul>
+                <li>Firma electr&oacute;nica directa con el SII</li>
+                <li><strong>Modos de Env&iacute;o al SII:</strong>
+                    <ul>
+                        <li><strong>Inmediato:</strong> Env&iacute;o autom&aacute;tico al validar</li>
+                        <li><strong>Diferido:</strong> Env&iacute;o en cola en segundo plano</li>
+                        <li><strong>Manual:</strong> El usuario decide cu&aacute;ndo enviar</li>
+                    </ul>
+                </li>
+                <li>Consulta de estado en el SII</li>
+                <li>Generaci&oacute;n de PDF con timbre electr&oacute;nico</li>
+            </ul>
+            <h4>Recepci&oacute;n de Documentos</h4>
+            <ul>
+                <li>Recepci&oacute;n de XML de intercambio (autom&aacute;tica por email o carga manual)</li>
+                <li>Parseo autom&aacute;tico del XML y creaci&oacute;n del documento en borrador</li>
+                <li>Validaci&oacute;n de firma electr&oacute;nica del emisor</li>
+            </ul>
+            <h4>Respuestas DTE (Acuse de Recibo)</h4>
+            <ul>
+                <li><strong>Recibo de Env&iacute;o:</strong> Confirmaci&oacute;n de recepci&oacute;n del XML</li>
+                <li><strong>Recibo de Mercader&iacute;as:</strong> Aceptaci&oacute;n de bienes o servicios (c&oacute;digo ERM)</li>
+                <li><strong>Aceptaci&oacute;n Comercial:</strong> Validaci&oacute;n comercial del documento</li>
+                <li><strong>Reclamos:</strong> RCD (contenido), RFP (falta parcial), RFT (falta total)</li>
+            </ul>
+            <h4>Cola de Env&iacute;o</h4>
+            <ul>
+                <li>Env&iacute;o diferido en segundo plano</li>
+                <li>Reintentos autom&aacute;ticos en caso de fallo (hasta 10 intentos)</li>
+                <li>Cron autom&aacute;tico para procesamiento</li>
+                <li>Estados: NoEnviado, EnCola, Enviado, EnProceso, Aceptado, Rechazado</li>
+            </ul>
+            <h5>Autopack</h5>
+            <ul>
+                <li><strong>Agrupaci&oacute;n inteligente:</strong> Agrupa documentos compatibles en packs de hasta 20 documentos</li>
+                <li><strong>Ordenamiento por dependencias:</strong> Respeta referencias entre documentos (ej: NC referencia a Factura)</li>
+                <li><strong>Criterios de agrupaci&oacute;n:</strong> Misma compa&ntilde;&iacute;a, usuario, modo (producci&oacute;n/pruebas) y n&uacute;mero de atenci&oacute;n</li>
+                <li><strong>Separaci&oacute;n por tipo:</strong> Facturas, NC, ND, gu&iacute;as y otros DTE pueden agruparse juntos; boletas van en env&iacute;os separados</li>
+                <li><strong>Exclusiones autom&aacute;ticas:</strong> Libros y Consumo de Folios siempre van en env&iacute;os separados</li>
+            </ul>
+            <h5>Extensibilidad</h5>
+            <p>La cola de env&iacute;o est&aacute; dise&ntilde;ada para ser extendida por m&oacute;dulos adicionales (gu&iacute;as de despacho, POS, cesiones, etc.). Soporte para m&uacute;ltiples tipos de documentos en un mismo env&iacute;o con arquitectura basada en herencia.</p>
+            <h4>Control de L&iacute;neas por Documento</h4>
+            <p>Se configura en Ajustes Generales de Contabilidad &rarr; "Acci&oacute;n por l&iacute;mite de l&iacute;neas".</p>
+            <ul>
+                <li><strong>L&iacute;neas por hoja impresa</strong> (<code>dte_lines</code>, default 60): capacidad del formato impreso. Solo aplica a las acciones "Auto Crear" y "Detener".</li>
+                <li><strong>Factor de c&aacute;lculo</strong> (<code>dte_lines_factor</code>, default 50): estima el alto real de una l&iacute;nea larga con <code>ceil(len(texto) / factor)</code>.</li>
+                <li><strong>Acciones</strong> (<code>dte_lines_action</code>):
+                    <ul>
+                        <li><strong>Auto Crear otro documento:</strong> divide el documento cuando el detalle no cabe en la hoja impresa.</li>
+                        <li><strong>Detener Creaci&oacute;n:</strong> bloquea el documento si el detalle excede la hoja.</li>
+                        <li><strong>Agrupar l&iacute;neas en el XML (auto-pack)</strong> <em>(default)</em>: mantiene todas las l&iacute;neas en el account.move y en la hoja impresa, pero en el XML al SII agrupa por impuesto cuando se supera el m&aacute;ximo legal:
+                            <ul>
+                                <li>60 l&iacute;neas en facturas, notas de cr&eacute;dito/d&eacute;bito y dem&aacute;s DTE.</li>
+                                <li>1000 l&iacute;neas en boletas y boletas exentas (sii_code 39/41).</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                <li><strong>Detalle del auto-pack</strong> (s&oacute;lo afecta al XML enviado al SII):
+                    <ul>
+                        <li>Agrupa por firma <code>(CodImp+TasaImp ordenados, IndExe, CodImpAdic)</code> &rarr; IVA solo &ne; IVA+Adicional &ne; Exento.</li>
+                        <li><strong>NmbItem</strong> (m&aacute;x 80 chars): fijo <code>"Productos Agrupados {nombre_impuesto}"</code>.</li>
+                        <li><strong>DscItem</strong> (m&aacute;x 1000 chars): concatena <code>"{NmbItem} {qty} x {precio}"</code> por producto separados por coma. Si excede 1000 chars, parte en varias l&iacute;neas empaquetadas.</li>
+                        <li><strong>QtyItem</strong>: 1.</li>
+                        <li><strong>PrcItem</strong> / <strong>MontoItem</strong>: suma del grupo.</li>
+                        <li>Conserva <code>Impuesto</code>, <code>CodImpAdic</code>, <code>IndExe</code> del primer miembro para que el c&aacute;lculo tributario siga siendo correcto.</li>
+                    </ul>
+                </li>
+            </ul>
+            <h4>Libros Electr&oacute;nicos</h4>
+            <ul>
+                <li>Libro de Compras</li>
+                <li>Libro de Ventas</li>
+                <li>Libro de Gu&iacute;as de Despacho</li>
+                <li>Consumo de Folios (Boletas)</li>
+            </ul>
+            <h4>Referencias DTE</h4>
+            <ul>
+                <li><strong>Notas de Cr&eacute;dito/D&eacute;bito:</strong> Obligatorio referenciar el documento afectado</li>
+                <li><strong>C&oacute;digos de Referencia</strong> (solo NC y ND): 1=Anula, 2=Corrige texto, 3=Corrige montos</li>
+                <li><strong>Otros Documentos:</strong> Facturas pueden referenciar OC, gu&iacute;as, contratos, etc.</li>
+            </ul>
+            <h4>Integraciones</h4>
+            <ul>
+                <li><strong>SRE.cl:</strong> Consulta y sincronizaci&oacute;n de datos de empresas por RUT</li>
+                <li><strong>APICAF.cl:</strong> Gesti&oacute;n completa de folios CAF v&iacute;a API</li>
+                <li><strong>MEPCO:</strong> Auto-sincronizaci&oacute;n de impuestos espec&iacute;ficos (combustibles) v&iacute;a SII, Diario Oficial o actualizaci&oacute;n manual</li>
+            </ul>
+            <h4>APICAF - Gesti&oacute;n de Folios</h4>
+            <ul>
+                <li><strong>Obtener Folios:</strong> Solicitar nuevos folios directamente desde Odoo</li>
+                <li><strong>Bajo Pedido:</strong> Solicitud autom&aacute;tica cuando se agotan (configurable por secuencia)</li>
+                <li><strong>Reobtener Folios:</strong> Recuperar folios previamente emitidos</li>
+                <li><strong>Anular Folios:</strong> Anular rangos de folios no utilizados</li>
+                <li><strong>Alerta Autom&aacute;tica:</strong> Notificaci&oacute;n cuando los folios est&aacute;n por agotarse</li>
+            </ul>
+            <h3>Casos de Uso</h3>
+            <h4>Emisi&oacute;n de Factura Electr&oacute;nica</h4>
+            <ol>
+                <li>Crear una factura de cliente con los datos del receptor</li>
+                <li>Agregar l&iacute;neas de detalle con productos/servicios</li>
+                <li>Validar la factura (se genera el timbre electr&oacute;nico)</li>
+                <li>El sistema env&iacute;a autom&aacute;ticamente al SII (o manualmente seg&uacute;n configuraci&oacute;n)</li>
+                <li>Consultar el estado del DTE en el SII</li>
+                <li>Enviar el XML y PDF al cliente por email</li>
+            </ol>
+            <h4>Recepci&oacute;n de Documentos de Proveedor</h4>
+            <ol>
+                <li>Recibir el XML del proveedor por email o carga manual</li>
+                <li>El sistema parsea el XML y crea el documento en borrador</li>
+                <li>Revisar y validar los datos del documento</li>
+                <li>Generar las respuestas requeridas (Recepci&oacute;n, Mercader&iacute;a, Comercial)</li>
+                <li>Enviar las respuestas al proveedor</li>
+            </ol>
+            <h4>Configuraci&oacute;n de Diarios con Tipos de Documento</h4>
+            <ol>
+                <li>Ir a Contabilidad &gt; Configuraci&oacute;n &gt; Diarios</li>
+                <li>Seleccionar un diario de Ventas o Compras</li>
+                <li>Activar "Usar Documentos"</li>
+                <li>En la pesta&ntilde;a "Documents", agregar los tipos de documento requeridos</li>
+                <li>Para DTE: asignar la secuencia de folios correspondiente</li>
+                <li>Para Voucher (c&oacute;digo 48): no requiere secuencia</li>
+            </ol>
+            <h4>B&uacute;squeda R&aacute;pida de Clientes</h4>
+            <ul>
+                <li>En cualquier campo de selecci&oacute;n de partner, escribir el RUT con puntos (ej: 12.345.678-9)</li>
+                <li>El sistema encontrar&aacute; el cliente autom&aacute;ticamente</li>
+                <li>Tambi&eacute;n funciona b&uacute;squeda por nombre, email o referencia</li>
+            </ul>
             <h3>Estado:</h3>
             <table class="table table-sm">
                 <thead>
@@ -440,19 +617,6 @@
                     </tr>
                 </tbody>
             </table>
-            <h3>Sistema Autopack</h3>
-            <p>El sistema de env&iacute;o por cola (<code>sii.cola_envio</code>) implementa autopack para agrupar documentos en paquetes de hasta 20 para env&iacute;o masivo al SII.</p>
-            <ul>
-                <li><strong>Estructura:</strong> Usa campos Many2many por tipo de documento (<code>document_ids</code>, <code>picking_ids</code>, <code>order_ids</code>, etc.)</li>
-                <li><strong>M&eacute;todo queue():</strong> Para encolar documentos de forma consistente</li>
-                <li><strong>Agrupaci&oacute;n:</strong> Por empresa, tipo de trabajo, set de pruebas y tipo de documento</li>
-            </ul>
-            <p><strong>Extensi&oacute;n en m&oacute;dulos adicionales:</strong></p>
-            <ul>
-                <li><code>l10n_cl_stock_picking</code>: Agrega <code>picking_ids</code> para gu&iacute;as de despacho</li>
-                <li><code>l10n_cl_dte_point_of_sale</code>: Agrega <code>order_ids</code> para &oacute;rdenes POS (boletas)</li>
-                <li><code>l10n_cl_dte_factoring</code>: Agrega tipos de trabajo <code>cesion</code> y <code>cesion_consulta</code></li>
-            </ul>
             <h3>Otras Funcionalidades</h3>
             <table class="table table-sm">
                 <thead>

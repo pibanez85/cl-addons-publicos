@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 
 class AccountMoveConvertDTE(models.TransientModel):
     _name = "account.move.convert.dte"
-    _description = "Account Move Convert to DTE"
+    _description = "Asistente para convertir movimiento en DTE"
 
     @api.model
     def default_get(self, fields):

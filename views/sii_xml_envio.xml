@@ -32,7 +32,6 @@
                         <field name="sii_xml_response" />
                         <field name="sii_send_ident" />
                         <field name="sii_receipt" />
-                        <field name="firma_id" options="{'no_create': True}"/>
                         <field name="company_id" />
                         <field name="xml_envio" invisible="not sii_send_ident"/>
                         <field name="move_ids" readonly="True" />

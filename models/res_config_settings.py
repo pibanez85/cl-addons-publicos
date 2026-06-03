@@ -18,11 +18,6 @@ class ResConfigSettings(models.TransientModel):
     dte_lines = fields.Integer(related="company_id.dte_lines", string="Cantidad de Líneas", readonly=False)
     dte_lines_factor = fields.Float(related="company_id.dte_lines_factor", string="Factor de Cálculo Líneas", readonly=False)
     dte_lines_action = fields.Selection(
-        [
-            ('create', 'Auto Crear otro documento'),
-            ('stop', 'Detener Creación'),
-            ('autopack', 'Agrupar líneas en el XML (auto-pack)'),
-        ],
         related="company_id.dte_lines_action",
         string="Acción a ejecutar",
         readonly=False,

@@ -84,15 +84,6 @@ class SIIXMLEnvio(models.Model):
     consumo_folios_ids = fields.One2many(
         "account.move.consumo_folios", "sii_xml_request", string="Consumo Folios", readonly=True,
     )
-    firma_id = fields.Many2one(
-        "sii.firma",
-        string="Firma",
-        ondelete="restrict",
-        readonly=True,
-        help="Firma electrónica que se usó para timbrar este envío",
-    )
-
-
     @api.depends('name', 'sii_send_ident')
     def _compute_display_name(self):
         for r in self:
@@ -121,15 +112,21 @@ class SIIXMLEnvio(models.Model):
         Emisor["ValorIva"] = 19
         return Emisor
 
-    def _get_datos_empresa(self, company):
-        if not self.firma_id:
+    def _resolve_firma(self, company):
+        firma_id = self.env.context.get('firma_id')
+        if firma_id:
+            return self.env['sii.firma'].sudo().browse(firma_id)
+        firma = self.env.user.get_digital_signature(company)
+        if not firma:
             raise UserError(_(
-                "No hay firma electrónica disponible para esta operación. "
-                "Debe asignarse antes de invocar _get_datos_empresa."
-            ))
+                "El usuario '%s' no está autorizado a usar firma electrónica para %s."
+            ) % (self.env.user.name, company.name))
+        return firma
+
+    def _get_datos_empresa(self, company):
         return {
             "Emisor": self._emisor(company),
-            "firma_electronica": self.firma_id.parametros_firma(),
+            "firma_electronica": self._resolve_firma(company).parametros_firma(),
         }
 
     def get_doc(self):
@@ -313,7 +310,7 @@ class SIIXMLEnvio(models.Model):
                 or not doc.sii_xml_dte
             ):
                 pendientes |= doc
-        firma_ctx = {'firma_id': self.firma_id.id} if self.firma_id else {}
+        firma_ctx = {'firma_id': self.env.context['firma_id']} if self.env.context.get('firma_id') else {}
         if pendientes:
             pendientes.with_context(**firma_ctx)._timbrar_batch()
         grupos = {}
@@ -348,11 +345,10 @@ class SIIXMLEnvio(models.Model):
             return b""
         company = docs_list[0].company_id
         firma = docs_list[0]._resolve_firma()
-        envio_tmp = self.create({
+        envio_tmp = self.with_context(firma_id=firma.id).create({
             'name': 'intercambio',
             'xml_envio': 'temporal',
             'company_id': company.id,
-            'firma_id': firma.id,
         })
         try:
             datos = envio_tmp._build_envio_dte_data(docs_list, RUTRecep=RUTRecep)
@@ -413,13 +409,11 @@ class SIIXMLEnvio(models.Model):
                 'name': 'temporal',
                 'xml_envio': 'temporal',
                 'company_id': company.id,
-                'firma_id': firma.id,
             }
             if doc_field:
                 vals[doc_field] = [(6, 0, [d.id for d in docs_list])]
             envio_id = self.create(vals)
-        elif not envio_id.firma_id:
-            envio_id.firma_id = firma.id
+        envio_id = envio_id.with_context(firma_id=firma.id)
 
         datos = envio_id._build_envio_dte_data(
             docs_list,
@@ -515,9 +509,7 @@ class SIIXMLEnvio(models.Model):
         if envio.sii_send_ident:
             return envio
 
-        if not envio.firma_id:
-            envio.firma_id = doc._resolve_firma().id
-
+        envio = envio.with_context(firma_id=doc._resolve_firma().id)
         datos = envio._get_datos_empresa(doc.company_id)
         datos.update({
             "Libro": {
@@ -574,9 +566,7 @@ class SIIXMLEnvio(models.Model):
 
         envio = doc.sii_xml_request
         if envio:
-            if not envio.firma_id:
-                envio.firma_id = doc._resolve_firma().id
             if doc.state in ["NoEnviado", "EnCola"]:
-                envio.send_xml()
+                envio.with_context(firma_id=doc._resolve_firma().id).send_xml()
 
         return envio

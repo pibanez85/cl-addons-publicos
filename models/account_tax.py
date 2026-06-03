@@ -269,6 +269,9 @@ class SIITax(models.Model):
         else:
             company = self[0].company_id
 
+        if uom_id is None and product:
+            uom_id = product.uom_id
+
         # 1) Flatten the taxes.
         taxes, groups_map = self.flatten_taxes_hierarchy(create_map=True)
 

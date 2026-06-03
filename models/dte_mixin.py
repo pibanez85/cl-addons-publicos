@@ -766,22 +766,19 @@ class DteMixin(models.AbstractModel):
             product = line.get('product') or False
             line_no_product = bool(line.get('no_product'))
             is_product = not line_no_product
-            if dte_monto_0 and product:
-                if not line_no_product:
-                    raise UserError(_(
-                        "En notas que corrigen texto (CodRef=2) solo se permite la línea "
-                        "simbólica NO_PRODUCT y debe ir con monto 0; no se pueden incluir "
-                        "productos reales."
-                    ))
-                if (line.get('subtotal') or 0) != 0:
-                    raise UserError(_(
-                        "La línea NO_PRODUCT debe ir con monto 0 en notas que corrigen texto (CodRef=2)."
-                    ))
-            elif line_no_product and product:
+            is_no_product_code = bool(product) and product.default_code == 'NO_PRODUCT'
+            if is_no_product_code and not dte_monto_0:
                 raise UserError(_(
-                    "Líneas NO_PRODUCT solo se permiten en notas con referencia "
-                    "código '2 - Corrige texto Documento Referencia' y deben ir con monto 0."
-                ))
+                    "Documento %s (id=%s): el producto NO_PRODUCT solo se permite en notas "
+                    "de crédito/débito que corrigen texto (referencia código "
+                    "'2 - Corrige texto Documento Referencia')."
+                ) % (self.display_name, self.id))
+            if dte_monto_0 and product and not is_no_product_code:
+                raise UserError(_(
+                    "Documento %s (id=%s): las notas que corrigen texto (referencia código "
+                    "'2 - Corrige texto Documento Referencia') solo pueden llevar el "
+                    "producto NO_PRODUCT, no productos reales."
+                ) % (self.display_name, self.id))
             cdg = self._detalle_sii_cdg_item(product)
             if cdg:
                 item["CdgItem"] = cdg

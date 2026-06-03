@@ -112,8 +112,7 @@ class ColaEnvio(models.Model):
         return True
 
     def action_asignar_firma_actual(self):
-        """Asigna la firma del usuario actual a las colas seleccionadas y a
-        sus sii.xml.envio relacionados que aún no tengan firma."""
+        """Asigna la firma del usuario actual a las colas seleccionadas."""
         sin_firma = self.filtered(lambda c: not c.firma_id)
         for company, colas in sin_firma.grouped("company_id").items():
             firma = self.env.user.sudo().get_digital_signature(company)
@@ -123,16 +122,7 @@ class ColaEnvio(models.Model):
                     "compañía '%s'. Asígnele una firma antes de continuar."
                 ) % (self.env.user.name, company.name))
             colas.write({"firma_id": firma.id})
-            xml_envios = colas._get_related_xml_envios().filtered(
-                lambda x: not x.firma_id
-            )
-            if xml_envios:
-                xml_envios.write({"firma_id": firma.id})
         return True
-
-    def _get_related_xml_envios(self):
-        """Recordset de sii.xml.envio asociados a las colas."""
-        return self.mapped("envio_id")
 
     def get_all_documents_by_model(self):
         """Retorna dict con documentos agrupados por modelo."""
@@ -333,7 +323,7 @@ class ColaEnvio(models.Model):
         if envio.state in self.ENVIO_TERMINAL_STATES:
             return True
         try:
-            envio.with_context(set_pruebas=self.set_pruebas).get_send_status()
+            envio.with_context(**self._get_ctx()).get_send_status()
         except Exception as e:
             self._registrar_error(e, 'consulta envio')
         return False

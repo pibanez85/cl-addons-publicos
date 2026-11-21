@@ -6,6 +6,8 @@ from odoo.exceptions import UserError
 from odoo.tools.translate import _
 from base64 import b64encode
 import logging
+import re
+from lxml import etree
 
 
 _logger = logging.getLogger(__name__)
@@ -99,6 +101,16 @@ class ProcessMailsDocument(models.Model):
         default='both',
         required=True
     )
+    en_sii = fields.Selection(
+        [("si", "Está en el SII"), ("no", "No está en el SII")],
+        string="Verificación SII", readonly=True, copy=False, index=True,
+        help="Resultado de consultar el documento en el registro de reclamos del SII",
+    )
+    source = fields.Selection(
+        [("xml", "XML DTE"), ("rcv", "Registro de Compras del SII")],
+        string="Origen", default="xml", readonly=True,
+        help="Los ingresados desde el Registro de Compras no tienen XML hasta que este llegue",
+    )
     _order = "create_date DESC"
 
     @api.onchange('purchase_to_done')
@@ -110,13 +122,76 @@ class ProcessMailsDocument(models.Model):
                 line.purchase_line_id = False
             return
         lines = self.purchase_to_done.order_line
-        tot_lines = len(lines)
+        usadas = self.env["purchase.order.line"]
         for line in self.invoice_line_ids:
-            i = line.sequence
-            if i <= tot_lines:
-                line.purchase_line_id = lines[(i-1)]._origin.id
-            else:
-                line.purchase_line_id = False
+            candidatas = lines.filtered(lambda l: line.product_id and l.product_id == line.product_id)
+            if not candidatas:
+                nombre = (line.name or line.description or "").strip().upper()
+                candidatas = lines.filtered(lambda l: nombre and (l.name or "").strip().upper() == nombre)
+            elegida = (candidatas - usadas)[:1] or candidatas[:1]
+            usadas |= elegida
+            line.purchase_line_id = elegida._origin.id if elegida else False
+
+    def _detalles_xml(self):
+        self.ensure_one()
+        try:
+            xml = self._get_xml()
+        except Exception:
+            xml = False
+        if not xml:
+            return []
+        xml = re.sub(r"<\?xml[^>]*\?>", "", xml).replace(' xmlns="http://www.sii.cl/SiiDte"', "")
+        try:
+            return etree.fromstring(xml).findall(".//Detalle")
+        except etree.XMLSyntaxError:
+            return []
+
+    def _aprender_productos(self):
+        SupplierInfo = self.env["product.supplierinfo"]
+        creados = SupplierInfo
+        for doc in self.filtered(lambda d: d.move_id and d.partner_id):
+            proveedor = doc.partner_id.commercial_partner_id
+            lineas = doc.move_id.invoice_line_ids.filtered(lambda l: l.product_id and l.display_type == "product")
+            usadas = self.env["account.move.line"]
+            for detalle in doc._detalles_xml():
+                nombre = (detalle.findtext("NmbItem") or "").strip()
+                codigo = next(
+                    (c.findtext("VlrCodigo").strip() for c in detalle.findall("CdgItem") if (c.findtext("VlrCodigo") or "").strip()),
+                    False,
+                )
+                cantidad = float(detalle.findtext("QtyItem") or 1)
+                precio = float(detalle.findtext("PrcItem") or detalle.findtext("MontoItem") or 0)
+                candidatas = (lineas - usadas).filtered(
+                    lambda l: abs(l.quantity - cantidad) < 0.001 and abs(l.price_unit - precio) <= max(1.0, abs(precio) * 0.01)
+                )
+                if len(candidatas.product_id) != 1 or not nombre:
+                    continue
+                palabras = {p for p in re.findall(r"[A-Z0-9]{3,}", nombre.upper())}
+                if not palabras & set(re.findall(r"[A-Z0-9]{3,}", (candidatas.product_id.name or "").upper())):
+                    continue
+                usadas |= candidatas[:1]
+                producto = candidatas.product_id
+                dominio = [("partner_id", "=", proveedor.id)]
+                dominio += [("product_code", "=", codigo)] if codigo else [("product_name", "=", nombre)]
+                if SupplierInfo.search_count(dominio, limit=1):
+                    continue
+                existente = SupplierInfo.search([
+                    ("partner_id", "=", proveedor.id),
+                    ("product_tmpl_id", "=", producto.product_tmpl_id.id),
+                ], limit=1)
+                if existente:
+                    if not existente.product_code and not existente.product_name:
+                        existente.write({"product_code": codigo, "product_name": nombre})
+                    continue
+                creados |= SupplierInfo.create({
+                    "partner_id": proveedor.id,
+                    "product_name": nombre,
+                    "product_code": codigo,
+                    "product_tmpl_id": producto.product_tmpl_id.id,
+                    "product_id": producto.id,
+                    "price": precio,
+                })
+        return creados
 
     def _emisor(self):
         Emisor = super()._emisor()
@@ -193,7 +268,7 @@ class ProcessMailsDocument(models.Model):
         ids = [line.get("id") for line in self.env.cr.dictfetchall()]
         for d in self.browse(ids):
             d = d.with_company(d.company_id)
-            if dte_receipt_method == 'manual':
+            if dte_receipt_method == 'manual' or (d.source == "rcv" and not d.move_id):
                 try:
                     d.get_dte_claim()
                 except Exception as e:
@@ -209,6 +284,10 @@ class ProcessMailsDocument(models.Model):
         filename = self.dte_id.name
         if self.dte_xml:
             xml = self._get_xml()
+        if not xml:
+            raise UserError(_(
+                "El documento %s %s viene del Registro de Compras y aún no tiene XML"
+            ) % (self.document_class_id.name, self.number))
         vals = {
             "xml_file": b64encode(xml.encode("ISO-8859-1")),
             "filename": filename,
@@ -313,7 +392,7 @@ class ProcessMailsDocument(models.Model):
                          {'respuesta': {'codResp': 9}})['respuesta']["codResp"] in [0, 7]:
             self.claim = claim
 
-    def get_dte_claim(self):
+    def _consulta_eventos_sii(self):
         folio = self.number
         tipo_dte = self.document_class_id.sii_code
         datos = self._get_datos_empresa()
@@ -325,9 +404,18 @@ class ProcessMailsDocument(models.Model):
                 "Folio": folio,
             }
         ]
+        key = "RUT%sT%sF%s" % (rut_emisor, tipo_dte, folio)
+        respuesta = fe.consulta_reclamo_documento(datos)[key]
+        resp_data = respuesta.get('respuesta', False)
+        if resp_data and resp_data.codResp in [15, 16]:
+            self.en_sii = "si"
+        elif resp_data and resp_data.codResp in [10, 18]:
+            self.en_sii = "no"
+        return respuesta
+
+    def get_dte_claim(self):
         try:
-            key = "RUT%sT%sF%s" % (rut_emisor, tipo_dte, folio)
-            respuesta = fe.consulta_reclamo_documento(datos)[key]
+            respuesta = self._consulta_eventos_sii()
             self.claim_description = respuesta
             claim_anterior = self.claim
             resp_data = respuesta.get('respuesta', False)
@@ -349,6 +437,23 @@ class ProcessMailsDocument(models.Model):
             _logger.warning("Error al obtener aceptación %s" % (str(e)), exc_info=True)
             if self.company_id.dte_service_provider == "SII":
                 raise UserError("Error al obtener aceptación: %s" % str(e))
+
+    def action_verificar_sii(self):
+        for r in self.filtered(lambda d: d.source != "rcv" and d.document_class_id.dte):
+            try:
+                with self.env.cr.savepoint():
+                    r._consulta_eventos_sii()
+            except Exception as e:
+                _logger.warning("No se pudo verificar en el SII el documento %s: %s", r.id, e)
+
+    @api.model
+    def _cron_verificar_sii(self, limit=50):
+        self.search([
+            ("en_sii", "!=", "si"),
+            ("source", "!=", "rcv"),
+            ("document_class_id.dte", "=", True),
+            ("create_date", ">=", fields.Datetime.subtract(fields.Datetime.now(), days=90)),
+        ], order="en_sii desc, id", limit=limit).action_verificar_sii()
 
     def get_claim(self):
         date_end = self.create_date + relativedelta(days=8)

@@ -23,6 +23,16 @@
                 eval="(datetime.now() + relativedelta(days=1, hour=8, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"
             />
         </record>
+        <record id="ir_cron_verificar_documentos_sii" model="ir.cron">
+            <field name="name">Cron Verificación en el SII de Documentos Recibidos</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="model_id" ref="model_mail_message_dte_document" />
+            <field name="state">code</field>
+            <field name="code">model._cron_verificar_sii(50)</field>
+            <field name="active" eval="True" />
+        </record>
         <record id="ir_cron_update_remote_partners" model="ir.cron">
             <field name="name">Cron Verificación de Partners</field>
             <field name="interval_number">1</field>

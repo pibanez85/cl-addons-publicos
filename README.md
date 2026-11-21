@@ -44,12 +44,13 @@ Se crea este repositorio, para dar un enfoque de firma electrónica directa con 
   - **MontoNF negativo (-)**: El cliente paga más que el total calculado (ej: total $1.236, paga $1.240, MontoNF=-4). Representa un "cargo" por redondeo a favor del emisor
   - El MontoNF no afecta la base imponible ni el IVA, solo ajusta el monto final a pagar
 - **Sin PPM**: Como el MontoNF no afecta la base imponible ni el IVA, no se paga Pago Provisional Mensual (PPM) por los valores positivos de MontoNF
+- **Cuentas de redondeo**: al cargar el plan de cuentas chileno se crean o reutilizan las cuentas *Ganancia por Redondeo Efectivo* (420106) y *Pérdida por Redondeo Efectivo* (410104) y se asignan a los redondeos de efectivo
 - **Propinas (módulo Point of Sale)**: Las propinas en el punto de venta se declaran usando el mismo mecanismo de MontoNF con valor negativo, ya que representan un monto adicional que paga el cliente pero que no forma parte del precio de los productos vendidos. La propina no afecta la base imponible ni genera IVA
 
 ### Conversión automática de otros impuestos en boletas
-En boletas afectas (DTE 39 / NC de boleta) los impuestos adicionales o específicos (ILA, ISL, IVA Anticipado, etc.) **se consolidan automáticamente dentro del IVA** a nivel de asiento contable, aunque el producto esté configurado con dos impuestos (IVA + adicional). **No se requiere duplicar productos** ni mantener variantes específicas para boleta y factura: el mismo producto sirve para ambos documentos.
+En boletas afectas (DTE 39, comprobante de pago 48 y NC de boleta) **todo impuesto distinto del IVA** (ILA, impuestos específicos, IVA anticipado, etc.) **se consolida automáticamente dentro del IVA** a nivel de asiento contable, aunque el producto esté configurado con dos impuestos (IVA + adicional). **No se requiere duplicar productos** ni mantener variantes específicas para boleta y factura: el mismo producto sirve para ambos documentos.
 - **Factura (DTE 33)**: el producto con `neto + IVA + adicional = bruto` genera **dos cuentas contables separadas**, una por el IVA y otra por el adicional, según la configuración de cada impuesto.
-- **Boleta (DTE 39 y NC de boleta)**: se mantiene fijo el **bruto** (lo que paga el cliente) y se **recalcula** el desglose como si solo existiera IVA: `neto = bruto / 1.19` y `IVA = neto × 0.19`. Se crea **una sola cuenta de impuesto (IVA)** y no se separa el adicional.
+- **Boleta (DTE 39, 48 y NC de boleta)**: se mantiene fijo el **bruto** (lo que paga el cliente) y se **recalcula** el desglose como si solo existiera IVA: `neto = bruto / 1.19` e `IVA = bruto − neto`. Se crea **una sola cuenta de impuesto (IVA)** y no se separa el adicional. Funciona igual si el precio del producto está con impuestos incluidos o sin ellos.
 - **Por qué**: el formato del DTE de boleta no acepta el campo `OtrosImp`; el SII espera todo el impuesto consolidado en `IVA`. Reflejarlo así en la contabilidad evita la divergencia entre el monto declarado y el asiento, y evita tener que armar productos distintos o flujos paralelos para cada tipo de documento.
 - **Configuración del producto**: el producto se mantiene con sus dos impuestos (IVA + adicional). El módulo decide automáticamente, según el tipo de documento del move, si separa o consolida — sin intervención del usuario.
 
@@ -76,6 +77,26 @@ En boletas afectas (DTE 39 / NC de boleta) los impuestos adicionales o específi
 - Recepción de XML de intercambio (automática por email o carga manual)
 - Parseo automático del XML y creación del documento en borrador
 - Validación de firma electrónica del emisor
+- **Impuestos adicionales con su tasa**: el ILA de las facturas de proveedor se registra con la tasa de su código (24: 31,5 %, 25 y 26: 20,5 %, 27: 10 %, 271: 18 %), no al 19 %. Si la compañía no tiene el impuesto, se crea desde la plantilla del plan de cuentas; se usan solo impuestos activos y con cuenta
+- **Documentos ya recibidos**: se reconocen por el RUT del emisor aunque la razón social del XML no coincida exactamente
+- **Origen del documento**: XML o Registro de Compras del SII. Un documento ingresado desde el Registro de Compras se completa cuando llega su XML, sin duplicarse
+- **Órdenes de compra**: la factura se asocia a una orden de compra abierta del proveedor con esos productos, si existe, y cada línea se asigna a la línea de la orden por producto o descripción
+- **Aprendizaje de productos**: al registrar la factura, el código y el nombre que usa el proveedor quedan guardados en el producto, para reconocerlo en las siguientes facturas
+- **Multiempresa**: el XML se busca y registra en cualquiera de las compañías del usuario, sin cambiar la compañía activa
+- **Doble verificación con el SII**:
+  - **XML recibido → SII**: cada documento recibido por XML se consulta en el registro de reclamos del SII y queda marcado como *Está en el SII* o *No está en el SII* (el SII responde «Documento no ha sido recibido»). Se verifica con el botón *Verificar en el SII* y con un cron diario (documentos de los últimos 90 días aún no confirmados). Filtros *XML que no está en el SII* y *Sin verificar en el SII*
+  - **SII → XML**: los documentos que están en el Registro de Compras del SII pero de los que no llegó el XML quedan con origen *Registro de Compras* y se ven con el filtro *Sin XML (Registro de Compras)*; al llegar su XML se completan
+
+### Recepción de Boletas de Honorarios Electrónicas (BHE)
+En la boleta de honorarios **quien recibe el servicio retiene el impuesto** y lo entera en el SII; al prestador se le paga el líquido. El módulo registra la boleta desde el XML que entrega el SII:
+- **Cómo se usa**: *Contabilidad → Recepcionar XML Intercambio → Subir XML de Envío* (o desde *Compras*), con el XML de la BHE (raíz `<datos>`). Se reconoce automáticamente; no pasa por el flujo de DTE
+- **Documento**: factura de proveedor tipo **Boleta de Honorarios Electrónica (71)** con folio, fecha, emisor y el detalle de servicios; el XML queda adjunto. La compañía se toma del RUT receptor de la boleta y el diario es el de compras que tiene el tipo de documento 71
+- **Retención**: se usa **un solo impuesto de retención** para todas las boletas (cuenta **210704 Impuesto Retención Segunda Categoría**), aunque la tasa cambie de un año a otro. El monto retenido es siempre el de la boleta (`impuestoHonorarios`), no el que resultaría de la tasa del impuesto. Si no existe, se crea «Retención Honorarios» una sola vez
+- **Por pagar**: la cuenta por pagar queda en el **líquido** de la boleta (ej: bruto $210.526, retención $30.526, por pagar $180.000)
+- **Retiene el emisor** (`retieneEmisor` = S): no se aplica retención y se paga el total
+- **Sin duplicados**: subir la misma boleta otra vez devuelve el documento ya registrado
+- **Prestador nuevo**: se crea con su RUT y dirección; el XML de la BHE no trae el nombre, conviene completarlo
+- **Libro de honorarios**: las boletas recibidas (tipos 70 y 71) se incluyen en el libro de honorarios del período
 
 ### Respuestas DTE (Acuse de Recibo)
 Generación de respuestas según normativa SII:
@@ -131,7 +152,20 @@ Gestión del número de líneas de detalle tanto para la hoja impresa como para 
 - Libro de Compras
 - Libro de Ventas
 - Libro de Guías de Despacho
+- Libro de Honorarios (boletas de honorarios recibidas, con su retención)
 - Consumo de Folios (Boletas)
+
+### Informes de ventas
+- **Ventas por tipo de documento**: total de ventas por tipo de DTE y período (Contabilidad → Informes)
+- **Pagos electrónicos de facturas**: facturas 33/34 pagadas con un medio electrónico cuando la compañía está en modelo de emisión **voucher**, para rebajarlas en el Registro de Compras y Ventas
+- **Modelo de emisión de boleta** (Ajustes): *voucher* (cada pago electrónico es un comprobante 48 que vale como boleta) o *boleta* (siempre se emite boleta). En cada diario de banco se indica si **declara ventas en el SII** y su canal (presencial o internet)
+
+### Multiempresa
+Reglas de registro por compañía para libros, honorarios, consumo de folios, CAF, correos y documentos recibidos, envíos y cola SII, respuestas de clientes, sucursales SII, MEPCO y tipos de documento de cada diario: cada usuario ve solo los registros de sus compañías permitidas.
+
+### Folios (CAF)
+- **Aviso de vencimiento**: al tomar un folio, si su CAF vence en 30 días o menos se muestra un aviso con los folios que quedan sin usar (una vez al día por usuario; desde 3 días antes, siempre). Los días se configuran con los parámetros `l10n_cl_fe.caf_dias_aviso` y `l10n_cl_fe.caf_dias_aviso_intensivo`
+- **Cron de folios**: refresca los CAF sin bloquear a las cajas del punto de venta
 
 ### Referencias DTE
 Las referencias permiten vincular documentos electrónicos entre sí, requerido por normativa SII:
@@ -168,6 +202,12 @@ Integración con [apicaf.cl](https://apicaf.cl) para gestión automatizada de fo
 4. El sistema envía automáticamente al SII (o manualmente según configuración)
 5. Consultar el estado del DTE en el SII
 6. Enviar el XML y PDF al cliente por email
+
+### Recepción de Boleta de Honorarios
+1. Descargar desde el SII el XML de la boleta de honorarios recibida
+2. Ir a Contabilidad > Recepcionar XML Intercambio > Subir XML de Envío y cargar el XML
+3. El sistema crea la factura de proveedor BHE con la retención y el líquido por pagar
+4. Revisar, completar el nombre del prestador si es nuevo, y validar
 
 ### Recepción de Documentos de Proveedor
 1. Recibir el XML del proveedor por email o carga manual

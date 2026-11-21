@@ -7,11 +7,5 @@
             parent="account.menu_finance"
             sequence="3"
         />
-        <menuitem
-            id="menu_sii_config"
-            name="SII Configuration"
-            parent="account.menu_finance_configuration"
-            sequence="25"
-        />
     </data>
 </odoo>

@@ -57,17 +57,9 @@ class SIIXMLEnvio(models.Model):
         default=lambda self: self.env.company.id,
         readonly=True,
     )
-    sii_xml_response = fields.Text(
-        string="SII XML Response", copy=False, readonly=True,
-    )
-    sii_send_ident = fields.Text(
-        string="SII Send Identification", copy=False, readonly=True,
-    )
-    sii_receipt = fields.Text(
-        string="SII Mensaje de recepción",
-        copy=False,
-        readonly=False,
-    )
+    sii_xml_response = fields.Text(string="SII XML Response", copy=False, readonly=True,)
+    sii_send_ident = fields.Text(string="SII Send Identification", copy=False, readonly=True,)
+    sii_receipt = fields.Text(string="SII Mensaje de recepción", copy=False, readonly=True,)
     move_ids = fields.One2many(
         "account.move", "sii_xml_request", string="Facturas", readonly=True,
     )
@@ -246,14 +238,17 @@ class SIIXMLEnvio(models.Model):
     def check_estado_boleta(self, doc, detalles, state):
         for d in detalles:
             if d['tipo'] == doc.document_class_id.sii_code and d['folio'] == doc.sii_document_number:
+                if d.get('estado') in ('RLV', 'RPR'):
+                    return 'Reparo'
                 return 'Rechazado'
         return state
 
     def set_childs(self, state, detalle_rep_rech=False):
         for r in self.move_ids:
+            estado = state
             if r.es_boleta() and detalle_rep_rech:
-                state = self.check_estado_boleta(r, detalle_rep_rech, state)
-            r.sii_result = state
+                estado = self.check_estado_boleta(r, detalle_rep_rech, state)
+            r.sii_result = estado
 
     @api.onchange('state')
     def set_states(self):
@@ -370,11 +365,11 @@ class SIIXMLEnvio(models.Model):
             return self.browse()
 
         docs_list = list(documents)
-        model = docs_list[0]._name
+        tipo = getattr(docs_list[0], '_dte_envio_tipo', 'dte')
 
-        if model == 'account.move.book':
+        if tipo == 'libro':
             return self._crear_envio_libro(docs_list)
-        elif model == 'account.move.consumo_folios':
+        elif tipo == 'consumo_folios':
             return self._crear_envio_consumo_folios(docs_list)
         else:
             return self._crear_envio_dte(docs_list, RUTRecep)
@@ -425,6 +420,25 @@ class SIIXMLEnvio(models.Model):
         codigos_boleta = [39, 41]
         es_boleta = any(d["TipoDTE"] in codigos_boleta for d in datos["Documento"])
         datos["api"] = es_boleta and not set_pruebas
+
+        if not envio_id.exists():
+            envio_id = docs_list[0].sii_xml_request
+            if not envio_id:
+                for doc in docs_list:
+                    if doc.sii_xml_request:
+                        envio_id = doc.sii_xml_request
+                        break
+            if not envio_id:
+                doc_field = docs_list[0]._dte_xml_envio_field
+                vals = {
+                    'name': 'temporal',
+                    'xml_envio': 'temporal',
+                    'company_id': company.id,
+                }
+                if doc_field:
+                    vals[doc_field] = [(6, 0, [d.id for d in docs_list])]
+                envio_id = self.create(vals)
+            envio_id = envio_id.with_context(firma_id=firma.id)
 
         if envio_id.sii_send_ident:
             _SII_SEND_RESULT_CACHE.pop(envio_id.id, None)
@@ -497,7 +511,7 @@ class SIIXMLEnvio(models.Model):
         doc = documents[0]
 
         if doc.sii_xml_request and doc.sii_xml_request.state == "Rechazado":
-            if len(doc.sii_xml_request.book_ids) <= 1:
+            if len(doc.sii_xml_request[doc._dte_xml_envio_field]) <= 1:
                 doc.sii_xml_request.unlink()
             else:
                 doc.sii_xml_request = False
@@ -514,7 +528,7 @@ class SIIXMLEnvio(models.Model):
         datos.update({
             "Libro": {
                 "PeriodoTributario": doc.periodo_tributario,
-                "TipoOperacion": doc.tipo_operacion,
+                "TipoOperacion": doc._dte_tipo_operacion(),
                 "TipoLibro": doc.tipo_libro,
                 "TipoEnvio": doc.tipo_envio,
             },
@@ -540,7 +554,7 @@ class SIIXMLEnvio(models.Model):
 
         try:
             with self.env.cr.savepoint():
-                doc.state = "Enviado"
+                doc.sii_result = "Enviado"
         except Exception as e:
             _logger.warning(
                 f"No se pudo actualizar estado del libro {doc._name} id={doc.id} tras envío {envio.name}: {e}",
@@ -566,7 +580,7 @@ class SIIXMLEnvio(models.Model):
 
         envio = doc.sii_xml_request
         if envio:
-            if doc.state in ["NoEnviado", "EnCola"]:
+            if doc.sii_result in ["NoEnviado", "EnCola"]:
                 envio.with_context(firma_id=doc._resolve_firma().id).send_xml()
 
         return envio

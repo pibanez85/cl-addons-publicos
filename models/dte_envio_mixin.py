@@ -27,6 +27,7 @@ class DteEnvioMixin(models.AbstractModel):
 
     _dte_cola_field = None
     _dte_xml_envio_field = None
+    _dte_envio_tipo = 'dte'
 
     @api.model
     def _get_dte_docs_por_pack(self, es_boleta=False):
@@ -114,6 +115,11 @@ class DteEnvioMixin(models.AbstractModel):
             _("El modelo %s debe implementar _emisor()") % self._name
         )
 
+    def _es_doc_cola(self):
+        """Doc listo para evaluar el cierre de la cola: por defecto se
+        considera resuelto cuando el SII devolvió mensaje por documento."""
+        return bool(self.sii_message)
+
     def do_dte_send(self):
         return self.env['sii.xml.envio'].crear_envio(self)
 
@@ -153,6 +159,9 @@ class DteEnvioMixin(models.AbstractModel):
                 firma = admin.sudo().get_digital_signature(company)
         return firma or self.env['sii.firma']
 
+    def _dte_ampara_traslado(self):
+        return False
+
     def _fill_envio_defaults(self, vals):
         ISCP = self.env['ir.config_parameter'].sudo()
         metodo = ISCP.get_param('account.send_dte_method', default='diferido')
@@ -161,7 +170,7 @@ class DteEnvioMixin(models.AbstractModel):
         if 'company_id' not in vals:
             vals['company_id'] = self[0].company_id.id
         if 'tipo_trabajo' not in vals:
-            vals['tipo_trabajo'] = 'pasivo' if metodo == 'diferido' else 'envio'
+            vals['tipo_trabajo'] = 'pasivo' if metodo == 'diferido' and not self._dte_ampara_traslado() else 'envio'
         if 'date_time' not in vals:
             tiempo = fields.Datetime.now()
             if vals['tipo_trabajo'] == 'pasivo':
@@ -309,7 +318,7 @@ class DteEnvioMixin(models.AbstractModel):
             if r.sii_xml_request.state not in ["Aceptado", "Rechazado"]:
                 continue
             docs.setdefault(r.document_class_id.sii_code, [])
-            docs[r.document_class_id.sii_code].append(r._dte())
+            docs[r.document_class_id.sii_code].append(r._dte_para_estado())
         if not docs:
             _logger.warning("En get_dte_status, no docs")
             return

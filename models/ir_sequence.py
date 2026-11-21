@@ -41,7 +41,7 @@ class IRSequence(models.Model):
         available = 0
         if folio > 0:
             for c in cafs:
-                available += c.qty_available
+                available += min(c.qty_available, c.final_nm + 1 - max(folio, c.start_nm))
             if available <= self.nivel_minimo:
                 alert_msg = "Nivel bajo de folios del CAF para {}, quedan {} folios. Recuerde verificar su token apicaf.cl".format(
                     self.sii_document_class_id.name, available,
@@ -120,6 +120,8 @@ class IRSequence(models.Model):
         alert_msg = False
         if not wiz_caf.id_peticion:
             alert_msg = "Problema al conectar con apicaf.cl"
+            if wiz_caf.message:
+                alert_msg = "%s: %s" % (alert_msg, wiz_caf.message)
         else:
             if not cantidad:
                 cantidad = self.autoreponer_cantidad
@@ -172,6 +174,7 @@ class IRSequence(models.Model):
             caf = self.env['dte.caf'].search([
                 ('sequence_id', '=', self.id),
                 ('folio_actual', '>=', requested),
+                ('state', '!=', 'spent'),
             ],
             order='folio_actual ASC',
             limit=1)

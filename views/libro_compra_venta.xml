@@ -57,21 +57,21 @@
                         <field name="sii_result" widget="statusbar" />
                     </header>
                     <group>
-                        <field name="name" />
-                        <field name="date" />
-                        <field name="company_id" />
+                        <field name="name" readonly="sii_result != 'draft'" />
+                        <field name="date" readonly="sii_result != 'draft'" />
+                        <field name="company_id" readonly="sii_result != 'draft'" />
                         <field name="currency_id" invisible="True" />
                         <field name="total_afecto" invisible="True" />
                         <field name="total_iva" invisible="True" />
                         <field name="total_exento" invisible="True" />
                         <field name="total_otros_imps" invisible="True" />
                         <field name="total" invisible="True" />
-                        <field name="periodo_tributario" />
-                        <field name="tipo_operacion" />
-                        <field name="tipo_libro" />
-                        <field name="tipo_envio" />
+                        <field name="periodo_tributario" readonly="sii_result != 'draft'" />
+                        <field name="tipo_operacion" readonly="sii_result != 'draft'" />
+                        <field name="tipo_libro" readonly="sii_result != 'draft'" />
+                        <field name="tipo_envio" readonly="sii_result != 'draft'" />
                         <field
-                            name="folio_notificacion"
+                            name="folio_notificacion" readonly="sii_result != 'draft'"
                             invisible="tipo_libro not in ['ESPECIAL']"
                             required="tipo_libro in ['ESPECIAL']"
                         />
@@ -80,7 +80,7 @@
                             invisible="tipo_libro not in ['RECTIFICA']"
                             required="tipo_libro in ['RECTIFICA']"
                         />
-                        <field name="fact_prop" />
+                        <field name="fact_prop" readonly="sii_result != 'draft'" />
                     </group>
                     <group>
                         <field

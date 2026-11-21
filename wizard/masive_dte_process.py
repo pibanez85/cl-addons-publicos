@@ -22,4 +22,4 @@ class MasiveDTEProcessWizard(models.TransientModel):
         if self.action == "create":
             dtes.pre_process()
         else:
-            dtes.process(option=self.action)
+            dtes.process_message(pre=False, option=self.action)

@@ -11,8 +11,10 @@
                     <field name="warning_message" readonly="True" nolabel="1"/>
                     <group>
                         <field name="journal_id"/>
+                        <field name="jdc_disponible_ids" invisible="1"/>
                         <field name="jdc_id"
-                            domain="[('journal_id', '=', journal_id)]"/>
+                            domain="[('id', 'in', jdc_disponible_ids)]"
+                            context="{'mostrar_folio': True}"/>
                     </group>
                     <footer>
                         <button string='Convertir' name="convert" type="object" class="btn-primary"/>

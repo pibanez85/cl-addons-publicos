@@ -20,7 +20,17 @@ class DteReferenciaMixin(models.AbstractModel):
     )
     motivo = fields.Char(string="Motivo")
     fecha_documento = fields.Date(string="Fecha Documento")
+    rut_otro = fields.Char(string="RUT Otro Contribuyente")
+    ind_global = fields.Boolean(
+        string="Referencia Global",
+        help="Referencia a más de 20 documentos del mismo tipo, por ejemplo la factura de todas las guías del mes. El folio va en 0 y el motivo explica qué documentos abarca.",
+    )
     sequence = fields.Integer(string="Secuencia", default=1)
+
+    @api.onchange("ind_global")
+    def _onchange_ind_global(self):
+        if self.ind_global:
+            self.folio = "0"
 
     def _dte_referenceable_models(self):
         return ['account.move', 'account.move.boleta_voucher']

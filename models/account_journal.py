@@ -13,7 +13,7 @@ class AccountJournal(models.Model):
     sii_code = fields.Char(related="sucursal_id.sii_code", string="Código SII Sucursal", readonly=True,)
     journal_document_class_ids = fields.One2many("account.journal.sii_document_class", "journal_id", "Documents Class",)
     document_class_ids = fields.Many2many("sii.document_class", string="Document Class IDs")
-    use_documents = fields.Boolean(string="Use Documents?", default="_get_default_doc",)
+    use_documents = fields.Boolean(string="Use Documents?",)
     company_activity_ids = fields.Many2many("partner.activities", related="company_id.company_activities_ids")
     journal_activities_ids = fields.Many2many(
         "partner.activities",
@@ -42,11 +42,6 @@ class AccountJournal(models.Model):
     def max_actecos(self):
         if len(self.journal_activities_ids) > 4:
             raise UserError("Deben Ser máximo 4 actecos por Diario, seleccione los más significativos para este diario")
-
-    def _get_default_doc(self):
-        self.ensure_one()
-        if self.type == "sale" or self.type == "purchase":
-            self.use_documents = True
 
     @api.constrains('use_documents', 'type')
     def _check_use_documents_type(self):

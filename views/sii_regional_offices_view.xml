@@ -31,10 +31,4 @@
         <field name="res_model">sii.regional.offices</field>
         <field name="view_mode">tree,form</field>
     </record>
-    <menuitem
-        name="SII Regional Offices"
-        action="act_sii_regional_offices"
-        id="menu_action_sii_regional_offices"
-        parent="l10n_cl_fe.menu_sii_config"
-    />
 </odoo>

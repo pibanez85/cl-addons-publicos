@@ -10,6 +10,17 @@
                 <field name="code" />
                 <field name="abreviatura" />
             </field>
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button
+                        name="action_update_currency"
+                        type="object"
+                        string="Actualizar desde la CMF"
+                        invisible="name not in ('UF', 'UTM', 'USD', 'EUR')"
+                        groups="account.group_account_manager"
+                    />
+                </header>
+            </xpath>
         </field>
     </record>
 </odoo>

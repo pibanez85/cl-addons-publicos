@@ -694,6 +694,16 @@
                     </tr>
                 </tbody>
             </table>
+            <h3>Traslado de bienes (Res. Ex. SII N&deg; 144 de 2026)</h3>
+            <p class="oe_mt12">
+                Vigente desde el 1 de noviembre de 2026. Requiere la librer&iacute;a <code>facturacion_electronica</code> 0.25.0 o superior.
+            </p>
+            <ul>
+                <li>Facturas con despacho (33, 34 y 46): pesta&ntilde;a <b>Transporte</b> con tipo de despacho, transportista, chofer, patente, patente del carro y fechas de salida y llegada. Con despacho 2 o 3 se informan en el DTE y se imprimen en la factura y en el ticket.</li>
+                <li>Transportista por confirmar: omite el RUT del transportista en el XML e imprime "DIFERIDO". En la patente se puede ingresar DIFERIDO o SIN DATO.</li>
+                <li>Referencias con RUT Otro Contribuyente (RUTOtr) para documentos emitidos por otro contribuyente.</li>
+                <li>Las gu&iacute;as y las facturas que amparan un traslado se env&iacute;an al SII de inmediato, aunque el m&eacute;todo de env&iacute;o sea Diferido.</li>
+            </ul>
             <p class="oe_mt12">
                 Agradecimientos y colaboradores:
                 <ul>

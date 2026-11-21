@@ -3,7 +3,6 @@ import logging
 
 from odoo import fields, models
 from odoo.exceptions import UserError
-from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 try:
@@ -147,6 +146,11 @@ class DTEClaim(models.Model):
             return
         datos = doc._get_datos_empresa()
         dte = doc._dte()
+        if self.move_id:
+            recibido = self.env["mail.message.dte.document"].sudo().search(
+                [("move_id", "=", self.move_id.id)], limit=1)
+            if recibido.amount and dte.get("Encabezado", {}).get("Totales"):
+                dte["Encabezado"]["Totales"]["MntTotal"] = recibido.amount
         """ @TODO separar estos dos"""
         dte["CodEnvio"] = IdRespuesta
         datos["filename"] = "validacion_comercial_%s.xml" % str(IdRespuesta)

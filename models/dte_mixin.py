@@ -68,6 +68,13 @@ class DteMixin(models.AbstractModel):
             colas |= group._enqueue_uniform(group_vals)
         return colas
 
+    def _dte_ampara_traslado(self):
+        return any(
+            doc.document_class_id.sii_code == 52
+            or (getattr(doc, 'transport_type', False) in ('1', '2', '3') and not doc.es_boleta())
+            for doc in self
+        )
+
     def _filter_for_manual_queue(self, cola_model, doc_field):
         skip_ids = set()
         for cola in cola_model.search([(doc_field, 'in', self.ids)]):
@@ -76,9 +83,12 @@ class DteMixin(models.AbstractModel):
                 continue
             blocked = (
                 cola.manual
-                or cola.processing
                 or (cola.envio_id and cola.envio_id.sii_send_ident)
+                or not cola._try_lock()
             )
+            if not blocked:
+                cola.invalidate_recordset(['processing'])
+                blocked = cola.processing
             if blocked:
                 skip_ids.update(cola_docs.ids)
             else:
@@ -111,7 +121,8 @@ class DteMixin(models.AbstractModel):
             docs = self._filter_for_manual_queue(cola_model, doc_field)
             if not docs:
                 return cola_model
-        if manual or len(docs) >= docs_por_pack:
+        cola_propia = bool(self.env.context.get('dte_cola_propia')) and vals.get('tipo_trabajo') == 'pasivo'
+        if manual or cola_propia or len(docs) >= docs_por_pack:
             colas = cola_model
             for i in range(0, len(docs), docs_por_pack):
                 chunk = docs[i:i + docs_por_pack]
@@ -126,6 +137,10 @@ class DteMixin(models.AbstractModel):
         if existente and existente.document_count + len(docs) <= docs_por_pack:
             if not existente._try_lock():
                 existente = cola_model
+            else:
+                existente.invalidate_recordset(['processing'])
+                if existente.processing:
+                    existente = cola_model
             if existente:
                 existente[doc_field] = [(4, doc_id) for doc_id in docs.ids]
                 existente._log_user_docs(docs)
@@ -264,7 +279,7 @@ class DteMixin(models.AbstractModel):
             if company.phone:
                 Emisor["Telefono"] = self._acortar_str(company.phone, 20)
             if company.dte_email_id:
-                Emisor["CorreoEmisor"] = company.dte_email_id.name_get()[0][1]
+                Emisor["CorreoEmisor"] = company.dte_email_id.display_name
             Emisor["Actecos"] = self._actecos_emisor()
         dir_origen = company
         sucursal = self._dte_emisor_sucursal()
@@ -291,7 +306,7 @@ class DteMixin(models.AbstractModel):
             name: str (NmbItem)
             description: str | False (DscItem)
             qty: float (QtyItem)
-            uom: str | None (UnmdItem; si None se deriva de product.uom_id)
+            uom_id: uom.uom | False (UnmdItem; unidad de medida de la línea)
             price_unit: float (PrcItem en moneda base del doc)
             discount_pct: float (0..100; signo positivo=descuento, negativo=recargo)
             discount_amount: float (absoluto en moneda base)
@@ -331,13 +346,14 @@ class DteMixin(models.AbstractModel):
             'Folio': self.get_folio(),
             'FchEmis': self._dte_fch_emis(),
         }
+        transport_type = getattr(self, 'transport_type', False)
+        if transport_type and transport_type != '0' and not self.es_boleta():
+            iddoc['TipoDespacho'] = transport_type
         if self.es_boleta():
             iddoc['IndServicio'] = 3
             if not resumen.get('tax_include'):
                 iddoc['IndMntNeto'] = 2
         elif self.es_guia():
-            if self.transport_type and self.transport_type not in ('0',):
-                iddoc['TipoDespacho'] = self.transport_type
             iddoc['IndTraslado'] = self.move_reason
             tpo = self._dte_tpo_impresion()
             if tpo:
@@ -374,7 +390,7 @@ class DteMixin(models.AbstractModel):
     def _receptor(self):
         self.ensure_one()
         partner = self._dte_partner_recep()
-        if not partner.vat and not self.es_boleta() and not self.es_nc_boleta():
+        if partner.document_number in [False, 0, "0"] and not self.es_boleta() and not self.es_nc_boleta():
             raise UserError(_("Debe Ingresar RUT Receptor"))
         Receptor = {
             'RUTRecep': partner.rut(),
@@ -534,6 +550,9 @@ class DteMixin(models.AbstractModel):
         Totales["MntTotal"] = currency_id.round(_conv(totales.get('MntTotal', 0)))
         if totales.get('MontoNF'):
             Totales['MontoNF'] = currency_id.round(totales['MontoNF'])
+            for k in ('TotalPeriodo', 'MontoPeriodo'):
+                if totales.get(k):
+                    Totales[k] = currency_id.round(_conv(totales[k]))
         if totales.get('VlrPagar'):
             Totales["VlrPagar"] = currency_id.round(_conv(totales['VlrPagar']))
         return Totales
@@ -542,7 +561,8 @@ class DteMixin(models.AbstractModel):
         return True
 
     def _encabezado_transporte(self):
-        """Hook: solo guías retornan dict de Transporte; el resto None."""
+        if getattr(self, 'transport_type', False) in ('2', '3') and not self.es_boleta():
+            return self._transporte()
         return None
 
     def _transporte(self):
@@ -555,26 +575,38 @@ class DteMixin(models.AbstractModel):
             Transporte['Patente'] = patente[:8]
         elif vehicle:
             Transporte['Patente'] = vehicle.license_plate or ''
+        patente_carro = getattr(self, 'patente_carro', False)
+        if patente_carro:
+            Transporte['PatenteCarro'] = patente_carro[:8]
+        transportista = getattr(self, 'transportista_id', False)
+        if getattr(self, 'transportista_por_confirmar', False):
+            Transporte['RUTTrans'] = False
+        elif transportista:
+            if not transportista.document_number:
+                raise UserError(_(
+                    "Debe especificar el RUT del transportista, en su ficha de partner"
+                ))
+            Transporte['RUTTrans'] = transportista.rut()
         chofer = getattr(self, 'chofer', False)
-        if self.transport_type in ('2', '3') and chofer:
-            if not chofer.vat:
-                raise UserError(_("Debe llenar los datos del chofer"))
-            if self.transport_type == '2':
-                Transporte['RUTTrans'] = self.company_id.partner_id.rut()
-            else:
-                if not self.carrier_id.partner_id.vat:
-                    raise UserError(_(
-                        "Debe especificar el RUT del transportista, en su ficha de partner"
-                    ))
-                Transporte['RUTTrans'] = self.carrier_id.partner_id.rut()
+        if chofer:
+            if not chofer.document_number:
+                raise UserError(_("El chofer %s no tiene RUT. Cárguelo en su contacto") % chofer.name)
             Transporte['Chofer'] = {
                 'RUTChofer': chofer.rut(),
                 'NombreChofer': chofer.name[:30],
             }
-        partner = self.partner_id or self.company_id.partner_id
+        partner = getattr(self, 'partner_shipping_id', False) or self.partner_id or self.company_id.partner_id
         Transporte['DirDest'] = (partner.street or '') + ' ' + (partner.street2 or '')
         Transporte['CmnaDest'] = partner.city_id.name or ''
         Transporte['CiudadDest'] = partner.city or ''
+        salida = getattr(self, 'fecha_salida', False)
+        if salida:
+            salida = fields.Datetime.context_timestamp(self.with_context(tz='America/Santiago'), salida)
+            Transporte['FchSalida'] = salida.strftime('%Y-%m-%d')
+            Transporte['HraSalida'] = salida.strftime('%H:%M:%S')
+        llegada = getattr(self, 'fecha_llegada', False)
+        if llegada:
+            Transporte['FchLlegada'] = llegada.strftime('%Y-%m-%d')
         return Transporte
 
     def _encabezado_otra_moneda(self, resumen):
@@ -599,6 +631,17 @@ class DteMixin(models.AbstractModel):
         if otra:
             enc['OtraMoneda'] = otra
         return enc
+
+    def _dte_para_estado(self):
+        self.ensure_one()
+        resumen = self._detalle_sii()
+        return {
+            'Encabezado': {
+                'IdDoc': self._id_doc(resumen),
+                'Receptor': {'RUTRecep': self._dte_partner_recep().rut()},
+                'Totales': self._totales(resumen),
+            },
+        }
 
     def _get_referencias_dte(self):
         raise NotImplementedError(
@@ -674,21 +717,26 @@ class DteMixin(models.AbstractModel):
 
     def _referencia_a_dict(self, ref, lin_ref):
         ref_line = {"NroLinRef": lin_ref}
-        if getattr(ref, "ref_id", False):
-            tpo = ref.ref_id
-            ref_line["TpoDocRef"] = (
-                tpo.doc_code_prefix if getattr(tpo, "use_prefix", False) else tpo.sii_code
+        if not self.es_boleta():
+            if getattr(ref, "ref_id", False):
+                tpo = ref.ref_id
+                ref_line["TpoDocRef"] = (
+                    self._acortar_str(tpo.doc_code_prefix, 3) if getattr(tpo, "use_prefix", False) else tpo.sii_code
+                )
+                ref_line["FolioRef"] = ref.folio
+                if getattr(ref, "rut_otro", False):
+                    ref_line["RUTOtr"] = ref.rut_otro
+                if getattr(ref, "ind_global", False):
+                    ref_line["IndGlobal"] = 1
+            fch = (
+                getattr(ref, "fecha_documento", False)
+                or getattr(ref, "date", False)
+                or fields.Date.context_today(self)
             )
-            ref_line["FolioRef"] = ref.folio
-        fch = (
-            getattr(ref, "fecha_documento", False)
-            or getattr(ref, "date", False)
-            or fields.Date.context_today(self)
-        )
-        if hasattr(fch, "strftime"):
-            ref_line["FchRef"] = fch.strftime("%Y-%m-%d")
-        else:
-            ref_line["FchRef"] = str(fch)
+            if hasattr(fch, "strftime"):
+                ref_line["FchRef"] = fch.strftime("%Y-%m-%d")
+            else:
+                ref_line["FchRef"] = str(fch)
         cod_ref = getattr(ref, "cod_ref", False)
         if cod_ref not in ["", "none", False, None]:
             ref_line["CodRef"] = cod_ref
@@ -709,12 +757,12 @@ class DteMixin(models.AbstractModel):
             lin_ref += 1
         return ref_lines
 
-    def _detalle_sii_uom(self, product):
-        if not product:
+    def _detalle_sii_uom(self, uom):
+        if not uom:
             return None
         es_export = self.document_class_id.es_exportacion()
-        uom_name = product.uom_id.with_context(exportacion=es_export).name_get()
-        return uom_name[0][1][:4] if uom_name else None
+        uom_name = uom[:1].with_context(exportacion=es_export).display_name
+        return uom_name[:4] if uom_name else None
 
     def _detalle_sii_cdg_item(self, product):
         if not product:
@@ -758,7 +806,16 @@ class DteMixin(models.AbstractModel):
         tax_excluded = False
         currency_base = self.currency_base()
         currency_target = self.currency_target()
-        dte_monto_0 = any(r.cod_ref == '2' for r in self._get_referencias_dte())
+        dte_monto_0 = False
+        for r in self._get_referencias_dte():
+            if r.cod_ref == '2':
+                dte_monto_0 = True
+                break
+            if r.cod_ref == '1':
+                ref_doc = r._buscar_documento_referenciado()
+                if ref_doc and any(rr.cod_ref == '2' for rr in ref_doc._get_referencias_dte()):
+                    dte_monto_0 = True
+                    break
         for idx, line in enumerate(lineas, start=1):
             if line.get('needs_desglose') and not self.env.context.get('force_desglose') and detalle:
                 return self.with_context(force_desglose=True)._detalle_sii()
@@ -834,7 +891,7 @@ class DteMixin(models.AbstractModel):
                 otrmnda = self._detalle_sii_otrmnda(line, currency_base, currency_target)
                 if otrmnda:
                     item["OtrMnda"] = otrmnda
-            uom = line.get('uom') or (self._detalle_sii_uom(product) if product else None)
+            uom = self._detalle_sii_uom(line.get('uom_id'))
             if uom:
                 item["UnmdItem"] = uom
             MontoItem = line.get('subtotal') or 0
@@ -1015,7 +1072,7 @@ class DteMixin(models.AbstractModel):
                 continue
             rec.env['mail.mail'].sudo().create({
                 'res_id': rec.id,
-                'email_from': dte_email_id.name_get()[0][1],
+                'email_from': dte_email_id.display_name,
                 'email_to': email_to.rstrip(','),
                 'auto_delete': False,
                 'model': rec._name,
@@ -1076,6 +1133,8 @@ class DteMixin(models.AbstractModel):
             ('start_nm', '<=', folio),
             ('final_nm', '>=', folio),
             ('document_class_id', '=', self.document_class_id.id),
+            '|', ('company_id', '=', False),
+            ('company_id', '=', self.company_id.id),
         ], limit=1)
 
     def _caf_file(self, caf, folio):

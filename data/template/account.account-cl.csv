@@ -30,6 +30,7 @@ account_110704,110704,Fixed Asset Credit,asset_current,,,Crédito por Activo Fij
 account_110705,110705,Monthly Provisions Payment (P.P.M.),asset_current,,,Pago Provisiones Mensuales (P.P.M.)
 account_110706,110706,Sence Credit,asset_current,,,Crédito Sence
 account_110708,110708,VAT Withholding Tax Credit,asset_current,,,Retención IVA Crédito Fiscal
+account_110709,110709,ILA Tax Credit,asset_current,,,ILA Crédito Fiscal
 account_110801,110801,Accounts Receivable Partners,asset_current,,,Cuentas por Cobrar Socios
 account_110901,110901,Expenses Paid in Advance,asset_current,,,Gastos Pagados Por Anticipado
 account_120101,120101,Land,asset_fixed,,,Terreno
@@ -80,10 +81,12 @@ account_210702,210702,PPM Payable,liability_current,,,PPM por Pagar
 account_210703,210703,Single Tax for Workers,liability_current,,,Impuesto Único Trabajadores
 account_210704,210704,Second Category Withholding Tax,liability_current,,,Impuesto Retención Segunda Categoría
 account_210705,210705,1st Category Income Tax Payable,liability_current,,,Impuesto Renta 1a Categoría por Pagar
-account_210706,210706,Monthly Taxes Payable,liability_current,,,Impuesto Mensuales por Pagar
+account_210706,210706,Monthly Taxes Payable,liability_payable,True,,Impuesto Mensuales por Pagar
 account_210707,210707,CCAF Personal Loans,liability_current,,,CCAF Créditos Personales
 account_210708,210708,Unemployment Insurance,liability_current,,,Seguro de Cesantía
 account_210709,210709,VAT Withholding Tax Debit,liability_current,,,Retención IVA Débito Fiscal
+account_210710,210710,ILA Tax Debit,liability_current,,,ILA Débito Fiscal
+account_210711,210711,Deferred VAT Payable,liability_current,,,IVA Postergado por Pagar
 account_220102,220102,Leasing Obligations L/Term,liability_current,,,Obligaciones Leasing L/Plazo
 account_220103,220103,Commercial Credit Long Term,liability_current,,,Crédito Comercial L/Plazo
 account_220201,220201,Provision for Compensation for Years of Service,liability_current,,,Provisión Indemnización por Años de Servicio
@@ -109,11 +112,12 @@ account_410203,410203,Sales Commissions,income,,,Comisiones por Ventas
 account_420101,420101,Profit from Sale of Fixed Assets,income,,,Utilidad Venta Activo Fijo
 account_420102,420102,Interest on Loans Granted,income,,,Intereses Sobre Préstamos Otorgados
 account_420103,420103,Global Surcharge,income,,,Recargo Global
-account_420104,420104,Effective Rounding Gain,income,,,Ganancia por Redondeo Efectivo
 account_420105,420105,Other Income,income,,,Otros Ingresos
 account_420104,420104,Interests on Term Deposits and Mutual Funds,income,,,Intereses Depósito a Plazo y Fondos Mutuos
+account_420106,420106,Effective Rounding Gain,income_other,,,Ganancia por Redondeo Efectivo
 account_420201,420201,Monetary Correction Assets,income,,,Corrección Monetaria Activos
 account_420202,420202,Monetary Correction of Leasing Goods,income,,,Corrección Monetaria Bienes Leasing
+account_420203,420203,Tax Credit Carryforward Adjustment,income_other,,,Reajuste Remanente Crédito Fiscal
 account_510101,510101,Operation Remunerations,expense,,,Remuneraciones Operación
 account_510102,510102,Employer Contribution Operation,expense,,,Aporte Patronal Operación
 account_510103,510103,Travel expenses,expense,,,Viáticos

@@ -13,6 +13,8 @@ Compatible con **Odoo Community** y **Odoo Enterprise**.
 > - `l10n_cl`
 > - cualquier módulo `l10n_latam*` (`l10n_latam_base`, `l10n_latam_invoice_document`, etc.)
 
+**Librería `facturacion_electronica` 0.25.0 o superior.** Actualícela antes de actualizar el módulo (`pip install -U facturacion_electronica`). Con una versión anterior, Odoo rechaza la instalación o la actualización por conflicto de versión.
+
 ## Descripción
 
 Se crea este repositorio, para dar un enfoque de firma electrónica directa con el SII.
@@ -192,6 +194,19 @@ Integración con [apicaf.cl](https://apicaf.cl) para gestión automatizada de fo
 - En cualquier campo de selección de partner, escribir el RUT con puntos (ej: 12.345.678-9)
 - El sistema encontrará el cliente automáticamente
 - También funciona búsqueda por nombre, email o referencia
+
+## Traslado de bienes (Res. Ex. SII N° 144 de 2026)
+
+Vigente desde el 1 de noviembre de 2026. Reemplaza a la Res. Ex. SII N° 154 de 2025.
+
+- **Facturas con despacho (33, 34 y 46):** pestaña *Transporte* con tipo de despacho, transportista, chofer, patente, patente del carro y fechas de salida y llegada. Con despacho 2 o 3 se informa el bloque `Transporte` del DTE y se imprime en la factura y en el ticket. Con despacho 1 solo se informa el tipo de despacho: si el comprador retira en el local, la factura basta (resolutivo 15°).
+- **Transportista:** si no se indica, con despacho 2 o 3 se informa el RUT del emisor (flota propia). Si el transporte es de un tercero que aún no se conoce, marque *Transportista por confirmar*: el RUT se omite en el XML y se imprime "DIFERIDO".
+- **Datos que no se conocen al emitir (resolutivo 4°):** en la patente se puede ingresar `DIFERIDO` o `SIN DATO`, y el chofer no es obligatorio. El schema del SII no admite esos textos en RUT ni en fechas.
+- **Referencias:** campo *RUT Otro Contribuyente* (`RUTOtr`), solo cuando el documento referido fue emitido por otro contribuyente, como en la guía de despacho tercerizada.
+- **Referencia global** (`IndGlobal`, formato DTE del SII): casilla para cuando el documento afecta a más de 20 documentos del mismo tipo, por ejemplo la factura de todas las guías del mes. El folio queda en 0 y el motivo es obligatorio, porque ahí se explica qué documentos abarca. No sirve para anular ni para corregir texto (códigos 1 y 2), que exigen un único documento de referencia.
+- **Envío previo (resolutivo 9°):** los documentos que amparan un traslado (guías, y facturas con tipo de despacho) se envían al SII de inmediato, aunque el método de envío configurado sea *Diferido*. Con método *Manual* se mantiene el envío manual.
+- **Cambios de datos:** si cambia el vehículo, el chofer u otro dato, se emite un documento nuevo que referencie al anterior. La factura se corrige con nota de crédito y la guía se registra como anulada en el Registro de Guías de Despacho del sitio del SII.
+- **Modelo operacional:** cada contribuyente debe informar su modelo de transporte en el aplicativo del SII a más tardar el 31 de enero de 2027. Si no lo informa, se entiende que el transporte es autogestionado.
 
 ## Estado:
 

@@ -23,7 +23,7 @@ class AccountInvoiceLine(models.Model):
             size += math.ceil(len(l) / factor) or 1
         return size
 
-    discount_amount = fields.Float(string="Monto Descuento", default=0.00,)
+    discount_amount = fields.Float(string="Monto Descuento", default=0.00, compute="set_discount_amount", store=True)
     is_gd_line = fields.Boolean(
         string="Es Línea descuento Global"
     )
@@ -142,7 +142,7 @@ class AccountInvoiceLine(models.Model):
                  'matched_debit_ids', 'matched_credit_ids')
     def _compute_amount_residual(self):
         for line in self:
-            if line.tax_repartition_line_id.sii_type in ['R', 'A']:
+            if line.tax_repartition_line_id.sii_type == 'A':
                 self -= line
         super(AccountInvoiceLine, self)._compute_amount_residual()
 
@@ -151,10 +151,12 @@ class AccountInvoiceLine(models.Model):
         if len(self.tax_ids) == 1:
             self.ind_exe = self.tax_ids.ind_exe
 
-    @api.onchange("discount", "price_unit", "quantity")
+    @api.onchange('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id')
+    @api.depends('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id')
     def set_discount_amount(self):
-        total = self.currency_id.round(self.quantity * self.price_unit)
-        self.discount_amount = float_round_custom(total * ((self.discount or 0.0) / 100.0), precision_digits=0)
+        for r in self:
+            total = r.currency_id.round(r.quantity * r.price_unit)
+            r.discount_amount = float_round_custom(total * ((r.discount or 0.0) / 100.0), precision_digits=0)
 
     @api.model
     def _get_price_total_and_subtotal_model(self, price_unit, quantity, discount, currency, product, partner, taxes, move_type, uom_id=False):
@@ -211,19 +213,11 @@ class AccountInvoiceLine(models.Model):
             price_unit=self.price_unit,
             desglose=force_desglose,
             IndExe=False,
-            TasaIVA=False,
-            es_compra=self.move_id.is_purchase_document() and (self.move_id.es_factura_compra() or self.move_id.es_nc_factura_compra()),
         )
         force_precio_neto = False
         currency_base = self.move_id.currency_base()
         i = 0
-        tax_compras = self.tax_ids.filtered(lambda x: x.sii_code in [0, 14, 15])
-
-        if details["es_compra"] and len(tax_compras) < 2 and tax_compras and tax_compras[0].sii_code != 0:
-            raise UserError(f"EL registro {self.move_id.id} la línea de compras debe llevar doble impuesto:IVA Compra y Retencion de IVA, agregar ambos por línea de pedido ")
         for t in self.tax_ids:
-            if t.sii_code == 14 and details["es_compra"]:
-                continue
             if self.move_id.use_documents and not self.move_id.es_nc() and \
             not self.move_id.es_nd() and self.move_id.document_class_id.sii_code \
             not in t.documentos_dte_admitidos():
@@ -248,8 +242,6 @@ class AccountInvoiceLine(models.Model):
                     force_precio_neto = True
                     continue
                 details['cod_imp_adic'] = t.sii_code
-            if t.sii_code in [14, 15]:
-                details['TasaIVA'] = round(t.amount if t.amount > 0 else t.amount * -1, 2)
             if self.ind_exe or t.ind_exe or t.amount == 0 or t.sii_code in [0]:
                 details['IndExe'] = self.ind_exe or t.ind_exe or "1"
                 if not self.ind_exe:
@@ -257,9 +249,7 @@ class AccountInvoiceLine(models.Model):
                 details['MntExe'] += currency_base.round(self.price_subtotal)
             else:
                 amount = t.amount
-                if t.sii_code in [14, 15]:
-                    amount = round(amount if amount > 0 else amount * -1, 2)
-                elif t.sii_code in [28, 35]:
+                if t.sii_code in [28, 35]:
                     amount = t.compute_factor(self.product_uom_id)
                 details['impuestos'].append({
                             "CodImp": t.sii_code,

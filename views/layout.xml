@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <template t-name="l10n_cl_fe.dte_external_layout">
+    <template id="l10n_cl_fe.dte_external_layout">
         <t t-set="o" t-value="o.with_context({'lang': 'es_CL', 'exportacion': o.document_class_id.es_exportacion()})"/>
         <t t-call="web.basic_layout">
             <!-- Multicompany -->
@@ -75,6 +75,12 @@
                               <p class="sii-info">
                                 SII - <span t-field="o.company_id.sii_regional_office_id.name"/>
                               </p>
+                          </div>
+                          <t t-set="documento_origen" t-value="('invoice_origin' in o and o.invoice_origin) or ('origin' in o and o.origin)"/>
+                          <div t-if="documento_origen" class="row center-text" style="text-align: center !important;">
+                              <div class="col-12" style="text-align: center; color: black; font-size: 12px; margin-top: 5px;">
+                                  Documento de Origen: <t t-esc="documento_origen"/>
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -216,6 +222,36 @@
                                 </table>
                             </div>
                         </t>
+                        <t t-if="o.transport_type in ('2', '3')">
+                            <t t-set="dest" t-value="o.partner_shipping_id or o.partner_id"/>
+                            <span style="font-size:8px;"> Datos de Transporte</span>
+                            <div class="row table-container" name="transporte">
+                                <table class="table table-condensed">
+                                    <thead class="table-header-small">
+                                        <th class="table-header-padding"><strong>Tipo de Despacho</strong></th>
+                                        <th class="table-header-padding"><strong>Patente</strong></th>
+                                        <th class="table-header-padding"><strong>Carro</strong></th>
+                                        <th class="table-header-padding"><strong>RUT Transportista</strong></th>
+                                        <th class="table-header-padding"><strong>Chofer</strong></th>
+                                        <th class="table-header-padding"><strong>Destino</strong></th>
+                                        <th class="table-header-padding"><strong>Salida</strong></th>
+                                        <th class="table-header-padding"><strong>Llegada</strong></th>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="table-row-reference">
+                                            <td class="table-cell-ref"><span t-field="o.transport_type"/></td>
+                                            <td class="table-cell-ref"><span t-field="o.patente"/></td>
+                                            <td class="table-cell-ref"><span t-field="o.patente_carro"/></td>
+                                            <td class="table-cell-ref"><t t-esc="'DIFERIDO' if o.transportista_por_confirmar else (o.transportista_id.document_number or (o.transport_type in ('2', '3') and o.company_id.partner_id.document_number) or '')"/></td>
+                                            <td class="table-cell-ref"><t t-if="o.chofer"><span t-field="o.chofer.name"/> <span t-field="o.chofer.document_number"/></t></td>
+                                            <td class="table-cell-ref"><t t-esc="' '.join([x for x in [dest.street, dest.street2, dest.city_id.name, dest.city] if x])"/></td>
+                                            <td class="table-cell-ref"><span t-field="o.fecha_salida"/></td>
+                                            <td class="table-cell-ref"><span t-field="o.fecha_llegada"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </t>
                         <t t-if="o.comision_ids">
                           <span style="font-size:8px;"> Comisiones y otros Cargos</span>
                           <div class="row table-container" name="comision_ids">
@@ -266,8 +302,8 @@
                               </div>
                         </t>
                         <!-- Is there a discount on at least one line? -->
-                        <t t-set="display_discount" t-value="any([l.discount for l in o.invoice_line_ids])"/>
-                        <t t-set="display_liquidacion" t-value="any([l.tpo_doc_liq for l in o.invoice_line_ids])"/>
+                        <t t-set="display_discount" t-value="any(l.discount for l in o.invoice_line_ids)"/>
+                        <t t-set="display_liquidacion" t-value="any(l.tpo_doc_liq for l in o.invoice_line_ids)"/>
                         <t t-set="price_included" t-value="o.is_price_included()"/>
                         <t t-if="price_included">Valores IVA incluído</t>
                         <table class="table table-condensed">
@@ -279,7 +315,9 @@
                                     <th>Producto</th>
                                     <th>Descripción</th>
                                     <th class="text-teft">Precio Unitario</th>
-                                    <th t-if="display_discount" class="text-left" groups="sale.group_discount_per_so_line">Desc.(%)</th>
+                                    <th name="th_discount" t-if="display_discount" t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}">
+                                      Desc.(%)
+                                    </th>
                                     <th class="text-left">Precio</th>
                                 </tr>
                             </thead>
@@ -304,7 +342,7 @@
                                     <td class="text-left invoice-line-cell">
                                         <span t-esc="o.currency_format(l.price_unit, 'Product Price')"/>
                                     </td>
-                                    <td t-if="display_discount" class="text-right invoice-line-cell" groups="sale.group_discount_per_so_line">
+                                    <td name="td_discount" t-if="display_discount" t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}">
                                         <span t-field="l.discount"/>
                                     </td>
                                     <td class="text-left invoice-line-cell">
@@ -342,7 +380,7 @@
                                 </p>
                             </div>
                             <t t-set="tax_totals" t-value="o.tax_totals"/>
-                            <div id="total" t-attf-class="#{'col-4' if report_move_type != 'html' else 'col-md-5'}">
+                            <div id="total" t-attf-class="#{'col-4' if report_type != 'html' else 'col-md-5'}">
                                 <table class="table table-sm">
                                     <t t-if="o.global_descuentos_recargos">
                                         <tr t-foreach="o.global_descuentos_recargos" t-as="gdr" class="border-black">
@@ -404,6 +442,29 @@
                                             <span t-esc="tax_totals['formatted_amount_total_rounded']"/>
                                         </td>
                                     </tr>
+                                    <t t-if="print_with_payments">
+                                        <t t-if="o.payment_state != 'invoicing_legacy'">
+                                            <t t-set="payments_vals" t-value="o.sudo().invoice_payments_widget and o.sudo().invoice_payments_widget['content'] or []"/>
+                                            <t t-foreach="payments_vals" t-as="payment_vals">
+                                                <tr t-if="payment_vals['is_exchange'] == 0">
+                                                    <td>
+                                                        <i class="oe_form_field text-end oe_payment_label">Paid on <t t-esc="payment_vals['date']" t-options='{"widget": "date"}'/></i>
+                                                    </td>
+                                                    <td class="text-end">
+                                                        <span t-esc="payment_vals['amount']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                            <t t-if="len(payments_vals) > 0">
+                                                <tr class="border-black fw-bold">
+                                                    <td>Amount Due</td>
+                                                    <td class="text-end">
+                                                        <span t-field="o.amount_residual"/>
+                                                    </td>
+                                                </tr>
+                                                </t>
+                                            </t>
+                                        </t>
                                 </table>
                             </div>
                         </div>
@@ -455,60 +516,27 @@
             </div>
         </t>
     </template>
-
     <template id="report_invoice_document_with_payments" inherit_id="l10n_cl_fe.dte_external_layout" primary="True">
-        <xpath expr="//div[@id='total']/table" position="inside">
-          <t t-if="print_with_payments">
-              <t t-if="o.payment_state != 'invoicing_legacy'">
-                  <t t-set="payments_vals" t-value="o.sudo()._get_reconciled_info_JSON_values()"/>
-                  <t t-foreach="payments_vals" t-as="payment_vals">
-                      <tr>
-                          <td>
-                              <i class="oe_form_field text-right oe_payment_label">Paid on <t t-esc="payment_vals['date']" t-options='{"widget": "date"}'/></i>
-                          </td>
-                          <td class="text-right">
-                              <span t-esc="payment_vals['amount']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                          </td>
-                      </tr>
-                  </t>
-                  <t t-if="len(payments_vals) > 0">
-                      <tr class="border-black">
-                          <td><strong>Amount Due</strong></td>
-                          <td class="text-right">
-                              <span t-field="o.amount_residual"/>
-                          </td>
-                      </tr>
-                  </t>
-              </t>
-          </t>
+        <xpath expr="//t[@t-call='web.basic_layout']" position="before">
+            <t t-set="print_with_payments" t-value="True"/>
         </xpath>
     </template>
-    <template id="dte_invoice" inherit_id="account.report_invoice">
-        <t t-call="web.html_container" position="replace">
-            <t t-foreach="docs" t-as="o">
-                <t t-if="o.ticket">
-                    <t t-call="l10n_cl_fe.report_ticket" t-lang="'es_CL'" />
-                </t>
-                <t t-else="" t-call="web.html_container">
-                    <t t-call="l10n_cl_fe.dte_external_layout" t-lang="'es_CL'" />
-                </t>
-            </t>
+    <template id="report_invoice" inherit_id="account.report_invoice">
+        <t t-foreach="docs" t-as="o" position="inside">
+            <t t-if="o._get_name_invoice_report() == 'l10n_cl_fe.report_ticket'"
+                t-call="l10n_cl_fe.report_ticket" t-lang="'es_CL'" />
+            <t t-if="o._get_name_invoice_report() == 'l10n_cl_fe.dte_external_layout'"
+                    t-call="l10n_cl_fe.dte_external_layout" t-lang="'es_CL'" />
         </t>
     </template>
-    <template id="dte_invoice_con_pagos" inherit_id="account.report_invoice_with_payments">
-        <t t-call="account.report_invoice" position="replace">
-            <t t-call="l10n_cl_fe.dte_invoice">
-                <t t-set="print_with_payments" t-value="True"/>
-            </t>
-        </t>
-    </template>
+
     <template id="invoice_cedible">
-        <t t-call="l10n_cl_fe.dte_invoice">
+        <t t-call="account.report_invoice">
             <t t-set="cedible" t-value="True" />
         </t>
     </template>
     <template id="report_invoice_and_cedible">
-        <t t-call="l10n_cl_fe.dte_invoice_con_pagos" />
+        <t t-call="account.report_invoice_with_payments" />
         <t t-call="l10n_cl_fe.invoice_cedible" />
     </template>
     <record id="action_print_cedible" model="ir.actions.report">
@@ -539,7 +567,7 @@
              <div class="page" style="width: 320px; font-size: 12px;">
                 <div class="row">
                   <div class="col-12" style="text-align: center;">
-                    <img style="width: auto; height: 100px; margin: 0 auto;" t-att-src="image_data_uri(o.sii_header())"/>
+                    <img style="width: auto; height: 100px; margin: 0 auto;" t-att-src="'data:image/png;base64,%s' % o.sii_header()"/>
                   </div>
                 </div>
                 <div class="row">
@@ -555,15 +583,15 @@
                 <div class="row">
                     <div class="col-12">
                         <span>Giro: <span t-field="o.company_id.activity_description"/><br/></span>
-                        <span>Casa Matriz: </span><span t-field="company.street"/>, <span t-field="company.city_id.name"/>, <span t-field="company.city"/>
+                        <span>Casa Matriz: </span><span t-field="o.company_id.street"/>, <span t-field="o.company_id.city_id.name"/>, <span t-field="o.company_id.city"/><br/>
                         <t t-if="o.company_id.sucursal_ids and o.use_documents">
                           <t t-if="len(o.company_id.sucursal_ids) == 1">
-                           <span>Sucursal: </span><span t-field="o.company_id.sucursal_ids[0].partner_id.street"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city_id.name"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city"/>
+                           <span>Sucursal: </span><span t-field="o.company_id.sucursal_ids[0].partner_id.street"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city_id.name"/>, <span t-field="o.company_id.sucursal_ids[0].partner_id.city"/><br/>
                           </t>
                           <t t-else="">
-                            <span>Sucursales: </span>
+                            <span>Sucursales: </span><br/>
                               <t t-foreach="o.company_id.sucursal_ids" t-as="sucursal">
-                                <span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/>/
+                                <span t-field="sucursal.partner_id.street"/>, <span t-field="sucursal.partner_id.city_id.name"/>, <span t-field="sucursal.partner_id.city"/><br/>
                               </t>
                           </t>
                         </t>
@@ -580,10 +608,10 @@
                   </div>
                 </div>
                   <div class="row">
-                      <div class="col-6">
+                      <div class="col-12">
                           Fecha de Emisión: <strong><span t-field="o.invoice_date"/></strong><br/>
                       </div>
-                      <div class="col-6">
+                      <div class="col-12" t-if="o.forma_pago == '2'">
                           Fecha de Vencimiento: <strong><span t-field="o.invoice_date_due"/></strong><br/>
                       </div>
                   </div>
@@ -630,6 +658,18 @@
                           </tbody>
                       </table>
                   </div>
+                  <div class="row" t-if="o.transport_type in ('2', '3')">
+                      <div class="col-12">
+                          <t t-set="dest" t-value="o.partner_shipping_id or o.partner_id"/>
+                          Tipo de Despacho: <strong><span t-field="o.transport_type"/></strong><br/>
+                          Patente: <strong><span t-field="o.patente"/></strong><t t-if="o.patente_carro"> Carro: <strong><span t-field="o.patente_carro"/></strong></t><br/>
+                          RUT Transportista: <strong><t t-esc="'DIFERIDO' if o.transportista_por_confirmar else (o.transportista_id.document_number or (o.transport_type in ('2', '3') and o.company_id.partner_id.document_number) or '')"/></strong><br/>
+                          <t t-if="o.chofer">Chofer: <strong><span t-field="o.chofer.name"/> <span t-field="o.chofer.document_number"/></strong><br/></t>
+                          Destino: <strong><t t-esc="' '.join([x for x in [dest.street, dest.street2, dest.city_id.name, dest.city] if x])"/></strong><br/>
+                          <t t-if="o.fecha_salida">Salida: <strong><span t-field="o.fecha_salida"/></strong><br/></t>
+                          <t t-if="o.fecha_llegada">Llegada: <strong><span t-field="o.fecha_llegada"/></strong><br/></t>
+                      </div>
+                  </div>
 
                   <table class="table table-condensed" style="border-top: 1px solid black!important; width: 100%; line-height:1.5!important;">
                       <thead>
@@ -649,10 +689,10 @@
                                   <span t-field="line.quantity"/>
                               </td>
                               <td class="text-right">
-                                  <span t-field="line.price_unit" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-field="line.price_unit" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                               <td class="text-right">
-                                  <span t-field="line.price_total" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-field="line.price_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                           </tr>
                       </tbody>
@@ -747,17 +787,42 @@
                   <table class="table table-condensed pull-right" style="border-top: 1px solid black; width: 100%;">
                       <thead>
                           <tr>
-                              <th class="text-right">FORMAS DE PAGO</th>
+                              <th class="text-right">MEDIOS DE PAGO</th>
                               <th class="text-right">Monto</th>
                           </tr>
                       </thead>
                       <tbody>
-                          <tr>
+                          <t t-set="pagos" t-value="o.sudo().invoice_payments_widget and o.sudo().invoice_payments_widget['content'] or []"/>
+                          <t t-set="pedidos_pdv" t-value="'pos_order_ids' in o._fields and o.sudo().pos_order_ids"/>
+                          <t t-if="pedidos_pdv">
+                              <tr t-foreach="pedidos_pdv.payment_ids.filtered(lambda p: not p.is_change)" t-as="pago_pdv">
+                                  <td class="text-right"><t t-esc="pago_pdv.payment_method_id.name"/></td>
+                                  <td class="text-right">
+                                      <span t-esc="pago_pdv.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  </td>
+                              </tr>
+                              <tr t-if="sum(pedidos_pdv.mapped('amount_return'))">
+                                  <td class="text-right">Vuelto</td>
+                                  <td class="text-right">
+                                      <span t-esc="sum(pedidos_pdv.mapped('amount_return'))" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  </td>
+                              </tr>
+                          </t>
+                          <t t-foreach="[] if pedidos_pdv else pagos" t-as="pago">
+                          <tr t-if="not pago.get('is_exchange')">
                               <td class="text-right">
-                              Efectivo
-                          </td>
+                                  <t t-esc="pago.get('pos_payment_name') or pago.get('payment_method_name') or pago.get('journal_name')"/>
+                                  <small t-if="pago.get('date')"> (<t t-esc="pago['date']" t-options="{'widget': 'date'}"/>)</small>
+                              </td>
                               <td class="text-right">
-                                  <span t-field="o.amount_total" t-field-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-esc="pago['amount']" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                              </td>
+                          </tr>
+                          </t>
+                          <tr t-if="not pagos or not o.currency_id.is_zero(o.amount_residual)">
+                              <td class="text-right">Saldo pendiente</td>
+                              <td class="text-right">
+                                  <span t-field="o.amount_residual" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                           </tr>
                       </tbody>

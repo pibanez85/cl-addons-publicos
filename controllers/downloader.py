@@ -19,6 +19,8 @@ class Binary(http.Controller):
     def download_document(self, document_id, **post):
         filename = ("%s.xml" % document_id.name).replace(" ", "_")
         filecontent = document_id.sii_xml_request.xml_envio
+        if not filecontent or filecontent == "temporal":
+            filecontent = document_id.sii_xml_dte
         return self.document(filename, filecontent)
 
     @http.route(["/download/xml/invoice_exchange/<model('account.move'):rec_id>"], type="http", auth="user")

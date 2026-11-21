@@ -15,8 +15,8 @@ class AccountMoveConvertDTE(models.TransientModel):
     def default_get(self, fields):
         res = super(AccountMoveConvertDTE, self).default_get(fields)
         move_ids = self.env['account.move'].browse(self.env.context['active_ids']) if self.env.context.get('active_model') == 'account.move' else self.env['account.move']
-        if any(not m.document_class_id.es_voucher() for m in move_ids):
-            raise UserError("Solo se pueden retimbrar Vouchers")
+        if any(m.use_documents and not m.document_class_id.es_voucher() for m in move_ids):
+            raise UserError("Solo se pueden convertir vouchers o documentos emitidos como no tributarios")
         if 'company_id' in fields:
             res['company_id'] = move_ids.company_id.id or self.env.company.id
         if 'move_ids' in fields:
@@ -27,7 +27,7 @@ class AccountMoveConvertDTE(models.TransientModel):
         'account.move',
         domain=[
             ('state', '=', 'posted'),
-            ('document_class_id.dte', '=', False)
+            '|', ('document_class_id.dte', '=', False), ('use_documents', '=', False),
         ]
     )
     journal_id = fields.Many2one(
@@ -61,25 +61,33 @@ class AccountMoveConvertDTE(models.TransientModel):
                 journals = record.move_ids.journal_id.filtered(lambda x: x.active)
                 record.journal_id = journals[0] if journals else None
 
-    @api.onchange('move_ids', 'journal_id')
-    def _onchange_move_ids(self):
-        domain = []
-        if self.move_ids and self.journal_id:
+    def _dominio_jdc(self):
+        domain = [('sii_document_class_id.dte', '=', True)]
+        if self.journal_id:
+            domain.append(('journal_id', '=', self.journal_id.id))
+        if self.move_ids:
             move_types = self.move_ids.mapped('move_type')
             dc_types = []
-            
+
             if 'out_invoice' in move_types:
                 dc_types.extend(['invoice', 'invoice_in'])
             if any(t in move_types for t in ['out_refund', 'in_refund']):
                 dc_types.extend(['credit_note', 'debit_note'])
-                
+
             if dc_types:
-                domain = [
-                    ('journal_id', '=', self.journal_id.id),
-                    ('sii_document_class_id.document_type', 'in', dc_types),
-                    ('sii_document_class_id.dte', '=', True)
-                ]
-        return {'domain': {'jdc_id': domain}}
+                domain.append(('sii_document_class_id.document_type', 'in', dc_types))
+        return domain
+
+    @api.depends('move_ids', 'journal_id')
+    def _compute_jdc_disponible_ids(self):
+        for record in self:
+            candidatos = self.env['account.journal.sii_document_class'].search(record._dominio_jdc())
+            record.jdc_disponible_ids = candidatos.filtered(lambda j: j._siguiente_folio())
+
+    @api.onchange('move_ids', 'journal_id')
+    def _onchange_move_ids(self):
+        if self.jdc_id and self.jdc_id not in self.jdc_disponible_ids:
+            self.jdc_id = False
 
     @api.depends('move_ids')
     def _compute_warning_message(self):
@@ -155,15 +163,27 @@ class AccountMoveConvertDTE(models.TransientModel):
     def convert(self):
         to_send = self.env['account.move']
         for inv in self.move_ids:
+            if inv.sii_document_number:
+                raise UserError(_(
+                    "%s ya tiene asignado el folio %s. Convertirlo de nuevo consumiría "
+                    "un folio nuevo y dejaría el anterior sin usar."
+                ) % (inv.display_name, inv.sii_document_number))
+            pdf_attachments = self.env['ir.attachment'].search([
+                ('res_model', '=', 'account.move'),
+                ('res_id', '=', inv.id),
+                ('mimetype', '=', 'application/pdf'),
+            ])
+            if pdf_attachments:
+                pdf_attachments.unlink()
             inv.journal_document_class_id = self.jdc_id
             inv.document_class_id = self.jdc_id.sii_document_class_id
             inv.use_documents = True
-            inv._set_next_sequence()
-            inv.sii_result = "NoEnviado"
-            if inv.journal_id.restore_mode or self._context.get("restore_mode", False):
-                inv.sii_result = "Proceso"
-            else:
+            restaurando = inv.journal_id.restore_mode or self._context.get("restore_mode", False)
+            if not restaurando:
                 inv._validaciones_uso_dte()
+            inv._set_next_sequence()
+            inv.sii_result = "Proceso" if restaurando else "NoEnviado"
+            if not restaurando:
                 inv._timbrar()
                 to_send |= inv
         to_send.queue({"tipo_trabajo": "envio", "manual": True})

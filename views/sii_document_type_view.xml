@@ -32,11 +32,5 @@
             <field name="res_model">sii.document_type</field>
             <field name="view_mode">tree,form</field>
         </record>
-        <menuitem
-            name="Document Types"
-            action="act_sii_document_type"
-            id="menu_action_sii_document_type"
-            parent="l10n_cl_fe.menu_sii_config"
-        />
     </data>
 </odoo>

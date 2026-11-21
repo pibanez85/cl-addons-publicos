@@ -15,6 +15,8 @@ class ResUsers(models.Model):
         column2="sii_firma_id",
         string="Firmas Electrónicas Autorizadas",
     )
+    sii_firma_aviso_id = fields.Many2one("sii.firma", copy=False)
+    sii_firma_aviso_fecha = fields.Date(copy=False)
 
     def get_digital_signature(self, company_id):
         user_id = self.id

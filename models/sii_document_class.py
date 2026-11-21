@@ -4,6 +4,7 @@ from odoo import fields, models
 class SIIDocumentClass(models.Model):
     _name = "sii.document_class"
     _description = "SII Document Class"
+    _rec_names_search = ['name', 'sii_code', 'doc_code_prefix']
 
     name = fields.Char("Name", size=120)
     doc_code_prefix = fields.Char(

@@ -95,6 +95,16 @@
                               </tree>
                           </field>
                       </group>
+                      <group invisible="operacion not in ['reobtener', 'anular'] or not reob_has_next_page">
+                          <field name="reob_page_number" readonly="True" />
+                          <field name="reob_has_next_page" invisible="1" />
+                          <button
+                              string='Siguiente Página'
+                              name="next_page_reob"
+                              type="object"
+                              class="btn-primary"
+                          />
+                      </group>
                       <div invisible="id_peticion == 0 or an_etapa != 'an_motivo'">
                         <group
                             string="Ingrese Rango a anular"
@@ -123,12 +133,13 @@
                         </group>
                       </div>
                       <group invisible="not message">
+                          <field name="es_ban" invisible="1" />
                           <field name="message" readonly="True" />
                           <button
                               name="delist"
                               type="object"
                               string="Remover Bloqueo (Ban)"
-                              invisible="message != 'Usuario Baneado temporalmente'"
+                              invisible="not es_ban"
                           />
                       </group>
                       <footer>

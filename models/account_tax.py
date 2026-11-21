@@ -5,7 +5,10 @@ import dateutil.relativedelta as relativedelta
 import pytz
 from lxml import html
 
+from collections import defaultdict
+
 from odoo import api, models, fields, _, Command
+from odoo.tools.misc import formatLang
 from .currency import float_round_custom
 from odoo.tools.float_utils import float_round as round
 from odoo.exceptions import UserError
@@ -110,14 +113,6 @@ class SIITax(models.Model):
         default=lambda self: 'diario' if self.mepco else 'manual',
     )
 
-    @api.constrains('invoice_repartition_line_ids', 'refund_repartition_line_ids', 'repartition_line_ids')
-    def _validate_repartition_lines(self):
-        super(SIITax, self)._validate_repartition_lines()
-        for r in self:
-            for rpl in (r.repartition_line_ids + r.invoice_repartition_line_ids + r.refund_repartition_line_ids):
-                if rpl.sii_type in ['A', 'R'] and r.amount > 0:
-                    raise UserError(f"El monto debe ser negativo para este tipo de impuesto {r.sii_type} {r.id} {r.name}")
-
     @api.onchange('mepco_origen')
     def _verificar_dependencias_python(self):
         if self.mepco_origen in ['diario', 'pdf']:
@@ -135,6 +130,9 @@ class SIITax(models.Model):
 
     def es_iva(self):
         return self.sii_code in [14, 15]
+
+    def es_iva_retencion(self):
+        return self.sii_code == 15
 
     def es_adicional(self):
         return self.sii_code in [24, 25, 26, 27, 271]
@@ -321,7 +319,7 @@ class SIITax(models.Model):
                 # directly during the first traveling in reversed order.
                 total_percentage = sum(tax_factor for _i, tax_factor in incl_tax_amounts['percent_taxes'])
                 for i, tax_factor in incl_tax_amounts['percent_taxes']:
-                    tax_amount = float_round(base * tax_factor / (100 + total_percentage), precision_rounding=prec)
+                    tax_amount = round(base * tax_factor / (100 + total_percentage), precision_rounding=prec)
                     cached_tax_amounts[i] = tax_amount
                     fixed_amount += tax_amount
                 percent_amount = 0.0
@@ -380,7 +378,6 @@ class SIITax(models.Model):
         elif base < 0:
             sign = -1
             base = -base
-        sign_retencion = sign * -1
 
         # Store the totals to reach when using price_include taxes (only the last price included in row)
         total_included_checkpoints = {}
@@ -505,10 +502,17 @@ class SIITax(models.Model):
             total_rounding_error = round(factorized_tax_amount - sum(repartition_line_amounts), precision_rounding=prec)
             nber_rounding_steps = int(abs(total_rounding_error / currency.rounding))
             rounding_error = round(nber_rounding_steps and total_rounding_error / nber_rounding_steps or 0.0, precision_rounding=prec)
+            line_anticipo = 0
             for repartition_line, line_amount in zip(tax_repartition_lines, repartition_line_amounts):
                 if nber_rounding_steps:
                     line_amount += rounding_error
                     nber_rounding_steps -= 1
+                line_retencion = 0
+                if repartition_line.sii_type == 'R':
+                    line_retencion = -line_amount
+                elif repartition_line.sii_type == 'A':
+                    line_retencion = line_amount
+                    line_anticipo += line_amount
 
                 if not include_caba_tags and tax.tax_exigibility == 'on_payment':
                     repartition_line_tags = self.env['account.account.tag']
@@ -519,6 +523,7 @@ class SIITax(models.Model):
                     'id': tax.id,
                     'name': partner and tax.with_context(lang=partner.lang).name or tax.name,
                     'amount': sign * line_amount,
+                    'amount_retencion': sign * line_retencion,
                     'base': round(sign * tax_base_amount, precision_rounding=prec),
                     'sequence': tax.sequence,
                     'account_id': repartition_line._get_aml_target_tax_account(force_caba_exigibility=include_caba_tags).id,
@@ -540,8 +545,7 @@ class SIITax(models.Model):
                 base += factorized_tax_amount
                 if not price_include:
                     skip_checkpoint = True
-
-            total_included += factorized_tax_amount
+            total_included += factorized_tax_amount - line_anticipo
             i += 1
 
         base_taxes_for_tags = taxes
@@ -636,8 +640,10 @@ class SIITax(models.Model):
             tax_values_list = []
             for tax_res in taxes_res['taxes']:
                 tax_amount = tax_res['amount'] / rate
+                tax_amount_retencion = tax_res.get('amount_retencion', 0.0) / rate
                 if self.company_id.tax_calculation_rounding_method == 'round_per_line':
                     tax_amount = currency.round(tax_amount)
+                    tax_amount_retencion = currency.round(tax_amount_retencion)
                 tax_rep = self.env['account.tax.repartition.line'].browse(tax_res['tax_repartition_line_id'])
                 tax_values_list.append({
                     **tax_res,
@@ -645,7 +651,9 @@ class SIITax(models.Model):
                     'base_amount_currency': tax_res['base'],
                     'base_amount': currency.round(tax_res['base'] / rate),
                     'tax_amount_currency': tax_res['amount'],
+                    'tax_amount_retencion_currency': tax_res.get('amount_retencion', 0.0),
                     'tax_amount': tax_amount,
+                    'tax_amount_retencion': tax_amount_retencion,
                 })
 
         else:
@@ -657,6 +665,173 @@ class SIITax(models.Model):
             }
             tax_values_list = []
         return to_update_vals, tax_values_list
+
+    @api.model
+    def _convert_to_tax_line_dict(
+            self, tax_line,
+            partner=None, currency=None, taxes=None, tax_tags=None, tax_repartition_line=None,
+            group_tax=None, account=None, analytic_distribution=None, tax_amount=None,
+    ):
+        vals = super()._convert_to_tax_line_dict(
+            tax_line,
+            partner=partner, currency=currency, taxes=taxes, tax_tags=tax_tags,
+            tax_repartition_line=tax_repartition_line, group_tax=group_tax, account=account,
+            analytic_distribution=analytic_distribution, tax_amount=tax_amount,
+        )
+        vals['tax_amount_retencion'] = 0
+        if vals['tax_repartition_line'].sii_type == 'R':
+            vals['tax_amount_retencion'] = -(tax_amount or 0.0)
+        elif vals['tax_repartition_line'].sii_type == 'A':
+            vals['tax_amount_retencion'] = tax_amount or 0.0
+        return vals
+
+    @api.model
+    def _aggregate_taxes(self, to_process, filter_tax_values_to_apply=None, grouping_key_generator=None, distribute_total_on_line=True):
+        global_tax_details = super()._aggregate_taxes(
+            to_process,
+            filter_tax_values_to_apply=filter_tax_values_to_apply,
+            grouping_key_generator=grouping_key_generator,
+            distribute_total_on_line=distribute_total_on_line,
+        )
+
+        def add_retencion(results):
+            results['tax_amount_retencion_currency'] = 0.0
+            results['tax_amount_retencion'] = 0.0
+            for tax_details in results['tax_details'].values():
+                tax_details['tax_amount_retencion_currency'] = sum(
+                    x.get('tax_amount_retencion_currency', 0.0) for x in tax_details['group_tax_details'])
+                tax_details['tax_amount_retencion'] = sum(
+                    x.get('tax_amount_retencion', 0.0) for x in tax_details['group_tax_details'])
+                results['tax_amount_retencion_currency'] += tax_details['tax_amount_retencion_currency']
+                results['tax_amount_retencion'] += tax_details['tax_amount_retencion']
+
+        add_retencion(global_tax_details)
+        for record_tax_details in global_tax_details['tax_details_per_record'].values():
+            add_retencion(record_tax_details)
+        return global_tax_details
+
+    @api.model
+    def _prepare_tax_totals(self, base_lines, currency, tax_lines=None, is_company_currency_requested=False):
+        to_process = []
+        for base_line in base_lines:
+            to_update_vals, tax_values_list = self._compute_taxes_for_single_line(base_line)
+            to_process.append((base_line, to_update_vals, tax_values_list))
+
+        def grouping_key_generator(base_line, tax_values):
+            source_tax = tax_values['tax_repartition_line'].tax_id
+            return {'tax_group': source_tax.tax_group_id}
+
+        global_tax_details = self._aggregate_taxes(to_process, grouping_key_generator=grouping_key_generator)
+
+        tax_group_vals_list = []
+        for tax_detail in global_tax_details['tax_details'].values():
+            tax_group_vals = {
+                'tax_group': tax_detail['tax_group'],
+                'base_amount': tax_detail['base_amount_currency'],
+                'tax_amount': tax_detail['tax_amount_currency'] - sum(
+                    x['tax_amount_currency'] for x in tax_detail['group_tax_details']
+                    if x['tax_repartition_line'].sii_type == 'R'),
+                'tax_amount_retencion': tax_detail['tax_amount_retencion_currency'],
+                'hide_base_amount': all(x['tax_repartition_line'].tax_id.amount_type == 'fixed' for x in tax_detail['group_tax_details']),
+            }
+            if is_company_currency_requested:
+                tax_group_vals['base_amount_company_currency'] = tax_detail['base_amount']
+                tax_group_vals['tax_amount_company_currency'] = tax_detail['tax_amount'] - sum(
+                    x['tax_amount'] for x in tax_detail['group_tax_details']
+                    if x['tax_repartition_line'].sii_type == 'R')
+                tax_group_vals['tax_amount_retencion_company_currency'] = tax_detail['tax_amount_retencion']
+
+            if tax_lines is not None:
+                matched_tax_lines = [
+                    x
+                    for x in tax_lines
+                    if (x['group_tax'] or x['tax_repartition_line'].tax_id).tax_group_id == tax_detail['tax_group']
+                ]
+                if matched_tax_lines:
+                    tax_group_vals['tax_amount'] = sum(
+                        x['tax_amount'] for x in matched_tax_lines
+                        if x['tax_repartition_line'].sii_type != 'R')
+                    tax_group_vals['tax_amount_retencion'] = sum(x['tax_amount_retencion'] for x in matched_tax_lines)
+
+            tax_group_vals_list.append(tax_group_vals)
+
+        tax_group_vals_list = sorted(tax_group_vals_list, key=lambda x: (x['tax_group'].sequence, x['tax_group'].id))
+
+        amount_untaxed = global_tax_details['base_amount_currency']
+        amount_tax = 0.0
+        amount_tax_retencion = 0.0
+
+        amount_untaxed_company_currency = global_tax_details['base_amount']
+        amount_tax_company_currency = 0.0
+        amount_tax_retencion_company_currency = 0.0
+
+        subtotal_order = {}
+        groups_by_subtotal = defaultdict(list)
+        for tax_group_vals in tax_group_vals_list:
+            tax_group = tax_group_vals['tax_group']
+
+            subtotal_title = tax_group.preceding_subtotal or _("Untaxed Amount")
+            sequence = tax_group.sequence
+
+            subtotal_order[subtotal_title] = min(subtotal_order.get(subtotal_title, float('inf')), sequence)
+            groups_by_subtotal[subtotal_title].append({
+                'group_key': tax_group.id,
+                'tax_group_id': tax_group.id,
+                'tax_group_name': tax_group.name,
+                'tax_group_amount': tax_group_vals['tax_amount'],
+                'tax_group_amount_retencion': tax_group_vals['tax_amount_retencion'],
+                'tax_group_base_amount': tax_group_vals['base_amount'],
+                'formatted_tax_group_amount': formatLang(self.env, tax_group_vals['tax_amount'], currency_obj=currency),
+                'formatted_tax_group_base_amount': formatLang(self.env, tax_group_vals['base_amount'], currency_obj=currency),
+                'hide_base_amount': tax_group_vals['hide_base_amount'],
+            })
+            if is_company_currency_requested:
+                groups_by_subtotal[subtotal_title][-1]['tax_group_amount_company_currency'] = tax_group_vals['tax_amount_company_currency']
+                groups_by_subtotal[subtotal_title][-1]['tax_group_base_amount_company_currency'] = tax_group_vals['base_amount_company_currency']
+                groups_by_subtotal[subtotal_title][-1]['tax_group_amount_retencion_company_currency'] = tax_group_vals['tax_amount_retencion_company_currency']
+
+        subtotals = []
+        for subtotal_title in sorted(subtotal_order.keys(), key=lambda k: subtotal_order[k]):
+            amount_total = amount_untaxed + amount_tax - amount_tax_retencion
+            subtotals.append({
+                'name': subtotal_title,
+                'amount': amount_total,
+                'formatted_amount': formatLang(self.env, amount_total, currency_obj=currency),
+            })
+            if is_company_currency_requested:
+                subtotals[-1]['amount_company_currency'] = amount_untaxed_company_currency + amount_tax_company_currency \
+                    - amount_tax_retencion_company_currency
+                amount_tax_company_currency += sum(x['tax_group_amount_company_currency'] for x in groups_by_subtotal[subtotal_title])
+                amount_tax_retencion_company_currency += sum(
+                    x['tax_group_amount_retencion_company_currency'] for x in groups_by_subtotal[subtotal_title])
+
+            amount_tax += sum(x['tax_group_amount'] for x in groups_by_subtotal[subtotal_title])
+            amount_tax_retencion += sum(x['tax_group_amount_retencion'] for x in groups_by_subtotal[subtotal_title])
+
+        amount_total = amount_untaxed + amount_tax - amount_tax_retencion
+        amount_total_company_currency = amount_untaxed_company_currency + amount_tax_company_currency \
+            - amount_tax_retencion_company_currency
+
+        display_tax_base = (len(global_tax_details['tax_details']) == 1 and currency.compare_amounts(tax_group_vals_list[0]['base_amount'], amount_untaxed) != 0)\
+                           or len(global_tax_details['tax_details']) > 1
+
+        result = {
+            'amount_untaxed': currency.round(amount_untaxed) if currency else amount_untaxed,
+            'amount_total': currency.round(amount_total) if currency else amount_total,
+            'amount_retencion': currency.round(amount_tax_retencion) if currency else amount_tax_retencion,
+            'formatted_amount_total': formatLang(self.env, amount_total, currency_obj=currency),
+            'formatted_amount_untaxed': formatLang(self.env, amount_untaxed, currency_obj=currency),
+            'formatted_amount_retencion': formatLang(self.env, amount_tax_retencion, currency_obj=currency),
+            'groups_by_subtotal': groups_by_subtotal,
+            'subtotals': subtotals,
+            'subtotals_order': sorted(subtotal_order.keys(), key=lambda k: subtotal_order[k]),
+            'display_tax_base': display_tax_base
+        }
+        if is_company_currency_requested:
+            comp_currency = self.env.company.currency_id
+            result['amount_total_company_currency'] = comp_currency.round(amount_total_company_currency)
+
+        return result
 
     def _compute_amount_ret(self, base_amount, price_unit, quantity=1.0, product=None, partner=None, fixed_multiplicator=1, uom_id=None):
         if self.amount_type == "percent" and self.price_include:
@@ -805,7 +980,7 @@ class SIITax(models.Model):
             return {'found': self._target_mepco((date - relativedelta.relativedelta(days=1)), currency_id)}
         if self.mepco_origen in ['diario', 'pdf']:
             val = self._get_from_diario(target[1])
-        elif self.origen == 'sii':
+        elif self.mepco_origen == 'sii':
             val = self._get_from_sii(year, month, target[1])
         utm = self.env["res.currency"].sudo().search([("name", "=", "UTM")])
         amount = utm._convert(float(val), currency_id, self.company_id, date)
@@ -848,6 +1023,8 @@ class SIITax(models.Model):
                 mepco = False
         if not mepco:
             mepco_data = self.prepare_mepco(date, currency_id)
+            if mepco_data.get('found'):
+                return mepco_data['found']
             query = [
                 ("date", "=", mepco_data["date"]),
                 ("company_id", "=", mepco_data["company_id"]),
@@ -858,6 +1035,8 @@ class SIITax(models.Model):
                 mepco = self.env["account.tax.mepco"].sudo().create(mepco_data)
         elif force:
             mepco_data = self.prepare_mepco(date, currency_id)
+            if mepco_data.get('found'):
+                return mepco_data['found']
             mepco.sudo().write(mepco_data)
         return mepco
 

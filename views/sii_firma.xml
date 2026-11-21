@@ -36,7 +36,8 @@
                             <field name="subject_c" />
                             <field
                                 name="subject_serial_number"
-                                invisible="state in  ['valid', 'incomplete']"
+                                readonly="state == 'valid'"
+                                required="state in ['valid', 'incomplete']"
                             />
                             <field name="subject_common_name" />
                             <field name="subject_email_address" />

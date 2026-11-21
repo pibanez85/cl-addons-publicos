@@ -31,7 +31,7 @@ class AccountJournalSiiDocumentClass(models.Model):
     )
     journal_id = fields.Many2one("account.journal", string="Journal", required=True,)
     sequence = fields.Integer(string="Sequence")
-    company_id = fields.Many2one("res.company", default=lambda self: self.env.company,)
+    company_id = fields.Many2one("res.company", related="journal_id.company_id", store=True,)
     qty_available = fields.Integer(string="Quantity Available", related="sequence_id.qty_available")
     is_dte = fields.Boolean(string="Is DTE", related="sii_document_class_id.dte")
 
@@ -42,6 +42,32 @@ class AccountJournalSiiDocumentClass(models.Model):
             raise UserError("El tipo de Documento de la secuencia es distinto")
         if dc.es_guia():
             raise UserError("Las guías no es pueden agregar por esta área")
+        if dc.es_voucher() and self.sequence_id:
+            self.sequence_id = False
+
+    def _siguiente_folio(self):
+        self.ensure_one()
+        if not self.sequence_id or not self.sequence_id.is_dte:
+            return 0
+        try:
+            return self.sequence_id.get_folio(readonly=True)
+        except Exception:
+            _logger.warning(
+                "No se pudo obtener el siguiente folio de la secuencia %s", self.sequence_id.id, exc_info=True
+            )
+            return 0
+
+    @api.depends_context("mostrar_folio")
+    def _compute_display_name(self):
+        if not self._context.get("mostrar_folio"):
+            return super()._compute_display_name()
+        for r in self:
+            if not r.sequence_id:
+                r.display_name = r.name
+                continue
+            folio = r._siguiente_folio()
+            detalle = "folio {}, {} disponibles".format(folio, r.qty_available) if folio else "sin folios"
+            r.display_name = "{} ({})".format(r.sequence_id.name, detalle)
 
     @api.model
     def _name_search(self, name, domain=None, operator="ilike", limit=100, order=None):

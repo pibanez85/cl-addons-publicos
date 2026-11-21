@@ -46,10 +46,4 @@
         <field name="res_model">partner.activities</field>
         <field name="view_mode">tree,form</field>
     </record>
-    <menuitem
-        name="SII Partner Activities"
-        action="act_partner_activities"
-        id="menu_action_act_partner_activities"
-        parent="menu_sii_config"
-    />
 </odoo>

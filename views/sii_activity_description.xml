@@ -39,10 +39,4 @@
         <field name="res_model">sii.activity.description</field>
         <!-- <field name="view_mode">tree,form</field>-->
     </record>
-    <menuitem
-        name="SII Partner Activities"
-        action="act_sii_activity_description"
-        id="menu_action_act_sii_activity_description"
-        parent="menu_sii_config"
-    />
 </odoo>

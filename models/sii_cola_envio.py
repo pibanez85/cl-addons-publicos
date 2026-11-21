@@ -142,9 +142,7 @@ class ColaEnvio(models.Model):
         doc.send_exchange()
 
     def _es_doc(self, doc):
-        if hasattr(doc, "sii_message"):
-            return doc.sii_message
-        return True
+        return doc._es_doc_cola()
 
     def _get_ctx(self):
         return {
@@ -246,9 +244,6 @@ class ColaEnvio(models.Model):
 
     def _procesar_envio(self, docs_by_model):
         """Procesa envío para todos los documentos."""
-        if not self._try_lock():
-            _logger.info("Cola %s ya está siendo procesada por otro worker; se omite.", self.id)
-            return
         otra = self._has_pending_reference_in_other_cola(docs_by_model)
         if otra:
             _logger.info(
@@ -446,35 +441,51 @@ class ColaEnvio(models.Model):
         return True
 
     def _procesar_tipo_trabajo(self):
+        if not self._try_lock():
+            return
+        self.invalidate_recordset(['processing'])
+        if self.processing:
+            return
+        self.processing = True
         self.intento += 1
-        if not self._validar_firma():
-            return
+        self.env.cr.commit()
+        try:
+            if not self._validar_firma():
+                return
+            self.invalidate_recordset()
+            docs_by_model = self._get_all_docs_with_context()
+            if not docs_by_model:
+                return
+            first_doc = self._get_first_doc(docs_by_model)
+            if self.tipo_trabajo == "persistencia":
+                self._procesar_persistencia(docs_by_model)
+            elif self.tipo_trabajo == "pasivo":
+                self._procesar_pasivo(docs_by_model, first_doc)
+            elif self._should_finish(docs_by_model):
+                self._procesar_finalizado(docs_by_model, first_doc)
+            elif self.tipo_trabajo == "consulta":
+                self._procesar_consulta(docs_by_model)
+            elif self.tipo_trabajo == "envio":
+                if self._should_skip_envio(first_doc) and not self._docs_sin_envio(docs_by_model):
+                    self.tipo_trabajo = "consulta"
+                elif self._needs_envio(first_doc) or self._docs_sin_envio(docs_by_model):
+                    self._procesar_envio(docs_by_model)
+        finally:
+            try:
+                if self.exists():
+                    self.processing = False
+            except Exception:
+                pass
 
-        docs_by_model = self._get_all_docs_with_context()
-        if not docs_by_model:
-            return
-
-        first_doc = self._get_first_doc(docs_by_model)
-
-        if self.tipo_trabajo == "persistencia":
-            self._procesar_persistencia(docs_by_model)
-            return
-
-        if self.tipo_trabajo == "pasivo":
-            self._procesar_pasivo(docs_by_model, first_doc)
-            return
-
-        if self._should_finish(docs_by_model):
-            self._procesar_finalizado(docs_by_model, first_doc)
-            return
-
-        if self.tipo_trabajo == "consulta":
-            self._procesar_consulta(docs_by_model)
-        elif self.tipo_trabajo == "envio":
-            if self._should_skip_envio(first_doc):
-                self.tipo_trabajo = "consulta"
-            elif self._needs_envio(first_doc):
-                self._procesar_envio(docs_by_model)
+    def _procesar_cola_segura(self, tipo_trabajo):
+        try:
+            self._procesar_tipo_trabajo()
+        except Exception as e:
+            self.env.cr.rollback()
+            if not self.exists():
+                return
+            self._registrar_error(e, tipo_trabajo)
+            self.processing = False
 
     def reset_intentos(self):
         query = """
@@ -482,6 +493,13 @@ class ColaEnvio(models.Model):
             SET intento = 0
             WHERE intento >= 10
             AND create_date <= (NOW() - INTERVAL '1 day')
+        """
+        self.env.cr.execute(query)
+        query = """
+            UPDATE sii_cola_envio
+            SET processing = false
+            WHERE processing = true
+            AND write_date <= (NOW() - INTERVAL '1 hour')
         """
         self.env.cr.execute(query)
 
@@ -498,7 +516,7 @@ class ColaEnvio(models.Model):
             ('consumo_folios_ids', '=', False),
         ]
         if tipo_trabajo == 'pasivo':
-            domain.append(('date_time', '<=', datetime.now()))
+            domain.append(('date_time', '>', datetime.now()))
         return domain
 
     def _get_model_info(self, model):
@@ -592,7 +610,9 @@ class ColaEnvio(models.Model):
         """Agrupa items de cola en packs; 50 docs para boletas, 20 para resto."""
         for tipo_trabajo in ('envio', 'pasivo'):
             domain = self._get_autopack_domain(tipo_trabajo)
-            items = self.search(domain)
+            items = self.search(domain).filtered(lambda i: all(
+                getattr(docs, '_dte_envio_tipo', 'dte') == 'dte'
+                for docs in i.get_all_documents_by_model().values()))
             if not items:
                 continue
 
@@ -642,6 +662,18 @@ class ColaEnvio(models.Model):
         """Unifica múltiples items de cola en uno solo."""
         if len(items) <= 1:
             return
+        lockables = self.browse()
+        for item in items:
+            if not item._try_lock():
+                continue
+            item.invalidate_recordset(['processing'])
+            if item.processing:
+                continue
+            lockables |= item
+        if len(lockables) <= 1:
+            return
+        items = lockables
+        items.invalidate_recordset()
         first_item = items[0]
         max_sequence = 0
         merged_log = dict(first_item.queue_log or {})
@@ -713,36 +745,25 @@ class ColaEnvio(models.Model):
         query = [
             ("active", "=", True),
             ('intento', '<=', 10),
+            ('processing', '=', False),
         ]
 
         not_throttled = ['|', ('date_time', '=', False), ('date_time', '<=', datetime.now())]
 
         ids = self.search(query + not_throttled + [('tipo_trabajo', '=', 'envio')], limit=20)
         for c in ids:
-            try:
-                c._procesar_tipo_trabajo()
-            except Exception as e:
-                c._registrar_error(e, 'envio')
+            c._procesar_cola_segura('envio')
 
         ids = self.search(query + [
             ('tipo_trabajo', '=', 'pasivo'),
             ('date_time', '<=', datetime.now())], limit=20)
         for c in ids:
-            try:
-                c._procesar_tipo_trabajo()
-            except Exception as e:
-                c._registrar_error(e, 'pasivo')
+            c._procesar_cola_segura('pasivo')
 
         ids = self.search(query + not_throttled + [('tipo_trabajo', '=', 'consulta')], limit=20)
         for c in ids:
-            try:
-                c._procesar_tipo_trabajo()
-            except Exception as e:
-                c._registrar_error(e, 'consulta')
+            c._procesar_cola_segura('consulta')
 
         ids = self.search(query + [('tipo_trabajo', '=', 'persistencia')], limit=20)
         for c in ids:
-            try:
-                c._procesar_tipo_trabajo()
-            except Exception as e:
-                c._registrar_error(e, 'persistencia')
+            c._procesar_cola_segura('persistencia')

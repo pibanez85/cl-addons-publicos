@@ -4,22 +4,11 @@
         <field name="model">account.move.book</field>
         <field name="name">Libro xls</field>
         <field name="report_type">xlsx</field>
-        <field name="report_name">account.move.book.xlsx</field>
-        <field name="report_file">account.move.book.xlsx</field>
+        <field name="report_name">l10n_cl_fe.libro_cv.xlsx</field>
+        <field name="report_file">l10n_cl_fe.libro_cv.xlsx</field>
         <field name="attachment_use">True</field>
         <field name="attachment">(object.state in ('Enviado','Proceso')) and ((object.name or '').replace('/','')+'.xlsx')</field>
         <field name="binding_model_id" ref="model_account_move_book"/>
-        <field name="binding_type">report</field>
-    </record>
-    <record id="libro_h_xlsx"  model="ir.actions.report">
-        <field name="model">account.move.book.honorarios</field>
-        <field name="name">Libro Honorarios</field>
-        <field name="report_type">xlsx</field>
-        <field name="report_name">account.move.book.honorarios.xlsx</field>
-        <field name="report_file">account.move.book.honorarios.xlsx</field>
-        <field name="attachment_use">True</field>
-        <field name="attachment">(object.state in ('Enviado','Proceso')) and ((object.name or '').replace('/','')+'.xlsx')</field>
-        <field name="binding_model_id" ref="model_account_move_book_honorarios"/>
         <field name="binding_type">report</field>
     </record>
     <record id="action_print_libro" model="ir.actions.report">
@@ -132,7 +121,7 @@
                                       $ <span t-esc="'{0:,}'.format(totales['iva'])" />
                                     </td>
                                     <td class="text-right">
-                                        <span t-field="m.amount" />
+                                        <span t-field="m.amount_total" />
                                     </td>
                                 </tr>
                             </t>

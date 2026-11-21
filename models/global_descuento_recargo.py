@@ -132,7 +132,7 @@ class GlobalDescuentoRecargo(models.Model):
             for tl in line.tax_ids:
                 if tl.amount > 0 and tipo == "afectos":
                     afecto += line.price_subtotal
-                elif tipo == "exentos":
+                elif tl.amount == 0 and tipo == "exentos":
                     afecto += line.price_subtotal
         return afecto
 
@@ -140,9 +140,9 @@ class GlobalDescuentoRecargo(models.Model):
         result = {"D": 0.00, "R": 0.00, "D_exe": 0.00, "R_exe": 0.00}
         for gdr in self:
             if gdr.impuesto == "exentos":
-                result[gdr.type + "_exe"] += gdr.amount_untaxed_global_dr
+                result[gdr.type + "_exe"] += gdr.amount_untaxed
             else:
-                result[gdr.type] += gdr.amount_untaxed_global_dr
+                result[gdr.type] += gdr.amount_untaxed
         return result
 
     def get_monto_aplicar(self):

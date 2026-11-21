@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <record id="sii_masive_dte_process_wizard_form" model="ir.ui.view">
+    <record id="sii_masive_dte_accept_wizard_form" model="ir.ui.view">
         <field name="name">SII DTE masive Accept Wizard form</field>
         <field name="model">sii.dte.masive.accept.wizard</field>
         <field name="arch" type="xml">
@@ -23,7 +23,7 @@
         <field name="name">Aceptar DTEs recibidos</field>
         <field name="res_model">sii.dte.masive.accept.wizard</field>
         <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="sii_masive_dte_process_wizard_form"/>
+        <field name="view_id" ref="sii_masive_dte_accept_wizard_form"/>
         <field name="target">new</field>
         <field name="groups_id" eval="[(4, ref('account.group_account_invoice'))]"/>
         <field name="binding_model_id" ref="l10n_cl_fe.model_mail_message_dte_document" />

@@ -4,6 +4,7 @@
         <field name="name">res.partner.form.inherit</field>
         <field name="inherit_id" ref="base.view_partner_form" />
         <field name="model">res.partner</field>
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             <field name="parent_id" position="before">
                 <field name="sync" invisible="True" />
@@ -20,7 +21,11 @@
                     options="{'no_create': True}"
                 />
             </field>
-            <field name="street2" position="after">
+            <field name="city" position="attributes">
+              <attribute name="invisible">False</attribute>
+              <attribute name="readonly">type == 'contact' and parent_id</attribute>
+            </field>
+            <field name="city_id" position="replace">
                 <field
                     name="city_id"
                     placeholder="Comuna"
@@ -30,7 +35,7 @@
                 />
             </field>
             <!-- agregar la comuna en vista de contactos -->
-            <xpath expr="//field[@name='child_ids']/form//field[@name='street2']" position="after">
+            <xpath expr="//field[@name='child_ids']/form//field[@name='city_id']" position="replace">
                 <field
                     name="city_id"
                     placeholder="Comuna"
@@ -85,8 +90,8 @@
                         <field name="name" string="Contact Name" />
                         <field name="email" />
                         <h3>Opciones DTE</h3>
-                        <field name="send_dte" widget="checkbox" />
-                        <field name="principal" widget="checkbox" />
+                        <field name="send_dte" />
+                        <field name="principal" />
                     </group>
                 </group>
             </xpath>
@@ -122,7 +127,7 @@
         <field name="inherit_id" ref="base.view_partner_address_form" />
         <field name='type'>form</field>
         <field name='arch' type='xml'>
-            <field name="state_id" position="after">
+            <field name="city" position="before">
                 <field name="city_id" placeholder="Comuna" style="width: 100%" options='{"no_open": True}' />
             </field>
         </field>

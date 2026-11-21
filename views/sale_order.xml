@@ -28,6 +28,10 @@
               </page>
             </page>
 
+            <field name="payment_term_id" position="after">
+                <field name="convert_to_company_currency" readonly="(state == 'cancel' or invoice_count != 0) and state in ('sale', 'done', 'cancel')" groups="base.group_multi_currency"/>
+            </field>
+
             <label for="fiscal_position_id" position="before">
               <field name="journal_id" options="{'no_create': True}"/>
               <field name="use_documents" />

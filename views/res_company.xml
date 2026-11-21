@@ -13,16 +13,21 @@
                 <field name="dte_service_provider" />
                 <field
                     name="dte_resolution_number"
+                    invisible="dte_service_provider not in ['SII', 'SIICERT']"
+                    required="dte_service_provider in ['SII', 'SIICERT']"
                 />
                 <field
                     name="dte_resolution_date"
+                    invisible="dte_service_provider not in ['SII', 'SIICERT']"
+                    required="dte_service_provider in ['SII', 'SIICERT']"
                 />
                 <field
                     name="sii_regional_office_id"
                     domain="['|',
                         ('city_ids', '=', city_id),
                         ('name', '=', 'Grandes Contribuyentes')]"
-                    
+                    invisible="dte_service_provider not in ['SII', 'SIICERT']"
+                    required="dte_service_provider in ['SII', 'SIICERT']"
                 />
                 <field name="sucursal_ids"  widget="many2many_tags" optional="show"/>
                 <field name="sii_firma_ids" groups="account.group_account_manager">
@@ -43,6 +48,7 @@
                 <field name="vat" invisible="True" />
                 <field name="document_type_id" options="{'no_open': True, 'no_create': True}" />
                 <field name="document_number"
+                  required="dte_service_provider in ['SII', 'SIICERT']"
                 />
                 <field name="responsability_id" widget="selection" />
                 <field name="start_date" />
@@ -51,8 +57,10 @@
                     placeholder="Giros de La Compañia"
                     widget="many2many_tags"
                     options="{'no_create': True}"
+                    required="dte_service_provider in ['SII', 'SIICERT']"
                 />
                 <field name="activity_description" placeholder="Glosa descriptiva"
+                  required="dte_service_provider in ['SII', 'SIICERT']"
                 />
             </field>
             <field name="street2" position="after">
@@ -60,6 +68,7 @@
                     name="city_id"
                     placeholder="Comuna"
                     options='{"no_open": True, "no_quick_create": True}'
+                    required="dte_service_provider in ['SII', 'SIICERT']"
                 />
             </field>
         </field>

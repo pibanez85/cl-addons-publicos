@@ -48,7 +48,10 @@ class Boleta(http.Controller):
     @http.route(["/download/boleta"], type="http", auth="public", website=True)
     def download_boleta(self, **post):
         document = request.env[post["model"]].sudo().browse(int(post["model_id"]))
-        file_name = document._get_printed_report_name()
+        if hasattr(document, "_get_report_base_filename"):
+            file_name = document._get_report_base_filename()
+        else:
+            file_name = document._get_printed_report_name()
         pdf = self._get_report(document)
         pdfhttpheaders = [
             ("Content-Type", "application/pdf"),

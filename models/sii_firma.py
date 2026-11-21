@@ -1,4 +1,3 @@
-import base64
 import logging
 from datetime import datetime
 
@@ -10,20 +9,18 @@ from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 try:
-    from OpenSSL import crypto
-
-    type_ = crypto.FILETYPE_PEM
-except ImportError:
-    _logger.warning("Error en cargar crypto")
-try:
     from facturacion_electronica.firma import Firma
+    from facturacion_electronica.signature_cert import SignatureCert
 except ImportError:
     _logger.warning("Problema a cargar facturacion_electronica")
+
 
 
 class SignatureCert(models.Model):
     _name = "sii.firma"
     _description = "Certificado Digital para Firma Electrónica SII"
+
+    _DIAS_AVISO_INTENSIVO = 3
 
     def _expiration_message(self, days_left):
         return _(
@@ -57,7 +54,7 @@ class SignatureCert(models.Model):
         summary = _("Firma Electrónica próxima a vencer")
         res_model_id = self.env["ir.model"]._get(self._name).id
         note = self._expiration_message(days_left)
-        last_week = days_left <= 7
+        intensivo = days_left <= self._DIAS_AVISO_INTENSIVO
         for user in self.user_ids:
             base_domain = [
                 ("res_model_id", "=", res_model_id),
@@ -66,7 +63,7 @@ class SignatureCert(models.Model):
                 ("activity_type_id", "=", activity_type.id),
                 ("summary", "=", summary),
             ]
-            if last_week:
+            if intensivo:
                 day_start = datetime.combine(today, datetime.min.time())
                 day_end = day_start + relativedelta.relativedelta(days=1)
                 today_activity = Activity.search(
@@ -114,8 +111,14 @@ class SignatureCert(models.Model):
         days_left = (self.expire_date - today).days
         if days_left > 30:
             return
+        intensivo = days_left <= self._DIAS_AVISO_INTENSIVO
+        user = self.env.user.sudo()
+        if not intensivo:
+            if user.sii_firma_aviso_id == self and user.sii_firma_aviso_fecha == today:
+                return
+            user.write({"sii_firma_aviso_id": self.id, "sii_firma_aviso_fecha": today})
         message = self._expiration_message(days_left)
-        notif_type = "danger" if days_left <= 7 else "warning"
+        notif_type = "danger" if intensivo else "warning"
         try:
             self.env["bus.bus"]._sendone(
                 self.env.user.partner_id,
@@ -225,44 +228,39 @@ class SignatureCert(models.Model):
     def action_process(self):
         if self.subject_serial_number:
             return self.check_signature()
-        filecontent = base64.b64decode(self.file_content)
-        try:
-            p12 = crypto.load_pkcs12(filecontent, self.password)
-        except Exception:
+        firma = SignatureCert({
+            "string_firma": self.file_content,
+            "string_password": self.password or None,
+            "init_signature": True,
+        })
+        if firma.errores:
             raise UserError(
                 "Error al abrir la firma, posiblmente ha ingresado\
  mal la clave de la firma o el archivo no es compatible."
             )
-
-        cert = p12.get_certificate()
-        privky = p12.get_privatekey()
-        cacert = p12.get_ca_certificates()
-        issuer = cert.get_issuer()
-        subject = cert.get_subject()
-
         self.write(
             {
-                "emision_date": datetime.strptime(cert.get_notBefore().decode("utf-8"), "%Y%m%d%H%M%SZ"),
-                "expire_date": datetime.strptime(cert.get_notAfter().decode("utf-8"), "%Y%m%d%H%M%SZ"),
-                "subject_c": subject.C,
-                "subject_title": subject.title,
-                "subject_common_name": subject.CN,
-                "subject_serial_number": subject.serialNumber,
-                "subject_email_address": subject.emailAddress,
-                "issuer_country": issuer.C,
-                "issuer_organization": issuer.O,
-                "issuer_common_name": issuer.CN,
-                "issuer_serial_number": issuer.serialNumber,
-                "issuer_email_address": issuer.emailAddress,
-                "cert_serial_number": cert.get_serial_number(),
-                "cert_signature_algor": cert.get_signature_algorithm(),
-                "cert_version": cert.get_version(),
-                "cert_hash": cert.subject_name_hash(),
-                "private_key_bits": privky.bits(),
-                "private_key_check": privky.check(),
-                "private_key_type": privky.type(),
-                "priv_key": crypto.dump_privatekey(type_, p12.get_privatekey()),
-                "cert": crypto.dump_certificate(type_, p12.get_certificate()),
+                "emision_date": firma.not_before,
+                "expire_date": firma.not_after,
+                "subject_c": firma.subject_c,
+                "subject_title": firma.subject_title,
+                "subject_common_name": firma.subject_common_name,
+                "subject_serial_number": firma.subject_serial_number,
+                "subject_email_address": firma.subject_email_address,
+                "issuer_country": firma.issuer_country,
+                "issuer_organization": firma.issuer_organization,
+                "issuer_common_name": firma.issuer_common_name,
+                "issuer_serial_number": firma.issuer_serial_number,
+                "issuer_email_address": firma.issuer_email_address,
+                "cert_serial_number": str(firma.cert_serial_number),
+                "cert_signature_algor": firma.cert_signature_algor,
+                "cert_version": str(firma.cert_version),
+                "cert_hash": firma.cert_hash,
+                "private_key_bits": str(firma.private_key_bits),
+                "private_key_check": True,
+                "private_key_type": firma.private_key_type,
+                "priv_key": firma.priv_key.decode(),
+                "cert": firma.cert.decode(),
                 "password": False,
             }
         )

@@ -21,6 +21,7 @@ class ConsumoFolios(models.Model):
     _dte_cola_field = 'consumo_folios_ids'
     _dte_xml_envio_field = 'consumo_folios_ids'
     _dte_label = "Consumo de Folios"
+    _dte_envio_tipo = 'consumo_folios'
 
     move_ids = fields.Many2many("account.move", readonly=True, )
     fecha_inicio = fields.Date(

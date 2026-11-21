@@ -7,15 +7,6 @@ import dateutil.relativedelta as relativedelta
 import logging
 _logger = logging.getLogger(__name__)
 
-try:
-    import pdf417gen
-except ImportError:
-    _logger.warning('Cannot import pdf417gen library')
-try:
-    import base64
-except ImportError:
-    _logger.warning('Cannot import base64 library')
-
 
 class SIIResumenBoletaVoucher(models.Model):
     _name = 'account.move.boleta_voucher'
@@ -358,16 +349,9 @@ class SIIResumenBoletaVoucher(models.Model):
                 mess = {'title': "Documento Rechazado", 'message': r.name, 'type': 'dte_notif'}
             if r.sii_result == 'Anulado':
                 r.canceled = True
-                try:
-                    r.action_invoice_cancel()
-                except Exception:
-                    _logger.warning("Error al cancelar Documento")
                 mess = {'title': "Documento Anulado", 'message': r.name, 'type': 'dte_notif'}
             if mess:
-                self.env['bus.bus'].sendone(
-                    (self._cr.dbname, 'account.move.boleta_voucher', r.env.user.partner_id.id),
-                    mess,
-                )
+                self.env['bus.bus']._sendone(r.env.user.partner_id, 'simple_notification', dict(mess, type='warning'))
 
     def set_draft(self):
         if self.sii_result in ['Rechazado'] or self.sii_xml_request.state in ["", "draft", "NoEnviado"]:

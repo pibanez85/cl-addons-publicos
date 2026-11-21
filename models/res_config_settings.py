@@ -1,6 +1,8 @@
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .currency import CMF_URL
+
 try:
     from facturacion_electronica import __version__
 except ImportError:
@@ -76,3 +78,36 @@ class ResConfigSettings(models.TransientModel):
         ICPSudo.set_param("account.auto_send_email", self.auto_send_email)
         ICPSudo.set_param("account.auto_send_peresistencia", self.auto_send_persistencia)
         ICPSudo.set_param("account.dte_receipt_method", self.dte_receipt_method)
+
+    # Actualización de UF, UTM, dólar y euro desde la API de la CMF (ex SBIF). No se
+    # guardan en la tabla de ajustes: leen y escriben el parámetro, así el código se
+    # puede desplegar en una carpeta compartida sin actualizar de inmediato cada base.
+    sbif_token = fields.Char(string="Clave API CMF", compute="_compute_cmf", inverse="_inverse_cmf")
+    sbif_url = fields.Char(string="URL API CMF", compute="_compute_cmf", inverse="_inverse_cmf")
+
+    def _compute_cmf(self):
+        icp = self.env["ir.config_parameter"].sudo()
+        for rec in self:
+            rec.sbif_token = icp.get_param("sbif.financial.indicators.apikey")
+            rec.sbif_url = icp.get_param("sbif.financial.indicators.baseurl") or CMF_URL
+
+    def _inverse_cmf(self):
+        icp = self.env["ir.config_parameter"].sudo()
+        for rec in self:
+            icp.set_param("sbif.financial.indicators.apikey", rec.sbif_token or False)
+            icp.set_param("sbif.financial.indicators.baseurl", rec.sbif_url or CMF_URL)
+
+    def action_update_currencies(self):
+        icp = self.env["ir.config_parameter"].sudo()
+        actualizadas = self.env["res.currency"].currency_schedule_update()
+        if actualizadas:
+            mensaje, tipo = "Actualizadas: %s." % ", ".join(actualizadas.mapped("name")), "success"
+        elif not icp.get_param("sbif.financial.indicators.apikey"):
+            mensaje, tipo = "Ingrese la clave de la API de la CMF.", "warning"
+        else:
+            mensaje, tipo = "La CMF no devolvió valores; revise la clave y el registro del servidor.", "warning"
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {"title": "Indicadores CMF", "message": mensaje, "type": tipo, "sticky": False},
+        }

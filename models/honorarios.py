@@ -24,14 +24,10 @@ class Honorarios(models.Model):
         string="Tipo de Libro",
         default="MENSUAL",
         required=True,
-        readonly=True,
-
     )
     periodo_tributario = fields.Char(
         string="Periodo Tributario",
         required=True,
-        readonly=True,
-
         default=lambda *a: datetime.now().strftime("%Y-%m"),
     )
     company_id = fields.Many2one(

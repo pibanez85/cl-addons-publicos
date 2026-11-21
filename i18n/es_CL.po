@@ -202,8 +202,9 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
 msgid "<span>Casa Matriz: </span>"
-msgstr ""
+msgstr "<span>Casa Matriz: </span>"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.boleta_inv_report_body_layout
@@ -241,11 +242,6 @@ msgid "<strong class=\"pull-left\">Tipo:</strong>"
 msgstr ""
 
 #. module: l10n_cl_fe
-#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_invoice_document_with_payments
-msgid "<strong>Amount Due</strong>"
-msgstr "<strong>Monto Pendiente</strong>"
-
-#. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.layout_libro
 msgid "<strong>Cantidad de Documentos</strong>"
 msgstr ""
@@ -259,7 +255,7 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
 msgid ""
 "<strong>Comment:</strong>\n"
-"                                <br/>"
+"                                    <br/>"
 msgstr ""
 "<strong>Comentarios:</strong>\n"
 "                                <br/>"
@@ -1311,6 +1307,11 @@ msgid "Ambas (Factura y OC)"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
+msgid "Amount Due"
+msgstr "Monto Pendiente"
+
+#. module: l10n_cl_fe
 #: model:ir.model.fields,help:l10n_cl_fe.field_res_currency__rounding
 msgid ""
 "Amounts in this currency are rounded off to the nearest multiple of the "
@@ -1437,7 +1438,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_sii_firma_search
 msgid "Archived"
-msgstr ""
+msgstr "Archivado"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_dte_caf
@@ -1607,7 +1608,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_partner_activities__internet_available
 msgid "Available at Internet"
-msgstr ""
+msgstr "Disponible en Internet"
+
+#. module: l10n_cl_fe
+#: model:res.city,name:l10n_cl_fe.CL11201
+msgid "Aysén"
+msgstr "Aysén"
 
 #. module: l10n_cl_fe
 #: model:partner.activities,name:l10n_cl_fe.eco_acti_641100
@@ -1772,6 +1778,11 @@ msgid "CEDIBLE"
 msgstr ""
 
 #. module: l10n_cl_fe
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.view_convert_to_dte
+msgid "Convert To DTE"
+msgstr "Convertir A DTE"
+
+#. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL05402
 msgid "Cabildo"
 msgstr ""
@@ -1919,7 +1930,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_ir_sequence__autoreponer_cantidad
 msgid "Cantidad de Folios a Reponer"
-msgstr ""
+msgstr "Cantidad de CAFs a Reponer"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf_apicaf__cant_doctos
@@ -2226,7 +2237,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_cola_envio
 msgid "Cola de envío DTE Persistente al SII"
-msgstr ""
+msgstr "sii.cola_envio"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL07402
@@ -2601,12 +2612,12 @@ msgstr "País"
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_res_country_state
 msgid "Country state"
-msgstr "Provincia"
+msgstr "Región"
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL11101
 msgid "Coyhaique"
-msgstr ""
+msgstr "Coyhaique"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_view_tree
@@ -2817,6 +2828,7 @@ msgstr ""
 
 #. module: l10n_cl_fe
 #: model:ir.actions.server,name:l10n_cl_fe.ir_cron_update_remote_partners_ir_actions_server
+#: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_update_remote partners
 #: model:ir.cron,cron_name:l10n_cl_fe.ir_cron_update_remote_partners
 msgid "Cron Verificación de Partners"
 msgstr ""
@@ -3272,7 +3284,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_mail_message_dte
 msgid "DTE Recibido"
-msgstr ""
+msgstr "DTE"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields.selection,name:l10n_cl_fe.selection__sii_dte_claim__estado_dte__0
@@ -3431,7 +3443,6 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_book__impuestos
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_book_honorarios__impuestos
-#: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__anulaciones
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_account_move_consumo_folios__impuestos
 msgid "Detalle Impuestos"
 msgstr ""
@@ -6600,7 +6611,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL08301
 msgid "Los Ángeles"
-msgstr "Los Angeles"
+msgstr ""
 
 #. module: l10n_cl_fe
 #: model:res.city,name:l10n_cl_fe.CL08106
@@ -6620,12 +6631,12 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_consumo_folios_impuestos
 msgid "Línea Impuestos Consumo de folios"
-msgstr ""
+msgstr "Detalle Impuesto CF"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_consumo_folios_anulaciones
 msgid "Línea anulación de folios para Consumo de folios"
-msgstr ""
+msgstr "Detalle Folio Anulado CF"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_dte_caf_apicaf__linea_disponible_seleccionada
@@ -6640,7 +6651,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sale_order_referencias
 msgid "Línea de Referencias DTE para Pedidos de Venta"
-msgstr ""
+msgstr "sale.order.referencias"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_book_boletas
@@ -6655,7 +6666,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_consumo_folios_detalles
 msgid "Línea detalle Consumo de folios"
-msgstr ""
+msgstr "Linea Detalle CF"
 
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_mail_message_dte_document__global_descuentos_recargos
@@ -7207,6 +7218,13 @@ msgstr ""
 #: code:addons/l10n_cl_fe/models/account_move.py:0
 #, python-format
 msgid "No pueden ir valores negativos en las líneas de detalle"
+msgstr ""
+
+#. module: l10n_cl_fe
+#. odoo-python
+#: code:addons/l10n_cl_fe/models/caf.py:0
+#, python-format
+msgid "No se encontró una línea disponible para los folios especificados."
 msgstr ""
 
 #. module: l10n_cl_fe
@@ -7769,7 +7787,7 @@ msgid "Padre Las Casas"
 msgstr ""
 
 #. module: l10n_cl_fe
-#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_invoice_document_with_payments
+#: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
 msgid "Paid on"
 msgstr ""
 
@@ -9119,7 +9137,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model.fields,field_description:l10n_cl_fe.field_sii_dte_validar_wizard__action
 msgid "Respuesta a Emitir"
-msgstr ""
+msgstr "Acción"
 
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_sii_respuesta_cliente
@@ -10527,9 +10545,12 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout
 msgid ""
 "Timbre Electrónico SII\n"
+"                                          <br/>\n"
+"                                          Resolución"
+msgstr ""
+"Timbre Electrónico SII\n"
 "                                <br/>\n"
 "                                Resolución"
-msgstr ""
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.report_ticket
@@ -11980,7 +12001,7 @@ msgstr ""
 #. module: l10n_cl_fe
 #: model:ir.model,name:l10n_cl_fe.model_account_move_book_tax
 msgid "línea de impuesto Libro CV"
-msgstr ""
+msgstr "Detalle Impuesto Libro CV"
 
 #. module: l10n_cl_fe
 #: model_terms:ir.ui.view,arch_db:l10n_cl_fe.dte_external_layout

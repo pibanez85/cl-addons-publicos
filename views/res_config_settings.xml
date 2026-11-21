@@ -19,8 +19,9 @@
                                 </div>
                                 <div class="row mt8">
                                     <span class="col-lg-3 o_light_label">Versión Requerida</span>
-                                    <span>0.21.4</span>
+                                    <span>0.21.3</span>
                                 </div>
+                                <div class="text-muted" invisible="fe_version >= '0.21.3'" style="color:red !important">¡Debe Actualizar o verificar su versión instalada!</div>
                             </div>
                         </setting>
                     </block>
@@ -293,6 +294,116 @@
                                 <div class="row mt16">
                                     <label for="token_apicaf" class="col-lg-4 o_light_label"/>
                                     <field name="token_apicaf" password="True"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <block title="trafquin (XML, Registro de Compras y Ventas y propuesta F29 desde el SII)" name="fe_trafquin_block">
+                        <setting id="trafquin" string="trafquin" help="Consulta en el SII el respaldo de XML, el Registro de Compras y Ventas, el libro de boletas y la propuesta de F29">
+                            <div class="content-group" name="trafquin_right_pane">
+                                <div class="row mt16">
+                                    <label for="url_trafquin" string="URL" class="col-lg-4 o_light_label"/>
+                                    <field name="url_trafquin" placeholder="https://trafquin.ejemplo.cl"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="token_trafquin" string="Token" class="col-lg-4 o_light_label"/>
+                                    <field name="token_trafquin" password="True"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="trafquin_sistema_xml" string="Sistema de facturación de la compañía" help="Con el sistema MIPYME el SII guarda los XML recibidos y se descargan por documento. Con software propio el XML de un documento recibido solo llega por correo del emisor. Vacío: se deduce de la configuración DTE o de trafquin.">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <field name="sii_sistema_xml"/>
+                                </div>
+                                <div class="text-muted mt8" invisible="not sii_sistema_xml_aviso">
+                                    <field name="sii_sistema_xml_aviso"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="trafquin_clave_sii" string="Clave SII de la compañía" help="Para la propuesta de F29 cuando el certificado es de un representante. Sin clave se usa el certificado." groups="base.group_system">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="sii_clave_tributaria" string="Clave" class="col-lg-4 o_light_label"/>
+                                    <field name="sii_clave_tributaria" password="True"/>
+                                </div>
+                                <div class="text-warning mt8" invisible="not sii_clave_aviso">
+                                    <field name="sii_clave_aviso"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <block title="Contabilización del F29" name="fe_f29_asiento_block" groups="base.group_system">
+                        <setting id="f29_asiento" string="Cuentas del asiento F29" help="El asiento de la Declaración Mensual F29 usa estos valores. La cuenta F29 por pagar debe ser de tipo Por pagar, para registrar el pago. Si la Tesorería queda vacía, se crea con RUT 60.805.000-0.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_debito_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_debito_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_credito_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_credito_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_remanente_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_remanente_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_ppm_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_ppm_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_retencion_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_retencion_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_impuesto_unico_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_impuesto_unico_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_por_pagar_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_por_pagar_id" domain="[('account_type', '=', 'liability_payable')]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_recargo_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_recargo_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_reajuste_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_reajuste_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_cuenta_postergado_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_cuenta_postergado_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_diario_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_diario_id" domain="[('type', '=', 'general')]" options="{'no_create': True}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="f29_tesoreria_id" class="col-lg-5 o_light_label"/>
+                                    <field name="f29_tesoreria_id"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <!-- Indicadores económicos -->
+                    <block title="Indicadores Económicos (CMF)" name="fe_cmf_block">
+                        <setting string="UF, UTM, dólar y euro" help="Actualización diaria desde la API de la CMF (ex SBIF). La clave se pide en api.cmfchile.cl">
+                            <div class="content-group">
+                                <div class="row mt16">
+                                    <label for="sbif_token" class="col-lg-4 o_light_label"/>
+                                    <field name="sbif_token" password="True"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="sbif_url" class="col-lg-4 o_light_label"/>
+                                    <field name="sbif_url"/>
+                                </div>
+                                <div class="mt8">
+                                    <button name="action_update_currencies" type="object" string="Actualizar ahora" icon="oi-arrow-right" class="btn-link"/>
                                 </div>
                             </div>
                         </setting>

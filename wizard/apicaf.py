@@ -53,7 +53,16 @@ class APICAF(models.TransientModel):
 
     @api.onchange("firma", "operacion")
     def conectar_api(self):
+        motivo = False
         if not self.firma:
+            motivo = "el usuario %s no tiene firma electrónica autorizada para %s" % (
+                self.env.user.name, self.company_id.name)
+        elif not self.company_id.url_apicaf or not self.company_id.token_apicaf:
+            motivo = "falta la URL o el token de apicaf.cl en la configuración de %s" % (
+                self.company_id.name)
+        if motivo:
+            self.message = motivo
+            _logger.warning("No se pudo conectar con apicaf.cl: %s", motivo)
             return
         url = self.company_id.url_apicaf
         token = self.company_id.token_apicaf
@@ -102,7 +111,6 @@ class APICAF(models.TransientModel):
         elif self.operacion == "anular":
             self.an_etapa = data["etapa"]
         self.id_peticion = data["id_peticion"]
-        """@TODO verificación de folios autorizados en el SII"""
         self.listar()
         if self.cod_docto:
             self.get_disp()
@@ -186,6 +194,14 @@ class APICAF(models.TransientModel):
     api_folio_fin = fields.Integer(string="Folio Final CAF",)
     motivo = fields.Char(string="Motivo de anulación",)
     message = fields.Text(string="Mensaje de respuestass")
+    reob_page_number = fields.Integer(string="Número de página", default=1)
+    reob_has_next_page = fields.Boolean(string="Tiene siguiente página", default=False)
+    es_ban = fields.Boolean(string="Bloqueado por ban", compute="_compute_es_ban")
+
+    @api.depends("message")
+    def _compute_es_ban(self):
+        for rec in self:
+            rec.es_ban = "Baneado" in (rec.message or "")
 
     @api.onchange("lineas_disponibles")
     def selected_caf(self):
@@ -263,6 +279,8 @@ class APICAF(models.TransientModel):
             "id_peticion": self.id_peticion,
             "cod_docto": self.cod_docto.sii_code,
         }
+        if self.operacion in ["anular", "reobtener"]:
+            params["pagina"] = self.reob_page_number
         resp = pool.request("POST", url, body=json.dumps(params))
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
@@ -296,6 +314,10 @@ class APICAF(models.TransientModel):
                 self.an_etapa = data["etapa"]
             else:
                 self.reob_etapa = data["etapa"]
+            if "pagina_actual" in data:
+                self.reob_page_number = data.get("pagina_actual", 1)
+            if "tiene_siguiente" in data:
+                self.reob_has_next_page = data.get("tiene_siguiente", False)
             folios = []
             for f in data.get("folios", []):
                 linea_vals = dict(
@@ -321,7 +343,7 @@ class APICAF(models.TransientModel):
                         linea_vals,
                     )
                 )
-            self.lineas_disponibles = folios
+            self.lineas_disponibles = [(5, 0, 0)] + folios
 
 
     def obtener_caf(self):
@@ -350,7 +372,6 @@ class APICAF(models.TransientModel):
             if not caf_line:
                 raise UserError("Debe seleccionar Uno")
             peticion.update(form_name=caf_line.form_name)
-        #   obtener
         peticion["etapa"] = etapa
         resp = pool.request("POST", url, body=json.dumps(peticion))
         if resp.status != 200:
@@ -424,7 +445,6 @@ class APICAF(models.TransientModel):
             )
             return
 
-        #  archivo
         caf_line = self.lineas_disponibles.filtered('selected')
         data = json.loads(resp.data.decode("ISO-8859-1"))
         nombre = data.get("nombre")
@@ -480,31 +500,51 @@ class APICAF(models.TransientModel):
         caf.load_caf()
 
 
+    def next_page_reob(self):
+        if self.operacion in ["anular", "reobtener"] and self.reob_has_next_page:
+            self.reob_page_number += 1
+            self.get_disp()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": self._name,
+            "res_id": self.id,
+            "view_mode": "form",
+            "target": "new",
+        }
+
     def delist(self):
-        url = self.company_id.url_apicaf.replace("company_info", "delist")
+        url = self.company_id.url_apicaf.rsplit("/", 1)[0] + "/delist"
         token = self.company_id.token_apicaf
         peticion = {
             "token": token,
         }
         resp = pool.request("POST", url, body=json.dumps(peticion))
+        try:
+            data = json.loads(resp.data.decode("ISO-8859-1"))
+        except Exception:
+            data = {}
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf delist %s" % resp.data)
-            self.message = ""
-            if resp.status == 403:
-                data = json.loads(resp.data.decode("ISO-8859-1"))
-                self.message = data["message"]
-                _logger.warning(self.message)
-            else:
-                self.message = str(resp.data)
+            self.message = data.get("message") or str(resp.data)
             self.env["bus.bus"]._sendone(
                 self.env.user.partner_id,
                 'dte.caf.apicaf/display_notification',
                 {
-                    "title": "Error en conexión con apicaf",
+                    "title": "Error al remover el bloqueo",
                     "message": self.message,
                     "url": {"name": "ir a apicaf.cl", "uri": "https://apicaf.cl"},
                     "type": "dte_notif",
                 },
             )
-        if self.etapa == "conectar":
-            self.conectar_api()
+            return
+        self.message = ""
+        self.env["bus.bus"]._sendone(
+            self.env.user.partner_id,
+            'dte.caf.apicaf/display_notification',
+            {
+                "title": "Bloqueo removido",
+                "message": data.get("message") or "Bloqueo removido, reintentando conexión.",
+                "type": "dte_notif",
+            },
+        )
+        self.conectar_api()

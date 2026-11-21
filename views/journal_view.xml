@@ -34,10 +34,12 @@
                 </field>
 
                 <field name="type" position="after">
-                    <field name="sucursal_id" />
-                    <field name="sii_code" />
-                    <field name="use_documents" invisible="type not in  ['purchase', 'sale']" />
+                    <field name="sucursal_id" invisible="not use_documents" />
+                    <field name="sii_code" invisible="not use_documents" />
+                    <field name="use_documents" invisible="type not in ['purchase', 'sale']" />
                     <field name="restore_mode" invisible="not use_documents" />
+                    <field name="sii_declara_ventas" invisible="type != 'bank'" />
+                    <field name="sii_canal_48" invisible="not sii_declara_ventas" required="sii_declara_ventas" />
                 </field>
 
                 <notebook position="inside">
@@ -97,7 +99,7 @@
                                     readonly="not is_dte"
                                     required="is_dte"
                                 />
-                                <field name="qty_available" />
+                                <field name="qty_available" readonly="1" />
                             </tree>
                         </field>
                     </page>

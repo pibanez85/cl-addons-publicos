@@ -87,15 +87,11 @@ class Libro(models.Model):
         string="Tipo de Libro",
         default="MENSUAL",
         required=True,
-        readonly=True,
-
     )
     tipo_operacion = fields.Selection(
         [("COMPRA", "Compras"), ("VENTA", "Ventas"), ("BOLETA", "Boleta Electrónica"),],
         string="Tipo de operación",
         required=True,
-        readonly=True,
-
         default="COMPRA",
     )
     tipo_envio = fields.Selection(
@@ -126,8 +122,6 @@ class Libro(models.Model):
     periodo_tributario = fields.Char(
         string="Periodo Tributario",
         required=True,
-        readonly=True,
-
         default=lambda *a: datetime.now().strftime("%Y-%m"),
     )
     company_id = fields.Many2one(

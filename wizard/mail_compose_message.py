@@ -8,13 +8,13 @@ _logger = logging.getLogger(__name__)
 class MailComposer(models.TransientModel):
     _inherit = "mail.compose.message"
 
-    
-    def onchange_template_id(self, template_id, composition_mode, model, res_id):
-        result = super(MailComposer, self).onchange_template_id(template_id, composition_mode, model, res_id)
+    def _compute_attachment_ids(self):
+        super()._compute_attachment_ids()
         atts = self._context.get("default_attachment_ids", [])
-        for att in atts:
-            if not result["value"].get("attachment_ids"):
-                result["value"]["attachment_ids"] = [(6, 0, [])]
-            if att not in result["value"]["attachment_ids"][0][2]:
-                result["value"]["attachment_ids"][0][2].append(att)
-        return result
+        if not atts:
+            return
+        att_ids = [a for a in atts if isinstance(a, int)]
+        for composer in self:
+            missing = [a for a in att_ids if a not in composer.attachment_ids.ids]
+            if missing:
+                composer.attachment_ids = [(4, a) for a in missing]

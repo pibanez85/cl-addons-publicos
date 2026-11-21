@@ -12,7 +12,7 @@ class SO(models.Model):
         currency_id = self.currency_id.id or self._context.get('default_currency_id')
         if currency_id and currency_id != self.company_id.currency_id.id:
             domain += [('currency_id', '=', currency_id)]
-        return self.env['account.journal'].search(domain, limit=1)
+        return self.env['account.journal'].sudo().search(domain, limit=1)
 
     @api.onchange('journal_id')
     @api.depends('journal_id')
@@ -42,11 +42,12 @@ class SO(models.Model):
     use_documents = fields.Boolean(
         string="Use Documents?",
     )
+    convert_to_company_currency = fields.Boolean('Convertir a moneda local?')
 
     @api.onchange("journal_id")
     def _default_journal_document_class_id(self):
         self.journal_document_class_id = self.env["account.journal.sii_document_class"].search(
-            [("journal_id", "=", self.journal_id.id), ("sii_document_class_id.document_type", "in", ['invoice']),], limit=1
+            [("journal_id", "=", self.sudo().journal_id.id), ("sii_document_class_id.document_type", "in", ['invoice']),], limit=1
         )
 
     @api.onchange("journal_id")
@@ -73,6 +74,8 @@ class SO(models.Model):
                 'ref_id': r.ref_id.id,
                 'motivo': r.motivo,
             }))
+        if self.convert_to_company_currency:
+            vals['currency_id'] = self.company_id.currency_id.id
         return vals
 
     @api.depends("order_line.price_total")
@@ -99,6 +102,14 @@ class SO(models.Model):
 
 class SOL(models.Model):
     _inherit = "sale.order.line"
+
+    def _prepare_invoice_line(self, **optional_values):
+        res = super()._prepare_invoice_line(**optional_values)
+        order = self.order_id
+        if order.convert_to_company_currency and self.currency_id and self.currency_id != order.company_id.currency_id:
+            fecha = order.date_order.date() if order.date_order else fields.Date.today()
+            res['price_unit'] = self.currency_id._convert(self.price_unit, order.company_id.currency_id, order.company_id, fecha)
+        return res
 
     @api.depends("product_uom_qty", "discount", "price_unit", "tax_id")
     def _compute_amount(self):

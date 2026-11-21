@@ -141,7 +141,7 @@ Include unusual taxes documents, as transfer invoice, and reissue
             sequence_id = self.env["ir.sequence"].search([
                 ('sii_document_class_id', '=', document_class.id),
             ],limit=1)
-            if not document_class.es_boleta():
+            if not document_class.es_voucher():
                 seq_vals = self.create_sequence(document_class.name, journal, document_class)
                 sequence_id = self.env["ir.sequence"].create(seq_vals)
             vals = {

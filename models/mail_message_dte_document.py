@@ -16,6 +16,10 @@ except ImportError:
     _logger.warning("No se ha podido cargar fe")
 
 
+def clave_rut(texto):
+    return re.sub(r"[^0-9K]", "", (texto or "").upper().replace("CL", "", 1)).lstrip("0")
+
+
 class ProcessMailsDocument(models.Model):
     _name = "mail.message.dte.document"
     _description = "Pre Documento Recibido"
@@ -157,6 +161,8 @@ class ProcessMailsDocument(models.Model):
         return Encabezado
 
     def _dte(self):
+        if self.move_id:
+            return self.move_id._dte()
         return {"Encabezado": self._encabezado()}
 
     @api.onchange("move_id")
@@ -333,6 +339,8 @@ class ProcessMailsDocument(models.Model):
             date_end = self.create_date + relativedelta(days=8)
             if self.claim in ["ACD", "ERM", "PAG"]:
                 self.state = "accepted"
+            elif self.claim in ["RCD", "RFP", "RFT"]:
+                self.state = "rejected"
             elif date_end <= datetime.now() and self.claim == "N/D":
                 self.state = "accepted"
             elif self.claim in ["RCD", "RFP", "RFT"]:

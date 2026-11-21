@@ -8,8 +8,8 @@ publicWidget.registry.PortalDTE = publicWidget.Widget.extend({
         "keyup .l10n_cl_rut": '_formatRUT',
         "change .l10n_cl_partner_search": '_setPartner',
         "change .l10n_cl_email": '_fillDTEEmail',
-        "change .l10n_cl_state": '_populateCities',
-        'change .l10n_cl_city': '_onChangeCity',
+        "change .l10n_cl_state, change select[name='state_id']": '_populateCities',
+        "change .l10n_cl_city, change select[name='city_id']": '_onChangeCity',
     },
 
     init() {
@@ -109,39 +109,43 @@ publicWidget.registry.PortalDTE = publicWidget.Widget.extend({
 
     _populateCities: async function(ev) {
         const value = ev.target.value;
-        if (value) {
-            const data = await this.rpc("/portal/state_infos/" + value, { mode: "billing" });
-            const selectCity = this.el.querySelector(".l10n_cl_city");
-            if (!selectCity) return;
-            // Clear existing options safely using DOM methods
-            while (selectCity.firstChild) {
-                selectCity.removeChild(selectCity.firstChild);
-            }
-            const defaultOpt = document.createElement('option');
-            defaultOpt.textContent = 'Seleccione Comuna...';
-            defaultOpt.value = '';
-            selectCity.add(defaultOpt);
-            if (data.cities && data.cities.length) {
-                data.cities.forEach(function(city) {
-                    const opt = document.createElement('option');
-                    opt.textContent = city.name;
-                    opt.value = city.id;
+        const selectCity = this.el.querySelector("select[name='city_id']") || this.el.querySelector(".l10n_cl_city");
+        if (!selectCity || !value) {
+            return;
+        }
+        let data;
+        try {
+            data = await this.rpc("/portal/state_infos/" + value, { mode: "billing" });
+        } catch (err) {
+            console.warn("l10n_cl_fe: fallo al cargar comunas", err);
+            return;
+        }
+        while (selectCity.firstChild) {
+            selectCity.removeChild(selectCity.firstChild);
+        }
+        const defaultOpt = document.createElement('option');
+        defaultOpt.textContent = 'Seleccione Comuna...';
+        defaultOpt.value = '';
+        selectCity.add(defaultOpt);
+        const parentDiv = selectCity.closest('div');
+        if (data && data.cities && data.cities.length) {
+            data.cities.forEach(function(city) {
+                const opt = document.createElement('option');
+                opt.textContent = city.name;
+                opt.value = city.id;
+                if (city.code) {
                     opt.dataset.code = city.code;
-                    if (city.zipcode) {
-                        opt.dataset.zipcode = city.zipcode;
-                    }
-                    selectCity.add(opt);
-                });
-                const parentDiv = selectCity.closest('div');
-                if (parentDiv) {
-                    parentDiv.style.display = '';
                 }
-            } else {
-                const parentDiv = selectCity.closest('div');
-                if (parentDiv) {
-                    parentDiv.style.display = 'none';
+                if (city.zipcode) {
+                    opt.dataset.zipcode = city.zipcode;
                 }
+                selectCity.add(opt);
+            });
+            if (parentDiv) {
+                parentDiv.style.display = '';
             }
+        } else if (parentDiv) {
+            parentDiv.style.display = 'none';
         }
     },
 

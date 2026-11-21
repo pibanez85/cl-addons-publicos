@@ -27,7 +27,8 @@ class CAF(models.Model):
     def _get_qty_available(self):
         for r in self:
             if r.state not in ['draft', 'spent']:
-                qty_available = 1 + (r.final_nm - r.folio_actual)
+                folio = r._peek_folio_actual()
+                qty_available = max(0, (r.final_nm + 1) - max(folio, r.start_nm))
                 if qty_available != r.qty_available:
                     r.qty_available = qty_available
                 continue
@@ -35,6 +36,26 @@ class CAF(models.Model):
 
     def _get_tables(self):
         return ['account_move']
+
+    def _company_folios(self):
+        company = self.company_id or self.sequence_id.company_id
+        if not company or not self.rut_n:
+            return self.env['res.company']
+        if company.partner_id.rut() != self.rut_n:
+            _logger.warning(
+                "CAF %s: el RUT %s no es el de la compañía %s, los folios se cuentan sin filtrar",
+                self.id, self.rut_n, company.display_name)
+            return self.env['res.company']
+        return company
+
+    def _company_where_string_and_param(self, alias=''):
+        company = self._company_folios()
+        if not company:
+            return '', {}
+        return (
+            '            AND %scompany_id = %%(company_id)s\n' % (alias and alias + '.' or ''),
+            {'company_id': company.id},
+        )
 
     def _account_move_where_string_and_param(self):
         where_string = """WHERE
@@ -45,6 +66,9 @@ class CAF(models.Model):
         param = {
             'document_class_id': self.document_class_id.id
         }
+        company_where, company_param = self._company_where_string_and_param()
+        where_string += company_where
+        param.update(company_param)
         return where_string, param
 
     def _peek_folio_actual(self):
@@ -59,10 +83,12 @@ class CAF(models.Model):
             return folio
         tables = self._get_tables()
         where_clauses = []
+        param = {}
         for table in tables:
-            where_string, param = getattr(self, "_%s_where_string_and_param" % table)()
+            where_string, params = getattr(self, "_%s_where_string_and_param" % table)()
+            param.update(params)
             where_clauses.append("""
-                    SELECT {field} FROM {table}
+                    SELECT MAX({field}) AS folio FROM {table}
                     {where_string}
                     AND {field} >= {start_nm} AND {field} <= {final_nm}
             """.format(
@@ -75,8 +101,8 @@ class CAF(models.Model):
         if not where_clauses:
             return 0
         union = 'UNION ALL '.join(where_clauses)
-        query = 'SELECT MAX({field}) FROM ({union}) AS combined'.format(
-            field='sii_document_number', union=union,
+        query = 'SELECT MAX(folio) FROM ({union}) AS combined'.format(
+            union=union,
         )
         self.env.cr.execute(query, param)
         folio = int((self.env.cr.fetchone() or [None])[0] or 0)
@@ -118,12 +144,12 @@ class CAF(models.Model):
         param = {}
         for table in tables:
             where_string, params = getattr(self, "_%s_where_string_and_param" % table)()
-            where_clauses.append("""
+            where_clauses.append("""(
                 SELECT 1 FROM {table}
                 {where_string}
                 AND {field} = %(folio)s
                 LIMIT 1
-            """.format(table=table, where_string=where_string, field='sii_document_number'))
+            )""".format(table=table, where_string=where_string, field='sii_document_number'))
             param.update(params)
         if not where_clauses:
             return False
@@ -246,7 +272,11 @@ has been exhausted.""",
         self.folios_sin_usar = str(folios_sin_usar)
 
     def _join_inspeccionar(self):
-        return f'LEFT JOIN account_move a ON s = a.sii_document_number AND a.document_class_id = {self.document_class_id.id} AND a.use_documents'
+        join = f'LEFT JOIN account_move a ON s = a.sii_document_number AND a.document_class_id = {self.document_class_id.id} AND a.use_documents'
+        company = self._company_folios()
+        if company:
+            join += f' AND a.company_id = {company.id}'
+        return join
 
     def _where_inspeccionar(self):
         return 'a.sii_document_number is null'

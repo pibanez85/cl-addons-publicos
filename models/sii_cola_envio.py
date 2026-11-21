@@ -194,6 +194,13 @@ class ColaEnvio(models.Model):
             return False
         return first_doc.sii_xml_request.state in ("Aceptado", "Enviado", "EnProceso")
 
+    @staticmethod
+    def _docs_sin_envio(docs_by_model):
+        return any(
+            not (d.sii_xml_request and d.sii_xml_request.sii_send_ident)
+            for docs in docs_by_model.values() for d in docs
+        )
+
     def _needs_envio(self, first_doc):
         """Verifica si necesita envío."""
         if not first_doc:
@@ -251,29 +258,36 @@ class ColaEnvio(models.Model):
                 self.id, otra.id,
             )
             return
-        self.processing = True
-        self.env.cr.commit()
-        try:
-            envio_ok = False
-            for model, docs in docs_by_model.items():
-                try:
-                    envio = self._do_envio(docs)
-                    if envio and envio.sii_send_ident:
-                        envio_ok = True
-                        if not self.envio_id:
-                            self.envio_id = envio
-                        self._post_queue_log_to_xml_envio(envio, model, docs)
-                        pendientes = docs.filtered(
-                            lambda d: d.sii_result in ('', 'NoEnviado', 'EnCola', False)
-                        )
-                        if pendientes:
-                            pendientes.write({'sii_result': 'Enviado'})
-                except Exception as e:
-                    self._registrar_error(e, f'envío cola {model}')
-            if envio_ok:
-                self.tipo_trabajo = "consulta"
-        finally:
-            self.processing = False
+        todo_enviado = True
+        for model, docs in docs_by_model.items():
+            try:
+                restantes = docs
+                while restantes:
+                    envio = self._do_envio(restantes)
+                    if not (envio and envio.sii_send_ident):
+                        break
+                    incluidos = restantes.filtered(lambda d: d.sii_xml_request == envio)
+                    if not incluidos:
+                        break
+                    if not self.envio_id:
+                        self.envio_id = envio
+                    self._post_queue_log_to_xml_envio(envio, model, incluidos)
+                    pendientes = incluidos.filtered(
+                        lambda d: d.sii_result in ('', 'NoEnviado', 'EnCola', False)
+                    )
+                    if pendientes:
+                        pendientes.write({'sii_result': 'Enviado'})
+                    restantes -= incluidos
+                    self.env.cr.commit()
+                if restantes:
+                    todo_enviado = False
+            except Exception as e:
+                self.env.cr.rollback()
+                self._registrar_error(e, f'envío cola {model}')
+                todo_enviado = False
+        if todo_enviado:
+            self.tipo_trabajo = "consulta"
+            self.env.cr.commit()
 
     def _post_queue_log_to_xml_envio(self, xml_envio, model, docs):
         """Publica en el chatter del xml.envio quién encoló cada documento."""
@@ -363,10 +377,13 @@ class ColaEnvio(models.Model):
 
     def _procesar_pasivo(self, docs_by_model, first_doc):
         """Procesa tipo trabajo pasivo."""
-        if first_doc.sii_xml_request and first_doc.sii_xml_request.state in [
-            "Aceptado", "Enviado", "Rechazado", "Anulado",
-        ]:
-            self.unlink()
+        if self._should_finish(docs_by_model):
+            self._procesar_finalizado(docs_by_model, first_doc)
+            return
+        if self._should_skip_envio(first_doc) and not self._docs_sin_envio(docs_by_model):
+            if not self.envio_id:
+                self.envio_id = first_doc.sii_xml_request
+            self.tipo_trabajo = "consulta"
             return
         self._procesar_envio(docs_by_model)
 
@@ -702,7 +719,7 @@ class ColaEnvio(models.Model):
             ('active', '=', True),
             ('manual', '=', False),
             ('processing', '=', False),
-            ('envio_id.sii_send_ident', '=', False),
+            ('intento', '=', 0),
             ('company_id', '=', vals.get('company_id')),
             ('firma_id', '=', vals.get('firma_id')),
             ('tipo_trabajo', '=', vals.get('tipo_trabajo')),

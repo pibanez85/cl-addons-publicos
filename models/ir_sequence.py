@@ -2,8 +2,9 @@ import base64
 import logging
 from datetime import datetime
 import pytz
+from psycopg2 import errors
 
-from odoo import api, fields, models, tools
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
 
@@ -83,29 +84,86 @@ class IRSequence(models.Model):
                 r.auto_anular()
             except:
                 _logger.warning("no se pudo auto anular")
+        self._cr.commit()
         self._cr.execute("SELECT id FROM ir_sequence WHERE is_dte")
         for r in self.env["ir.sequence"].sudo().browse([x[0] for x in self._cr.fetchall()]):
             for caf in r.dte_caf_ids.filtered(lambda c: c.state == 'in_use'):
-                try:
-                    caf.compute_folio_actual()
-                except Exception as e:
-                    _logger.warning(
-                        "Error refrescando folio_actual del CAF %s: %s",
-                        caf.id, str(e), exc_info=True,
-                    )
+                self._refrescar_caf_cron(caf)
             if r.autoreponer_caf and r.qty_available < r.nivel_minimo:
                 try:
                     r.solicitar_caf()
+                    self._cr.commit()
                 except Exception as e:
+                    self._cr.rollback()
                     _logger.warning(
                         "Error al solictar folios a secuencia {}: {}".format(
                             r.sii_document_class_id.name, str(e)),
                         exc_info=True
                     )
 
+    def _refrescar_caf_cron(self, caf):
+        try:
+            with self._cr.savepoint():
+                self._cr.execute(
+                    "SELECT id FROM dte_caf WHERE id = %s FOR UPDATE SKIP LOCKED",
+                    [caf.id],
+                )
+                if not self._cr.fetchone():
+                    return
+                caf.invalidate_recordset()
+                caf.compute_folio_actual()
+                caf.flush_recordset()
+        except (errors.SerializationFailure, errors.LockNotAvailable):
+            caf.invalidate_recordset()
+            return
+        except Exception as e:
+            caf.invalidate_recordset()
+            _logger.warning(
+                "Error refrescando folio_actual del CAF %s: %s",
+                caf.id, str(e), exc_info=True,
+            )
+            return
+        self._cr.commit()
+
     @api.onchange('sii_document_class_id')
     def _auto_set_is_dte(self):
         self.is_dte = self.sii_document_class_id.dte
+
+    def _info_folios_dte(self):
+        self.ensure_one()
+        if not self.is_dte:
+            return 0, 0
+        try:
+            folio = self.get_folio(readonly=True)
+        except Exception:
+            _logger.warning(
+                "No se pudo leer el folio siguiente de la secuencia %s", self.name,
+                exc_info=True)
+            folio = 0
+        try:
+            quedan = self.qty_available
+        except Exception:
+            _logger.warning(
+                "No se pudo leer los folios disponibles de la secuencia %s", self.name,
+                exc_info=True)
+            quedan = 0
+        return folio, quedan
+
+    def _etiqueta_folios(self):
+        self.ensure_one()
+        folio, quedan = self._info_folios_dte()
+        if not folio:
+            return _("sin folios")
+        return _("folio %s, %s disponibles") % (folio, quedan)
+
+    @api.depends_context("mostrar_folio")
+    def _compute_display_name(self):
+        super()._compute_display_name()
+        if not self.env.context.get("mostrar_folio"):
+            return
+        for seq in self:
+            if seq.is_dte:
+                seq.display_name = "%s (%s)" % (seq.display_name, seq._etiqueta_folios())
 
     def solicitar_caf(self, cantidad=0):
         if self.qty_available == self.nivel_minimo:
@@ -215,6 +273,13 @@ class IRSequence(models.Model):
             if caf == self.dte_caf_ids[0]:
                 return 0
             return self.get_folio(folio_actual+1)
+        if folio_actual == caf.final_nm:
+            caf._mark_spent()
+        try:
+            caf.notify_use_expiration()
+        except Exception:
+            _logger.warning(
+                "No se pudo avisar el vencimiento del CAF %s", caf.id, exc_info=True)
         return folio_actual
 
     def time_stamp(self, formato="%Y-%m-%dT%H:%M:%S"):

@@ -11,6 +11,9 @@ from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
 
+CAF_DIAS_AVISO_DEFECTO = 30
+CAF_DIAS_AVISO_INTENSIVO_DEFECTO = 3
+
 try:
     import base64
 except ImportError:
@@ -135,6 +138,81 @@ class CAF(models.Model):
             self._mark_spent()
             return self.final_nm
         return folio
+
+    def _param_dias(self, clave, defecto):
+        valor = self.env["ir.config_parameter"].sudo().get_param(clave, defecto)
+        try:
+            return max(0, int(valor))
+        except (TypeError, ValueError):
+            _logger.warning("Valor inválido en %s: %r", clave, valor)
+            return defecto
+
+    def _debe_notificar_vencimiento(self, days_left):
+        self.ensure_one()
+        if days_left <= self._param_dias(
+                "l10n_cl_fe.caf_dias_aviso_intensivo", CAF_DIAS_AVISO_INTENSIVO_DEFECTO):
+            return True
+        Param = self.env["ir.config_parameter"].sudo()
+        clave = "l10n_cl_fe.caf_notif.%s.%s" % (self.id, self.env.uid)
+        hoy = fields.Date.to_string(fields.Date.context_today(self))
+        try:
+            if Param.get_param(clave) == hoy:
+                return False
+        except Exception as e:
+            _logger.debug("No se pudo leer %s: %s", clave, e)
+        try:
+            Param.set_param(clave, hoy)
+        except Exception as e:
+            _logger.debug("No se pudo registrar %s: %s", clave, e)
+        return True
+
+    def _mensaje_vencimiento(self, days_left):
+        self.ensure_one()
+        if days_left < 0:
+            cuando = _("venció hace %s días") % abs(days_left)
+        elif days_left == 0:
+            cuando = _("vence hoy")
+        else:
+            cuando = _("vence en %s días") % days_left
+        return _(
+            "El CAF de %(doc)s (folios %(desde)s-%(hasta)s) %(cuando)s, el "
+            "%(fecha)s. Quedan %(sin_usar)s folios sin usar. ⚠ Los folios no "
+            "utilizados a esa fecha deben anularse en el SII y ya no podrán "
+            "emitirse."
+        ) % {
+            "doc": self.document_class_id.name or "-",
+            "desde": self.start_nm,
+            "hasta": self.final_nm,
+            "cuando": cuando,
+            "fecha": self.expiration_date.strftime("%d-%m-%Y"),
+            "sin_usar": self.cantidad_folios_sin_usar,
+        }
+
+    def notify_use_expiration(self):
+        self.ensure_one()
+        if not self.expiration_date:
+            return
+        days_left = (self.expiration_date - fields.Date.context_today(self)).days
+        if days_left > self._param_dias(
+                "l10n_cl_fe.caf_dias_aviso", CAF_DIAS_AVISO_DEFECTO):
+            return
+        if not self._debe_notificar_vencimiento(days_left):
+            return
+        intensivo = days_left <= self._param_dias(
+            "l10n_cl_fe.caf_dias_aviso_intensivo", CAF_DIAS_AVISO_INTENSIVO_DEFECTO)
+        try:
+            self.env["bus.bus"]._sendone(
+                self.env.user.partner_id,
+                "simple_notification",
+                {
+                    "title": _("Folios por vencer"),
+                    "message": self._mensaje_vencimiento(days_left),
+                    "type": "danger" if intensivo else "warning",
+                    "sticky": True,
+                },
+            )
+        except Exception as e:
+            _logger.warning("No se pudo enviar toast de CAF por vencer: %s", e)
 
     def _is_folio_used(self, folio):
         if not self.document_class_id or not (self.start_nm <= folio <= self.final_nm):

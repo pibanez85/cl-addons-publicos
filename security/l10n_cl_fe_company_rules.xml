@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="account_move_book_comp_rule" model="ir.rule">
+        <field name="name">Libros: multi-compañía</field>
+        <field name="model_id" ref="model_account_move_book"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="account_move_book_honorarios_comp_rule" model="ir.rule">
+        <field name="name">Libros de honorarios: multi-compañía</field>
+        <field name="model_id" ref="model_account_move_book_honorarios"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="account_move_consumo_folios_comp_rule" model="ir.rule">
+        <field name="name">Consumo de folios: multi-compañía</field>
+        <field name="model_id" ref="model_account_move_consumo_folios"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="account_move_boleta_voucher_comp_rule" model="ir.rule">
+        <field name="name">Comprobantes de pago electrónico: multi-compañía</field>
+        <field name="model_id" ref="model_account_move_boleta_voucher"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="dte_caf_comp_rule" model="ir.rule">
+        <field name="name">CAF: multi-compañía</field>
+        <field name="model_id" ref="model_dte_caf"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="mail_message_dte_comp_rule" model="ir.rule">
+        <field name="name">DTE recibidos por correo: multi-compañía</field>
+        <field name="model_id" ref="model_mail_message_dte"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="mail_message_dte_document_comp_rule" model="ir.rule">
+        <field name="name">Documentos DTE recibidos: multi-compañía</field>
+        <field name="model_id" ref="model_mail_message_dte_document"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_xml_envio_comp_rule" model="ir.rule">
+        <field name="name">Envíos XML al SII: multi-compañía</field>
+        <field name="model_id" ref="model_sii_xml_envio"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_cola_envio_comp_rule" model="ir.rule">
+        <field name="name">Cola de envío al SII: multi-compañía</field>
+        <field name="model_id" ref="model_sii_cola_envio"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_respuesta_cliente_comp_rule" model="ir.rule">
+        <field name="name">Respuestas de clientes: multi-compañía</field>
+        <field name="model_id" ref="model_sii_respuesta_cliente"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_sucursal_comp_rule" model="ir.rule">
+        <field name="name">Sucursales SII: multi-compañía</field>
+        <field name="model_id" ref="model_sii_sucursal"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="account_tax_mepco_comp_rule" model="ir.rule">
+        <field name="name">Valores MEPCO: multi-compañía</field>
+        <field name="model_id" ref="model_account_tax_mepco"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="account_journal_sii_document_class_comp_rule" model="ir.rule">
+        <field name="name">Secuencias de documentos SII del diario: multi-compañía</field>
+        <field name="model_id" ref="model_account_journal_sii_document_class"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

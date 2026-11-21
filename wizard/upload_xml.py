@@ -65,7 +65,24 @@ class UploadXMLWizard(models.TransientModel):
             "context": ctx,
         }
 
+    def _con_companias_del_usuario(self):
+        return self.with_context(allowed_company_ids=(self.env.companies | self.env.user.company_ids).ids)
+
     def confirm(self, ret=False):
+        self = self._con_companias_del_usuario()
+        bhe = self._bhe()
+        if bhe is not None:
+            created = self._crear_bhe(bhe).ids
+            if ret:
+                return created
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("List of Results"),
+                "view_mode": "tree,form",
+                "res_model": "account.move",
+                "domain": str([("id", "in", created)]),
+                "target": "current",
+            }
         created = []
         if self.document_id:
             self.dte_id = self.document_id.dte_id.id
@@ -366,9 +383,17 @@ class UploadXMLWizard(models.TransientModel):
             if type == "purchase":
                 name = "Exento Compra"
             query.append(( target + "name", "=", name))
-        elif amount != 19 and sii_code not in [14, 15]:
+        elif amount != 19 and sii_code not in [14, 15] and str(sii_code) not in TASAS_IMPUESTO_ADICIONAL:
             query.append((target + "name", "=", name))
-        imp = self.env["account.tax.repartition.line"].search(query, limit=1)
+        imp = self.env["account.tax.repartition.line"].search(
+            query + [(target + "active", "=", True), ("account_id", "!=", False)], limit=1
+        ) or self.env["account.tax.repartition.line"].search(query + [(target + "active", "=", True)], limit=1)
+        if not imp:
+            imp = self._crear_impuesto_plantilla(type, amount, sii_code, company_id)
+            if imp:
+                return imp
+        if not imp and type == "purchase" and str(sii_code) in TASAS_IMPUESTO_ADICIONAL:
+            raise UserError(_("No existe un impuesto de compra activo con código SII %s y tasa %s%%") % (sii_code, amount))
         if not imp:
             return self.env["account.tax"].sudo().create(
                     {
@@ -596,7 +621,7 @@ class UploadXMLWizard(models.TransientModel):
             refund=refund
         )
         if line.find("CodImpAdic") is not None:
-            amount = 19
+            amount = TASAS_IMPUESTO_ADICIONAL.get(line.find("CodImpAdic").text, 19)
             tax_ids += self._buscar_impuesto(
                 type="purchase" if self.type == "compras" else "sale",
                 amount=amount, sii_code=line.find("CodImpAdic").text,
@@ -1028,7 +1053,110 @@ class UploadXMLWizard(models.TransientModel):
         )
         return self.env["mail.message.dte.document"].with_context(no_map_po_lines=True).create(data)
 
+    def _bhe(self):
+        try:
+            xml = etree.fromstring(base64.b64decode(self.xml_file))
+        except Exception:
+            return None
+        if xml.tag == "datos" and xml.findtext("numeroBoleta"):
+            return xml
+        return None
+
+    def _impuesto_retencion_honorarios(self, tasa, company):
+        Tax = self.env["account.tax"]
+        impuesto = Tax.search([
+            ("company_id", "=", company.id),
+            ("type_tax_use", "=", "purchase"),
+            ("amount_type", "=", "percent"),
+            ("amount", "<", 0),
+            ("invoice_repartition_line_ids.account_id.code", "=", "210704"),
+        ], order="id", limit=1)
+        if impuesto:
+            return impuesto
+        cuenta = self.env["account.account"].search([("company_id", "=", company.id), ("code", "=", "210704")], limit=1)
+        if not cuenta:
+            raise UserError(_("No existe la cuenta 210704 de retención de segunda categoría en %s") % company.name)
+        reparto = [(0, 0, {"repartition_type": "base"}), (0, 0, {"repartition_type": "tax", "account_id": cuenta.id})]
+        return Tax.create({
+            "name": _("Retención Honorarios"),
+            "amount": -tasa,
+            "amount_type": "percent",
+            "type_tax_use": "purchase",
+            "company_id": company.id,
+            "country_id": company.account_fiscal_country_id.id or self.env.ref("base.cl").id,
+            "invoice_repartition_line_ids": reparto,
+            "refund_repartition_line_ids": reparto,
+        })
+
+    def _crear_bhe(self, bhe):
+        Partner = self.env["res.partner"]
+        rut_receptor = "%s-%s" % (bhe.findtext("rutReceptor"), bhe.findtext("dvReceptor"))
+        company = self.env["res.company"].search([("vat", "in", Partner._vats_busqueda(rut_receptor))], limit=1)
+        if not company:
+            raise UserError(_("La boleta de honorarios es para %s, que no es una compañía de este sistema") % rut_receptor)
+        rut_emisor = "%s-%s" % (bhe.findtext("rutEmisor"), bhe.findtext("dvEmisor"))
+        dc = self.env["sii.document_class"].search([("sii_code", "=", 71)], limit=1)
+        folio = bhe.findtext("numeroBoleta")
+        partner = Partner._buscar_por_vat(rut_emisor, [("active", "=", True), ("parent_id", "=", False)])
+        if partner:
+            existe = self.env["account.move"].search([
+                ("company_id", "=", company.id),
+                ("partner_id", "=", partner.id),
+                ("document_class_id", "=", dc.id),
+                ("sii_document_number", "=", folio),
+                ("move_type", "=", "in_invoice"),
+            ], limit=1)
+            if existe:
+                return existe
+        else:
+            partner = Partner.create({
+                "name": Partner._rut_formateado(rut_emisor) or rut_emisor,
+                "vat": self.format_rut(rut_emisor),
+                "document_type_id": self.env.ref("l10n_cl_fe.dt_RUT").id,
+                "document_number": Partner._rut_formateado(rut_emisor) or rut_emisor,
+                "street": bhe.findtext("domicilioEmisor") or False,
+                "company_type": "person",
+                "country_id": self.env.ref("base.cl").id,
+                "supplier_rank": 1,
+            })
+        journal = self._get_journal(71, company)
+        impuesto = self.env["account.tax"]
+        if bhe.findtext("retieneEmisor") != "S":
+            impuesto = self._impuesto_retencion_honorarios(float(bhe.findtext("porcentajeImpuesto") or 0), company)
+        items = bhe.findall("prestacionServicios/item") or [bhe]
+        lineas = [(0, 0, {
+            "name": (item.findtext("descripcionLinea") or "").strip() or _("Honorarios"),
+            "quantity": 1,
+            "price_unit": float(item.findtext("valorServicio") or item.findtext("totalHonorarios") or 0),
+            "account_id": journal.default_account_id.id,
+            "tax_ids": [(6, 0, impuesto.ids)],
+        }) for item in items]
+        f = bhe.findtext("fechaBoleta")
+        fecha = fields.Date.to_date("%s-%s-%s" % (f[:4], f[4:6], f[6:8]))
+        move = self.env["account.move"].with_company(company).create({
+            "move_type": "in_invoice",
+            "partner_id": partner.id,
+            "company_id": company.id,
+            "journal_id": journal.id,
+            "invoice_date": fecha,
+            "date": fecha,
+            "document_class_id": dc.id,
+            "sii_document_number": folio,
+            "use_documents": False,
+            "invoice_origin": "XML BHE: %s" % (self.filename or ""),
+            "invoice_line_ids": lineas,
+        })
+        linea = move.line_ids.filtered(lambda l: impuesto and l.tax_line_id == impuesto)
+        retencion = -float(bhe.findtext("impuestoHonorarios") or 0)
+        if linea and move.currency_id.compare_amounts(linea.amount_currency, retencion):
+            move.write({"line_ids": [(1, linea.id, {"amount_currency": retencion, "balance": retencion})]})
+        self._create_attachment(base64.b64decode(self.xml_file).decode("UTF-8"), self.filename or "BHE_%s" % folio, move.id, "account.move", False)
+        return move
+
     def _get_dtes(self):
+        bhe = self._bhe()
+        if bhe is not None:
+            return [bhe]
         xml = self._read_xml("etree")
         if xml.tag == "SetDTE":
             return xml.findall("DTE")

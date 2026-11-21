@@ -65,4 +65,14 @@
         <field name="model_id" ref="model_account_journal_sii_document_class"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="sii_boleta_diaria_comp_rule" model="ir.rule">
+        <field name="name">Boletas diarias del SII: multi-compañía</field>
+        <field name="model_id" ref="model_sii_boleta_diaria"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_boleta_rebaja_comp_rule" model="ir.rule">
+        <field name="name">Rebajas del comprobante 48: multi-compañía</field>
+        <field name="model_id" ref="model_sii_boleta_rebaja"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>

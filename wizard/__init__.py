@@ -8,5 +8,6 @@ from . import masive_dte_accept
 from . import mail_compose_message
 from . import notas
 from . import sale_make_invoice_advance
+from . import trafquin
 from . import upload_xml
 from . import validar

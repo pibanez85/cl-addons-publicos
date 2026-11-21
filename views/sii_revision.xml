@@ -1,0 +1,629 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_sii_revision_periodo_list" model="ir.ui.view">
+        <field name="name">sii.revision.periodo.list</field>
+        <field name="model">sii.revision.periodo</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="estado in ('sin_consultar', 'fuera_actividades')" decoration-danger="estado in ('error', 'por_declarar')" decoration-warning="estado in ('descuadrado', 'fuera_plazo')" decoration-info="estado == 'declarado'" decoration-success="estado == 'pagado'">
+                <field name="company_id" groups="base.group_multi_company" optional="show" />
+                <field name="periodo" />
+                <field name="currency_id" column_invisible="1" />
+                <field name="impuesto_ventas" sum="Total" />
+                <field name="impuesto_compras" sum="Total" />
+                <field name="f29_ppm" sum="Total" />
+                <field name="total_a_pagar" sum="Total" />
+                <field name="declaracion_fecha" />
+                <field name="estado" widget="badge" decoration-muted="estado in ('sin_consultar', 'fuera_actividades')" decoration-danger="estado in ('error', 'por_declarar')" decoration-warning="estado in ('descuadrado', 'fuera_plazo')" decoration-info="estado == 'declarado'" decoration-success="estado == 'pagado'" />
+                <field name="recargo_f29" sum="Total" optional="hide" />
+                <field name="vence" optional="hide" />
+                <field name="f29_iva_pagar" sum="Total" optional="hide" />
+                <field name="f29_remanente" optional="hide" />
+                <field name="declaracion_estado" optional="hide" />
+                <field name="declaracion_total" optional="hide" />
+                <field name="f29_credito" optional="hide" />
+                <field name="f29_debito_odoo" optional="hide" />
+                <field name="f29_credito_odoo" optional="hide" />
+                <field name="f29_iva_pagar_odoo" optional="hide" />
+                <field name="f29_descuadres" optional="hide" decoration-warning="f29_descuadres" />
+                <field name="rcv_estado" optional="hide" widget="badge" decoration-muted="rcv_estado == 'sin_consultar'" decoration-danger="rcv_estado == 'error'" decoration-warning="rcv_estado in ('incompleto', 'diferencias')" decoration-success="rcv_estado == 'conciliado'" />
+                <field name="contable_estado" optional="hide" widget="badge" decoration-muted="contable_estado == 'sin_asiento'" decoration-warning="contable_estado == 'borrador'" decoration-info="contable_estado == 'publicado'" decoration-success="contable_estado == 'pagado'" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_sii_revision_periodo_form" model="ir.ui.view">
+        <field name="name">sii.revision.periodo.form</field>
+        <field name="model">sii.revision.periodo</field>
+        <field name="arch" type="xml">
+            <form string="Declaración Mensual F29">
+                <field name="declarado_sin_pago" invisible="1" />
+                <header>
+                    <button name="action_consultar_todo" string="Consultar todo en el SII" type="object" class="btn-primary" />
+                    <button name="action_consultar_rcv" string="Conciliar RCV" type="object" />
+                    <button name="action_abrir_propuesta_sii" string="Abrir propuesta en el SII" type="object" icon="fa-external-link" />
+                    <field name="estado" widget="badge" class="ms-auto" decoration-muted="estado in ('sin_consultar', 'fuera_actividades')" decoration-danger="estado in ('error', 'por_declarar')" decoration-warning="estado in ('descuadrado', 'fuera_plazo')" decoration-info="estado == 'declarado'" decoration-success="estado == 'pagado'" />
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1" /></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="periodo" placeholder="AAAAMM" />
+                            <field name="company_id" groups="base.group_multi_company" />
+                            <field name="currency_id" invisible="1" />
+                        </group>
+                        <group>
+                            <field name="compra_book_id" />
+                            <field name="venta_book_id" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Propuesta F29" name="f29">
+                            <div class="alert alert-danger" role="alert" invisible="not f29_error">
+                                <field name="f29_error" />
+                            </div>
+                            <group>
+                                <group>
+                                    <field name="f29_tiene_propuesta" />
+                                    <field name="f29_estado" />
+                                    <field name="declaracion_estado" />
+                                    <field name="declaracion_fecha" />
+                                    <field name="declaracion_total" />
+                                    <field name="vence" />
+                                </group>
+                                <group>
+                                    <field name="f29_fecha" />
+                                    <field name="f29_descuadres" />
+                                    <field name="f29_ajustes" />
+                                    <field name="compras_pendientes_iva" invisible="not compras_pendientes_iva" />
+                                </group>
+                            </group>
+                            <div class="alert alert-warning" role="alert" invisible="not declarado_aviso">
+                                <field name="declarado_aviso" nolabel="1" />
+                            </div>
+                            <div class="alert alert-info" role="alert" invisible="not declarado_sin_pago">
+                                F29 declarado sin detalle de pago: el recargo (reajuste, intereses y multas) queda en 0 al registrar el pago.
+                            </div>
+                            <div class="alert alert-warning" role="alert" invisible="not f29_saldos_aviso">
+                                <field name="f29_saldos_aviso" nolabel="1" />
+                            </div>
+                            <separator string="Observaciones probables del SII" />
+                            <field name="observaciones_html" nolabel="1" />
+                            <div class="mb-2">
+                                <button name="action_consultar_f29" string="Consultar SII" type="object" class="btn-secondary" />
+                                <button name="action_llevar_f29" string="Llevar ajustes al SII" type="object" class="btn-link" invisible="not f29_ajustes" />
+                                <button name="action_traer_declarado" string="Traer F29 declarado" type="object" class="btn-secondary" />
+                                <button name="action_generar_asiento_f29" string="Generar asiento F29" type="object" class="btn-secondary" invisible="not f29_formulario_ids or move_f29_estado == 'posted'" />
+                                <button name="action_registrar_pago_f29" string="Registrar pago" type="object" class="btn-secondary" invisible="move_f29_estado != 'posted' or f29_pagado" />
+                                <field name="move_f29_id" invisible="not move_f29_id" readonly="1" class="ms-2" />
+                                <field name="move_f29_estado" invisible="1" />
+                                <field name="f29_pagado" invisible="not f29_pagado" readonly="1" widget="boolean_toggle" class="ms-2" />
+                            </div>
+                            <p class="text-muted">
+                                El valor Odoo sale de los libros de compras y ventas del período y del consumo de folios, calculado como la propuesta del SII.
+                                Los ajustes quedan como borrador en Odoo. Odoo nunca presenta ni declara el F29: eso se hace en el portal del SII.
+                            </p>
+                            <field name="f29_formulario_ids">
+                                <tree editable="bottom" create="false" delete="false"
+                                      decoration-warning="explicacion"
+                                      decoration-danger="calculado_odoo and not explicacion and (diferencia &gt; 1 or diferencia &lt; -1)">
+                                    <field name="orden" column_invisible="1" />
+                                    <field name="codigo" options="{'enable_formatting': false}" />
+                                    <field name="glosa" />
+                                    <field name="columna" optional="show" />
+                                    <field name="grupo" optional="show" />
+                                    <field name="signo" optional="hide" />
+                                    <field name="calculado_odoo" column_invisible="1" />
+                                    <field name="valor_sii_texto" string="Valor SII" decoration-it="sii_calculado" />
+                                    <field name="sii_calculado" optional="hide" />
+                                    <field name="valor_odoo" invisible="not calculado_odoo" />
+                                    <field name="diferencia" invisible="not calculado_odoo" />
+                                    <button name="action_detalle" type="object" icon="fa-search" title="Cómo se calcula" />
+                                    <field name="ajustable" column_invisible="1" />
+                                    <button name="action_usar_odoo" string="Usar Odoo" type="object" icon="fa-arrow-left" invisible="not calculado_odoo or not ajustable" />
+                                    <field name="valor_declarado" column_invisible="not parent.declarado_detalle" decoration-warning="declarado_difiere" />
+                                    <field name="declarado_difiere" column_invisible="1" />
+                                    <field name="valor_propuesto" readonly="not ajustable" />
+                                    <field name="motivo" readonly="not ajustable" />
+                                    <field name="ajuste_uid" force_save="1" optional="show" />
+                                    <field name="ajuste_fecha" force_save="1" optional="hide" />
+                                    <field name="explicacion" optional="show" />
+                                </tree>
+                            </field>
+                            <separator string="Códigos administrativos del SII" invisible="not f29_admin_ids" />
+                            <field name="f29_admin_ids" readonly="1" invisible="not f29_admin_ids">
+                                <tree decoration-muted="1">
+                                    <field name="codigo" options="{'enable_formatting': false}" />
+                                    <field name="glosa" />
+                                    <field name="valor_sii_texto" string="Valor SII" />
+                                </tree>
+                            </field>
+                            <separator string="Declaraciones del período" />
+                            <field name="f29_declaracion_ids" readonly="1">
+                                <tree>
+                                    <field name="estado" />
+                                    <field name="folio" />
+                                    <field name="fecha" />
+                                    <field name="total" />
+                                    <field name="en_negocio" />
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="total_pagado" optional="show" />
+                                    <field name="tipo_declaracion" optional="show" />
+                                    <field name="sin_detalle" optional="hide" />
+                                    <field name="pdf_id" optional="show" />
+                                    <button name="action_ver_codigos" type="object" icon="fa-list" title="Ver lo declarado" invisible="not detalle_fecha" />
+                                    <field name="detalle_fecha" column_invisible="1" />
+                                </tree>
+                            </field>
+                            <field name="declarado_detalle" invisible="1" />
+                            <field name="f29_otros" invisible="not f29_otros" groups="base.group_no_one" />
+                        </page>
+                        <page string="RCV Compras" name="compras">
+                            <div class="alert alert-danger" role="alert" invisible="not compras_error">
+                                <field name="compras_error" />
+                            </div>
+                            <group>
+                                <group string="SII">
+                                    <field name="compras_iva_sii" />
+                                    <field name="compras_total_sii" />
+                                </group>
+                                <group string="Odoo">
+                                    <field name="compras_iva_odoo" />
+                                    <field name="compras_total_odoo" />
+                                </group>
+                                <group string="Diferencia">
+                                    <field name="compras_iva_dif" />
+                                    <field name="compras_total_dif" />
+                                </group>
+                                <group>
+                                    <field name="compras_fecha" />
+                                    <field name="compras_completo" />
+                                </group>
+                            </group>
+                            <div class="mb-2">
+                                <button name="action_consultar_compras" string="Consultar SII" type="object" class="btn-secondary" />
+                                <button name="action_traer_xml" string="Traer XML faltantes" type="object" class="btn-link" invisible="not compras_linea_ids or sistema_xml == 'propio'" />
+                                <field name="sistema_xml" invisible="1" />
+                                <span class="text-muted ms-2" invisible="not sistema_xml_aviso"><field name="sistema_xml_aviso" /></span>
+                            </div>
+                            <p class="text-muted">
+                                El período lo fija el RCV, no la fecha de la factura. Cada documento del RCV sin registro en Odoo queda como recepción con origen SII, sin XML, hasta que llegue su XML por correo.
+                            </p>
+                            <p class="text-muted" invisible="sistema_xml != 'propio'">
+                                La compañía usa software propio: el SII no guarda los XML recibidos y solo llegan por correo del emisor. Para cada documento faltante se puede registrar la factura con los datos del RCV, en borrador, o pedir el XML al proveedor.
+                            </p>
+                            <field name="compras_avisos" invisible="not compras_avisos" />
+                            <field name="compras_linea_ids" readonly="1">
+                                <tree decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
+                                      decoration-warning="estado in ('recibido', 'sin_xml')"
+                                      decoration-muted="estado == 'coincide'">
+                                    <field name="fecha" />
+                                    <field name="document_class_id" />
+                                    <field name="folio" />
+                                    <field name="rut" />
+                                    <field name="razon_social" />
+                                    <field name="estado_sii" optional="show" />
+                                    <field name="exento" optional="hide" />
+                                    <field name="neto" optional="hide" />
+                                    <field name="odoo_neto" optional="hide" />
+                                    <field name="iva" />
+                                    <field name="total" />
+                                    <field name="odoo_iva" />
+                                    <field name="odoo_total" />
+                                    <field name="diferencia" />
+                                    <field name="estado" />
+                                    <field name="xml_resultado" optional="show" />
+                                    <field name="xml_pedido_fecha" optional="hide" />
+                                    <button name="action_descargar_xml" type="object" icon="fa-download" title="Descargar XML" invisible="not puede_descargar" />
+                                    <button name="action_registrar_sin_xml" type="object" icon="fa-file-text-o" title="Registrar sin XML" invisible="not sin_descarga" />
+                                    <button name="action_pedir_xml" type="object" icon="fa-envelope-o" title="Pedir XML al proveedor" invisible="not sin_descarga" />
+                                    <field name="puede_descargar" column_invisible="1" />
+                                    <field name="sin_descarga" column_invisible="1" />
+                                    <button name="action_abrir" type="object" icon="fa-external-link" title="Abrir" invisible="not move_id and not document_id" />
+                                    <field name="move_id" column_invisible="1" />
+                                    <field name="document_id" column_invisible="1" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="RCV Ventas" name="ventas">
+                            <div class="alert alert-danger" role="alert" invisible="not ventas_error">
+                                <field name="ventas_error" />
+                            </div>
+                            <group>
+                                <group string="SII">
+                                    <field name="ventas_iva_sii" />
+                                    <field name="ventas_total_sii" />
+                                </group>
+                                <group string="Odoo">
+                                    <field name="ventas_iva_odoo" />
+                                    <field name="ventas_total_odoo" />
+                                </group>
+                                <group string="Diferencia">
+                                    <field name="ventas_iva_dif" />
+                                    <field name="ventas_total_dif" />
+                                </group>
+                                <group>
+                                    <field name="ventas_fecha" />
+                                    <field name="ventas_completo" />
+                                </group>
+                            </group>
+                            <div class="mb-2">
+                                <button name="action_consultar_ventas" string="Consultar SII" type="object" class="btn-secondary" />
+                            </div>
+                            <field name="ventas_avisos" invisible="not ventas_avisos" />
+                            <field name="ventas_linea_ids" readonly="1">
+                                <tree decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
+                                      decoration-muted="estado == 'coincide'">
+                                    <field name="fecha" />
+                                    <field name="document_class_id" />
+                                    <field name="folio" />
+                                    <field name="rut" />
+                                    <field name="razon_social" />
+                                    <field name="exento" optional="hide" />
+                                    <field name="neto" optional="hide" />
+                                    <field name="odoo_neto" optional="hide" />
+                                    <field name="iva" />
+                                    <field name="total" />
+                                    <field name="odoo_iva" />
+                                    <field name="odoo_total" />
+                                    <field name="diferencia" />
+                                    <field name="estado" />
+                                    <field name="xml_resultado" optional="show" />
+                                    <button name="action_descargar_xml" type="object" icon="fa-download" title="Descargar XML" invisible="not puede_descargar" />
+                                    <field name="puede_descargar" column_invisible="1" />
+                                    <button name="action_abrir" type="object" icon="fa-external-link" title="Abrir" invisible="not move_id" />
+                                    <field name="move_id" column_invisible="1" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Libro de boletas" name="boletas">
+                            <div class="alert alert-danger" role="alert" invisible="not boletas_error">
+                                <field name="boletas_error" />
+                            </div>
+                            <group>
+                                <group string="SII">
+                                    <field name="boletas_iva_sii" />
+                                    <field name="boletas_total_sii" />
+                                </group>
+                                <group string="Odoo">
+                                    <field name="boletas_iva_odoo" />
+                                    <field name="boletas_total_odoo" />
+                                </group>
+                                <group string="Diferencia">
+                                    <field name="boletas_iva_dif" />
+                                    <field name="boletas_total_dif" />
+                                </group>
+                                <group>
+                                    <field name="boletas_fecha" />
+                                </group>
+                            </group>
+                            <div class="mb-2">
+                                <button name="action_consultar_boletas" string="Consultar SII" type="object" class="btn-secondary" />
+                                <button name="action_actualizar_boletas" string="Pedir archivo nuevo al SII" type="object" class="btn-link" />
+                            </div>
+                            <p class="text-muted">
+                                Las boletas 39 y 41 se concilian por día contra los consumos de folios de Odoo; si el SII entrega el detalle diario, se usa ese.
+                                El tipo 48 (comprobante de pago electrónico) se compara por el total del mes; su detalle diario está en la pestaña Vouchers (48).
+                            </p>
+                            <field name="boletas_avisos" invisible="not boletas_avisos" />
+                            <field name="boleta_linea_ids" readonly="1">
+                                <tree decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
+                                      decoration-muted="estado == 'coincide'">
+                                    <field name="tipo_dte" />
+                                    <field name="fecha" />
+                                    <field name="cantidad_sii" />
+                                    <field name="cantidad_odoo" />
+                                    <field name="folio_desde" optional="show" />
+                                    <field name="folio_hasta" optional="show" />
+                                    <field name="exento" optional="hide" />
+                                    <field name="neto" optional="hide" />
+                                    <field name="iva" />
+                                    <field name="total" />
+                                    <field name="odoo_iva" />
+                                    <field name="odoo_total" />
+                                    <field name="diferencia" />
+                                    <field name="estado" />
+                                    <button name="action_ver_odoo" type="object" icon="fa-list" title="Ver en Odoo" />
+                                </tree>
+                            </field>
+                            <separator string="Boletas diarias del SII" />
+                            <field name="boleta_diaria_ids" readonly="1" context="{'search_default_con_movimiento': 1}" />
+                        </page>
+                        <page string="Vouchers (48)" name="vouchers" invisible="not modo_voucher">
+                            <field name="modo_voucher" invisible="1" />
+                            <group>
+                                <group>
+                                    <field name="v48_total_sii" />
+                                    <field name="v48_pagado" />
+                                    <field name="v48_con_factura" />
+                                    <field name="v48_pagos_sin_boleta" />
+                                </group>
+                                <group>
+                                    <field name="v48_rebajado" />
+                                    <field name="v48_pendiente" />
+                                    <field name="v48_iva_riesgo" />
+                                </group>
+                            </group>
+                            <div class="mb-2">
+                                <button name="action_conciliar_48" string="Conciliar pagos" type="object" class="btn-secondary" />
+                                <button name="action_proponer_rebajas" string="Proponer rebajas" type="object" class="btn-secondary" />
+                                <button name="action_ver_pagos_sin_boleta_48" string="Pagos sin comprobante 48" type="object" class="btn-link" invisible="not v48_pagos_sin_boleta" />
+                                <button name="action_nc_boletas_voucher" string="NC de boletas con voucher" type="object" class="btn-secondary" />
+                            </div>
+                            <p class="text-muted">
+                                Cada pago con un medio que declara ventas en el SII se vincula al 48 de su día y canal (fecha de la transacción de la pasarela o del pago, ±1 día).
+                                Lo pagado con factura hay que rebajarlo del 48 en el SII; si no, ese IVA se paga dos veces.
+                                Las boletas 39/41 emitidas y pagadas con estos medios se anulan con una NC (61) de boletas con voucher.
+                            </p>
+                            <field name="boleta48_ids" readonly="1" />
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sii_revision_f29_declaracion_form" model="ir.ui.view">
+        <field name="name">sii.revision.f29.declaracion.form</field>
+        <field name="model">sii.revision.f29.declaracion</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <sheet>
+                    <div class="alert alert-info" role="alert" invisible="not sin_detalle">
+                        F29 declarado sin detalle de códigos: revise el PDF.
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not pago_sin_detalle">
+                        Sin detalle de pago: el recargo queda en 0 al registrar el pago.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="folio" />
+                            <field name="estado" />
+                            <field name="fecha" />
+                            <field name="tipo_declaracion" />
+                            <field name="corrige_folios" />
+                            <field name="fecha_presentacion" />
+                            <field name="banco" />
+                            <field name="medio_pago" />
+                            <field name="pdf_id" />
+                            <field name="detalle_fecha" />
+                            <field name="sin_detalle" invisible="1" />
+                            <field name="pago_sin_detalle" invisible="1" />
+                        </group>
+                        <group>
+                            <field name="currency_id" invisible="1" />
+                            <field name="total" />
+                            <field name="total_plazo_legal" />
+                            <field name="ipc" />
+                            <field name="intereses_multas" />
+                            <field name="condonacion" />
+                            <field name="recargo" />
+                            <field name="total_con_recargo" />
+                            <field name="total_pagado" />
+                        </group>
+                    </group>
+                    <field name="codigo_ids">
+                        <tree>
+                            <field name="codigo" options="{'enable_formatting': false}" />
+                            <field name="glosa" />
+                            <field name="valor" />
+                            <field name="valor_texto" optional="hide" />
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sii_revision_f29_linea_form" model="ir.ui.view">
+        <field name="name">sii.revision.f29.linea.form</field>
+        <field name="model">sii.revision.f29.linea</field>
+        <field name="arch" type="xml">
+            <form string="Cómo se calcula el código" create="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="codigo" readonly="1" options="{'enable_formatting': false}" />
+                            <field name="glosa" readonly="1" />
+                            <field name="columna" readonly="1" />
+                            <field name="formula" readonly="1" invisible="not formula" />
+                            <field name="motivo_no_calculado" readonly="1" invisible="calculado_odoo" />
+                            <field name="calculado_odoo" invisible="1" />
+                        </group>
+                        <group>
+                            <field name="valor_sii_texto" string="Valor SII" />
+                            <field name="sii_calculado" readonly="1" />
+                            <field name="valor_odoo" readonly="1" invisible="not calculado_odoo" />
+                            <field name="diferencia" readonly="1" invisible="not calculado_odoo" />
+                            <field name="explicacion" invisible="not explicacion" />
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cálculo de Odoo" name="odoo">
+                            <field name="aporte_odoo_ids" readonly="1">
+                                <tree create="false" delete="false" decoration-danger="origen == 'diferencia'">
+                                    <field name="origen" column_invisible="1" />
+                                    <field name="descripcion" />
+                                    <field name="tipo_dte" />
+                                    <field name="folio" />
+                                    <field name="rut" />
+                                    <field name="fecha" />
+                                    <field name="neto" optional="show" />
+                                    <field name="iva" optional="show" />
+                                    <field name="monto" sum="Total" />
+                                    <field name="estado_cruce" optional="show" />
+                                    <field name="xml_resultado" optional="show" />
+                                    <field name="xml_pedido_fecha" optional="hide" />
+                                    <button name="action_descargar_xml" type="object" icon="fa-download" title="Descargar XML" invisible="not puede_descargar" />
+                                    <button name="action_registrar_sin_xml" type="object" icon="fa-file-text-o" title="Registrar sin XML" invisible="not sin_descarga" />
+                                    <button name="action_pedir_xml" type="object" icon="fa-envelope-o" title="Pedir XML al proveedor" invisible="not sin_descarga" />
+                                    <field name="puede_descargar" column_invisible="1" />
+                                    <field name="sin_descarga" column_invisible="1" />
+                                    <field name="move_id" optional="show" />
+                                    <field name="rcv_linea_id" optional="hide" />
+                                    <field name="boleta_id" optional="show" />
+                                    <field name="sii_boleta_id" optional="hide" />
+                                    <field name="componente_id" optional="show" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Respaldo del SII" name="sii">
+                            <field name="aporte_sii_ids" readonly="1">
+                                <tree create="false" delete="false" decoration-danger="origen == 'diferencia'">
+                                    <field name="origen" column_invisible="1" />
+                                    <field name="descripcion" />
+                                    <field name="tipo_dte" />
+                                    <field name="folio" />
+                                    <field name="rut" />
+                                    <field name="fecha" />
+                                    <field name="neto" optional="show" />
+                                    <field name="iva" optional="show" />
+                                    <field name="monto" sum="Total" />
+                                    <field name="estado_cruce" optional="show" />
+                                    <field name="xml_resultado" optional="show" />
+                                    <field name="xml_pedido_fecha" optional="hide" />
+                                    <button name="action_descargar_xml" type="object" icon="fa-download" title="Descargar XML" invisible="not puede_descargar" />
+                                    <button name="action_registrar_sin_xml" type="object" icon="fa-file-text-o" title="Registrar sin XML" invisible="not sin_descarga" />
+                                    <button name="action_pedir_xml" type="object" icon="fa-envelope-o" title="Pedir XML al proveedor" invisible="not sin_descarga" />
+                                    <field name="puede_descargar" column_invisible="1" />
+                                    <field name="sin_descarga" column_invisible="1" />
+                                    <field name="move_id" optional="show" />
+                                    <field name="rcv_linea_id" optional="hide" />
+                                    <field name="boleta_id" optional="show" />
+                                    <field name="sii_boleta_id" optional="hide" />
+                                    <field name="componente_id" optional="show" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Diferencia explicada" name="diferencia">
+                            <field name="aporte_diferencia_ids" readonly="1">
+                                <tree create="false" delete="false" decoration-danger="origen == 'diferencia'">
+                                    <field name="origen" column_invisible="1" />
+                                    <field name="descripcion" />
+                                    <field name="tipo_dte" />
+                                    <field name="folio" />
+                                    <field name="rut" />
+                                    <field name="fecha" />
+                                    <field name="neto" optional="show" />
+                                    <field name="iva" optional="show" />
+                                    <field name="monto" sum="Total" />
+                                    <field name="estado_cruce" optional="show" />
+                                    <field name="xml_resultado" optional="show" />
+                                    <field name="xml_pedido_fecha" optional="hide" />
+                                    <button name="action_descargar_xml" type="object" icon="fa-download" title="Descargar XML" invisible="not puede_descargar" />
+                                    <button name="action_registrar_sin_xml" type="object" icon="fa-file-text-o" title="Registrar sin XML" invisible="not sin_descarga" />
+                                    <button name="action_pedir_xml" type="object" icon="fa-envelope-o" title="Pedir XML al proveedor" invisible="not sin_descarga" />
+                                    <field name="puede_descargar" column_invisible="1" />
+                                    <field name="sin_descarga" column_invisible="1" />
+                                    <field name="move_id" optional="show" />
+                                    <field name="rcv_linea_id" optional="hide" />
+                                    <field name="boleta_id" optional="show" />
+                                    <field name="sii_boleta_id" optional="hide" />
+                                    <field name="componente_id" optional="show" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sii_revision_f29_enviar_form" model="ir.ui.view">
+        <field name="name">sii.revision.f29.enviar.form</field>
+        <field name="model">sii.revision.f29.enviar</field>
+        <field name="arch" type="xml">
+            <form string="Llevar ajustes de la propuesta al SII">
+                <p>
+                    Se guardarán en la propuesta de F29 del SII estos cambios (código: valor SII → valor nuevo, motivo).
+                    No se presenta ni se declara el F29.
+                </p>
+                <field name="revision_id" invisible="1" />
+                <field name="resumen" readonly="1" />
+                <footer>
+                    <button name="action_confirmar" string="Confirmar y llevar al SII" type="object" class="btn-primary" />
+                    <button string="Cancelar" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sii_revision_periodo_search" model="ir.ui.view">
+        <field name="name">sii.revision.periodo.search</field>
+        <field name="model">sii.revision.periodo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="periodo" />
+                <field name="company_id" groups="base.group_multi_company" />
+                <filter name="sin_consultar" string="Sin consultar" domain="[('estado', '=', 'sin_consultar')]" />
+                <filter name="fuera_actividades" string="Antes del inicio de actividades" domain="[('estado', '=', 'fuera_actividades')]" />
+                <filter name="error" string="Con error" domain="[('estado', '=', 'error')]" />
+                <filter name="descuadrado" string="Descuadrados" domain="[('estado', '=', 'descuadrado')]" />
+                <filter name="por_declarar" string="Sin declarar, vencidos" domain="[('estado', '=', 'por_declarar')]" />
+                <filter name="en_plazo" string="Por declarar" domain="[('estado', '=', 'en_plazo')]" />
+                <filter name="fuera_plazo" string="Declarados fuera de plazo" domain="[('estado', '=', 'fuera_plazo')]" />
+                <filter name="declarado" string="Declarados sin pago en Odoo" domain="[('estado', '=', 'declarado')]" />
+                <filter name="pagado" string="Pagados" domain="[('estado', '=', 'pagado')]" />
+                <separator />
+                <filter name="rcv_pendiente" string="RCV no conciliado" domain="[('rcv_estado', '!=', 'conciliado')]" />
+                <filter name="sin_asiento" string="Sin asiento F29" domain="[('contable_estado', '=', 'sin_asiento')]" />
+                <group>
+                    <filter name="por_compania" string="Compañía" context="{'group_by': 'company_id'}" groups="base.group_multi_company" />
+                    <filter name="por_anio" string="Año" context="{'group_by': 'anio'}" />
+                    <filter name="por_estado" string="Estado" context="{'group_by': 'estado'}" />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sii_revision_periodo" model="ir.actions.act_window">
+        <field name="name">Declaración Mensual F29</field>
+        <field name="res_model">sii.revision.periodo</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem
+        id="menu_sii_revision_periodo"
+        action="action_sii_revision_periodo"
+        parent="account.menu_finance"
+        sequence="4"
+        groups="account.group_account_invoice"
+    />
+
+    <data noupdate="1">
+        <record id="ir_cron_sii_revision_mensual" model="ir.cron">
+            <field name="name">Declaración Mensual F29 con el SII (propuesta, RCV y boletas)</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall" eval="(DateTime.now().replace(day=1, hour=10, minute=0, second=0) + relativedelta(months=1)).strftime('%Y-%m-%d %H:%M:%S')" />
+            <field name="model_id" ref="model_sii_revision_periodo" />
+            <field name="state">code</field>
+            <field name="code">model._cron_revision_mensual()</field>
+            <field name="active" eval="True" />
+        </record>
+        <record id="ir_cron_sii_rcv_diario" model="ir.cron">
+            <field name="name">Declaración Mensual F29: conciliar RCV del mes corrido con el SII</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1)).replace(hour=9, minute=0, second=0).strftime('%Y-%m-%d %H:%M:%S')" />
+            <field name="model_id" ref="model_sii_revision_periodo" />
+            <field name="state">code</field>
+            <field name="code">model._cron_rcv_diario()</field>
+            <field name="active" eval="True" />
+        </record>
+    </data>
+    <record id="view_account_payment_register_form_f29" model="ir.ui.view">
+        <field name="name">account.payment.register.form.f29</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form" />
+        <field name="arch" type="xml">
+            <field name="communication" position="after">
+                <field name="f29_revision_id" invisible="1" />
+                <field name="f29_recargo" invisible="not f29_revision_id" />
+            </field>
+        </field>
+    </record>
+</odoo>

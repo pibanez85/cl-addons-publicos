@@ -193,6 +193,35 @@ Integración con [apicaf.cl](https://apicaf.cl) para gestión automatizada de fo
 - **Alerta Automática**: Notificación cuando los folios están por agotarse
 - **Configuración**: URL y Token en Ajustes Generales de Contabilidad
 
+### Revisión mensual con el SII (trafquin)
+Odoo se conecta al SII a través de **trafquin**, servicio de consultas de solo lectura, con la **clave tributaria** de cada compañía (o el certificado de firma). Se configura en *Ajustes → Facturación electrónica*: URL y token de trafquin (el token se obtiene en [trafquin.cl](https://trafquin.cl/#planes)), clave SII de la compañía y sistema de facturación (Sistema MIPYME del SII o software propio). Si el SII rechaza la clave, trafquin no reintenta y Odoo avisa para corregirla.
+
+#### Declaración Mensual F29 (Contabilidad → Declaración Mensual F29)
+- **Período mensual**: un cron crea la revisión de cada mes y trae la **propuesta de F29 del SII**. La lista muestra por período el impuesto de ventas, el impuesto de compras, el PPM y el **total a pagar**, con su estado (por declarar, declarado, pagado, fuera de plazo, con diferencias)
+- **Conciliación por código**: cada código del formulario (538, 537, 511, 062, 089, etc.) se compara con lo calculado en Odoo; el detalle muestra qué documentos y montos lo forman
+- **Ajustes del registro diario de boletas**: solo los códigos de boletas y comprobantes 48 (110, 111, 758 y 759) se pueden ajustar con su motivo o tomar de Odoo (*Usar Odoo*). Los totales los calcula el SII y no se modifican; el asiento los recalcula a partir de lo ajustado. *Abrir propuesta en el SII* ingresa al formulario con la clave de la compañía. Guardar los ajustes en la propuesta del SII aún no está disponible: quedan como borrador en Odoo
+- **F29 declarado**: *Traer F29 declarado* obtiene lo efectivamente declarado (folio, fecha, reajuste, intereses y multas, condonación, IVA postergado) y deja el historial de lo pagado
+- **Asiento y pago**: *Generar asiento F29* crea el asiento (débito y crédito fiscal, remanente, PPM, retenciones, impuesto único, IVA postergado, recargos) y *Registrar pago* lo paga contra el diario de banco. Las cuentas se configuran en Ajustes; el plan de cuentas chileno incluye 420203 *Reajuste Remanente Crédito Fiscal* y 210711 *IVA Postergado por Pagar* para las compañías nuevas; en una compañía existente se crean a mano
+- **Nunca presenta ni acepta el F29 en el SII**: prepara, concilia y registra; la declaración la presenta usted
+
+#### Registro de Compras y Ventas diario
+- Un cron concilia cada día el **RCV del mes en curso** contra Odoo, documento por documento: *coincide*, *monto distinto*, *recibido sin factura*, *pendiente sin XML*, *falta en Odoo* o *falta en el SII*
+- **Compras sin XML**: el documento del Registro de Compras se crea como recibido de origen *Registro de Compras*; desde la línea se puede **descargar el XML** (Sistema MIPYME del SII), **pedirlo al proveedor** por correo o **registrar la factura sin XML** con los montos del SII. Cuando llega el XML, el documento se completa
+- Con el libro de compras completo, el libro de compras de Odoo toma los documentos en estado *Registro* y *Pendiente*
+
+#### Boletas diarias y comprobantes de pago electrónico (48)
+- **Boletas diarias del SII**: resumen por día de boletas (39, 41) y comprobantes de pago electrónico (48) informados al SII, comparados con las boletas emitidas en Odoo; los días que no están en Odoo se suman en la línea de boletas del libro de ventas
+- **Comprobantes 48 (modelo voucher)**: se concilian con los pagos electrónicos de cada día, se proponen las **rebajas** de los pagos de facturas y se vinculan los pagos sin comprobante. En el libro de ventas la línea 48 es solo informativa (no se envía al SII)
+- **NC de boletas pagadas con voucher**: se incluyen en el libro de ventas como notas de crédito
+
+#### XML de DTE desde el SII (respaldo)
+- Asistente para **listar y restaurar** los XML de documentos **emitidos o recibidos** desde el respaldo del SII, por período, tipo de documento y contraparte, sin duplicar los que ya están en Odoo
+- Un cron obtiene cada día los **XML de proveedores** de los últimos días desde el SII y los registra como documentos recibidos
+
+#### Seguridad
+- Reglas multiempresa para las revisiones, boletas diarias y rebajas
+- Al neutralizar una base (copias de prueba) se borran la clave SII y la configuración de trafquin
+
 ## Casos de Uso
 
 ### Emisión de Factura Electrónica

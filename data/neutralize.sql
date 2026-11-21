@@ -8,6 +8,16 @@ UPDATE res_company
    SET token_apicaf = NULL
  WHERE token_apicaf IS NOT NULL;
 
+-- trafquin: sin URL no se consulta el SII
+UPDATE res_company
+   SET url_trafquin = NULL, token_trafquin = NULL
+ WHERE url_trafquin IS NOT NULL OR token_trafquin IS NOT NULL;
+
+-- clave tributaria del SII de cada compañía
+UPDATE res_company
+   SET sii_clave_tributaria = NULL, sii_clave_rechazada = NULL, sii_clave_rechazo_fecha = NULL
+ WHERE sii_clave_tributaria IS NOT NULL OR sii_clave_rechazada IS NOT NULL;
+
 -- sincronización de partners con el servicio remoto
 UPDATE res_company
    SET sync_remote_partners = false

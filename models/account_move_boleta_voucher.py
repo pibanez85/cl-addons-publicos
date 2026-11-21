@@ -109,16 +109,16 @@ class SIIResumenBoletaVoucher(models.Model):
     medios_de_pago = fields.Many2many(
         'account.journal',
         string="Medios de pago Electrónicos",
-        readonly=True,
-        default=lambda self: self.company_id.medios_de_pago_electronico.ids,
+        compute='_compute_medios_de_pago',
+        help="Diarios de banco marcados con «Declara ventas en el SII» en la compañía",
     )
 
     _order = 'fecha_emision desc'
 
-    @api.onchange('company_id')
-    def set_medios_pago_company(self):
-        if self.company_id:
-            self.medios_de_pago += self.company_id.medios_de_pago_electronico
+    @api.depends('company_id.medios_de_pago_electronico')
+    def _compute_medios_de_pago(self):
+        for r in self:
+            r.medios_de_pago = r.company_id.medios_de_pago_electronico
 
     @api.onchange('periodo')
     def set_name(self):
@@ -156,44 +156,15 @@ class SIIResumenBoletaVoucher(models.Model):
             rec.total_calculado = rec.total = monto_total
             rec.total_boletas = len(moves)
 
-    @api.onchange('periodo', 'company_id', 'medios_de_pago')
+    @api.onchange('periodo', 'company_id')
     def set_movimientos(self):
-        if not self.medios_de_pago:
+        if not self.medios_de_pago or not self.periodo:
             return
-        current = datetime.strptime( self.periodo + '-01', '%Y-%m-%d' )
-        next_month = current + relativedelta.relativedelta(months=1)
-        query = [
-            ('ref_id.sii_code', 'in', [39, 41]),
-            ('cod_ref', 'in', ['1', '3']),
-            ('move_id.invoice_date' , '>=', current),
-            ('move_id.invoice_date' , '<=', next_month),
-            ('move_id.journal_id', 'in', self.medios_de_pago.ids),
-            ('move_id.company_id', '=', self.company_id.id),
-        ]
-        ncs = self.env['account.move.referencias'].search(query)
-        query = [
-            ('reconciled_line_ids.company_id', '=', self.company_id.id),
-            ('reconciled_line_ids.move_id.invoice_date' , '>=', current),
-            ('reconciled_line_ids.move_id.invoice_date' , '<=', next_month),
-            ('reconciled_line_ids.journal_id', 'in', self.medios_de_pago.ids),
-            ('reconciled_line_ids.move_id.document_class_id.sii_code', 'in', [39, 41]),
-            ('reconciled_line_ids.move_id.move_type', '=', 'out_invoice'),
-        ]
-        nc_invs = self.env['account.move']
-        for nc in ncs:
-            o = self.env['account.move.referencias'].search([
-                ('sii_document_number', '=', nc.folio),
-                ('document_class_id', '=', nc.ref_id.id),
-            ])
-            nc_invs += o
-        if nc_invs:
-            query.append(('reconciled_line_ids.move_id.id', 'not in', nc_invs.ids))
-        moves = self.env['account.move']
-        for r in self.env['account.full.reconcile'].search(query):
-            for aml in r.reconciled_line_ids:
-                if aml.debit > 0:
-                    moves += aml.move_id
-        self.move_ids = moves
+        desde = datetime.strptime(self.periodo + '-01', '%Y-%m-%d').date()
+        hasta = desde + relativedelta.relativedelta(months=1, days=-1)
+        pagadas = self._boletas_pagadas_con_48(self.company_id, desde, hasta, excepto=self._origin)
+        self.move_ids = self.env['account.move'].concat(
+            *[p['documento'] for p in pagadas if p['documento']._name == 'account.move'])
 
 
 

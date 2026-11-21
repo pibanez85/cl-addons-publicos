@@ -1,7 +1,12 @@
+import hashlib
 import re
+from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.tools.translate import _
+
+
+SISTEMAS_XML = [("mipyme", "Sistema MIPYME del SII"), ("propio", "Software propio o de mercado")]
 
 
 class DTECompany(models.Model):
@@ -176,6 +181,45 @@ stamp to be legally valid.""",
         string="Token APICAF",
         default='token_publico',
     )
+    url_trafquin = fields.Char(string="URL trafquin", default="https://trafquin.cl")
+    token_trafquin = fields.Char(string="Token trafquin")
+    sii_clave_tributaria = fields.Char(string="Clave tributaria SII", groups="base.group_system", copy=False)
+    sii_clave_rechazada = fields.Char(groups="base.group_system", copy=False)
+    sii_clave_rechazo_fecha = fields.Datetime(groups="base.group_system", copy=False)
+    sii_clave_aviso = fields.Char(compute="_compute_sii_clave_aviso", groups="base.group_system")
+    sii_sistema_xml = fields.Selection(
+        SISTEMAS_XML,
+        string="Sistema de facturación",
+        help="Con el sistema MIPYME el SII guarda los XML recibidos y se pueden descargar. Con software propio "
+             "el XML de un documento recibido solo llega por correo del emisor. Vacío: si la compañía timbra "
+             "documentos en Odoo es software propio; si no, se usa la ficha de la compañía o lo que informe trafquin.",
+    )
+    sii_sistema_xml_trafquin = fields.Selection(SISTEMAS_XML, string="Sistema según trafquin", readonly=True, copy=False)
+    sii_sistema_xml_aviso = fields.Char(compute="_compute_sii_sistema_xml_aviso")
+    f29_cuenta_debito_id = fields.Many2one("account.account", string="Cuenta IVA Débito Fiscal", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_credito_id = fields.Many2one("account.account", string="Cuenta IVA Crédito Fiscal", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_remanente_id = fields.Many2one("account.account", string="Cuenta Remanente Crédito Fiscal", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_ppm_id = fields.Many2one("account.account", string="Cuenta PPM pagado", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_retencion_id = fields.Many2one("account.account", string="Cuenta retención de segunda categoría", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_impuesto_unico_id = fields.Many2one("account.account", string="Cuenta impuesto único", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_por_pagar_id = fields.Many2one("account.account", string="Cuenta F29 por pagar", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_recargo_id = fields.Many2one("account.account", string="Cuenta de reajuste, intereses y multas", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_cuenta_reajuste_id = fields.Many2one("account.account", string="Cuenta reajuste remanente",
+        groups="base.group_system", check_company=True, copy=False)
+    f29_cuenta_postergado_id = fields.Many2one("account.account", string="Cuenta IVA postergado por pagar",
+        groups="base.group_system", check_company=True, copy=False)
+    f29_diario_id = fields.Many2one("account.journal", string="Diario del asiento F29", groups="base.group_system",
+        check_company=True, copy=False)
+    f29_tesoreria_id = fields.Many2one("res.partner", string="Tesorería General de la República",
+        groups="base.group_system", copy=False)
 
     @api.onchange("document_number", "document_type_id")
     def onchange_document(self):
@@ -214,3 +258,92 @@ stamp to be legally valid.""",
             self.country_id = self.city_id.state_id.country_id.id
             self.state_id = self.city_id.state_id.id
             self.city = self.city_id.name
+
+    def _huella_clave_sii(self):
+        clave = self.sudo().sii_clave_tributaria
+        return hashlib.sha256(clave.encode()).hexdigest() if clave else False
+
+    def _clave_sii_rechazada(self):
+        self.ensure_one()
+        huella = self._huella_clave_sii()
+        return bool(huella) and self.sudo().sii_clave_rechazada == huella
+
+    def _bloqueo_trafquin_hasta(self):
+        fecha = self.sudo().sii_clave_rechazo_fecha
+        hasta = fecha and fecha + timedelta(hours=1)
+        return hasta if hasta and hasta > fields.Datetime.now() else False
+
+    @api.depends("sii_clave_tributaria", "sii_clave_rechazada", "sii_clave_rechazo_fecha")
+    def _compute_sii_clave_aviso(self):
+        for company in self:
+            hasta = company._bloqueo_trafquin_hasta()
+            if company._clave_sii_rechazada():
+                company.sii_clave_aviso = _("El SII rechazó esta clave: cámbiela")
+            elif hasta and company.sudo().sii_clave_tributaria:
+                company.sii_clave_aviso = _(
+                    "La clave anterior fue rechazada: trafquin no probará la nueva clave hasta las %s"
+                ) % fields.Datetime.context_timestamp(company, hasta).strftime("%H:%M")
+            else:
+                company.sii_clave_aviso = False
+
+    def _marcar_clave_sii_rechazada(self):
+        self.ensure_one()
+        if self._bloqueo_trafquin_hasta() and self.sudo().sii_clave_rechazada != self._huella_clave_sii():
+            return False
+        self.sudo().write({
+            "sii_clave_rechazada": self._huella_clave_sii(),
+            "sii_clave_rechazo_fecha": fields.Datetime.now(),
+        })
+        return True
+
+    def _rut_ingreso_sii(self):
+        self.ensure_one()
+        return self.partner_id.rut()
+
+    def _timbra_documentos(self):
+        self.ensure_one()
+        if self.env["dte.caf"].sudo().search_count([("company_id", "=", self.id)], limit=1):
+            return True
+        for modelo, dominio in (
+            ("account.move", [("move_type", "in", ["out_invoice", "out_refund"])]),
+            ("stock.picking", []),
+            ("pos.order", []),
+        ):
+            Modelo = self.env.get(modelo)
+            if Modelo is None or "sii_barcode" not in Modelo._fields:
+                continue
+            if Modelo.sudo().search_count(
+                    [("company_id", "=", self.id), ("sii_barcode", "not in", [False, ""])] + dominio, limit=1):
+                return True
+        return False
+
+    def _sistema_xml(self):
+        self.ensure_one()
+        if self.sii_sistema_xml:
+            return self.sii_sistema_xml
+        if self._timbra_documentos():
+            return "propio"
+        if self.partner_id.es_mipyme:
+            return "mipyme"
+        return self.sii_sistema_xml_trafquin or False
+
+    @api.depends("sii_sistema_xml", "sii_sistema_xml_trafquin", "partner_id.es_mipyme")
+    def _compute_sii_sistema_xml_aviso(self):
+        nombres = dict(SISTEMAS_XML)
+        for company in self:
+            company.sii_sistema_xml_aviso = False
+            if not company.id or company.sii_sistema_xml:
+                continue
+            if company._timbra_documentos():
+                company.sii_sistema_xml_aviso = _(
+                    "Timbra documentos en Odoo: se considera software propio, aunque trafquin informa que usa "
+                    "el sistema MIPYME del SII"
+                ) if company.sii_sistema_xml_trafquin == "mipyme" else _(
+                    "Timbra documentos en Odoo: se considera software propio")
+            elif company._sistema_xml():
+                company.sii_sistema_xml_aviso = _("Se considera: %s") % nombres[company._sistema_xml()]
+
+    def _informar_mipyme(self, mipyme):
+        if mipyme is None:
+            return
+        self.sudo().sii_sistema_xml_trafquin = "mipyme" if mipyme else "propio"

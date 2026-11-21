@@ -34,12 +34,10 @@ class Honorarios(models.Model):
         string="Compañía",
         required=True,
         default=lambda self: self.env.company.id,
-        readonly=True,
-
     )
-    name = fields.Char(string="Detalle", required=True, readonly=True, )
+    name = fields.Char(string="Detalle", required=True)
     state = fields.Selection([("draft", "Borrador"), ("done", "Válido"),], default="draft", string="Estado",)
-    move_ids = fields.Many2many("account.move", readonly=True, )
+    move_ids = fields.Many2many("account.move")
     impuestos = fields.One2many("account.move.book.honorarios.tax", "book_id", string="Detalle Impuestos",)
 
     @api.onchange("periodo_tributario", "tipo_libro")

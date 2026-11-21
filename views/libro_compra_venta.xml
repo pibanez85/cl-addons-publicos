@@ -101,26 +101,51 @@
                     <notebook>
                         <page string="Movimientos">
                             <field
-                                name="move_ids"
+                                name="move_ids" readonly="sii_result != 'draft'"
                                 editable="bottom"
                                 widget="many2many_list"
                                 domain="[('journal_id.type', 'in', ['sale', 'purchase'])]"
                             />
                         </page>
                         <page string="Boletas" invisible="tipo_operacion != 'VENTA'">
+                            <p class="text-muted">
+                                La línea de comprobantes de pago electrónico (48) no se informa al SII en el libro: solo sirve para conciliar en Odoo.
+                            </p>
                             <group>
-                                <field name="boletas" editable="bottom" widget="one2many">
-                                    <tree editable="top/bottom">
+                                <field name="boletas" readonly="sii_result != 'draft'" widget="one2many">
+                                    <tree decoration-muted="informativa">
                                         <field name="tipo_boleta" />
+                                        <field name="informativa" widget="boolean" optional="show" />
                                         <field name="rango_inicial" />
                                         <field name="rango_final" />
                                         <field name="cantidad_boletas" />
-                                        <field name="currency_id" />
+                                        <field name="cantidad_anulados" />
+                                        <field name="currency_id" column_invisible="True" />
                                         <field name="neto" />
+                                        <field name="monto_exento" />
                                         <field name="impuesto" />
                                         <field name="monto_impuesto" />
                                         <field name="monto_total" />
                                     </tree>
+                                    <form>
+                                        <group>
+                                            <group>
+                                                <field name="tipo_boleta" />
+                                                <field name="rango_inicial" />
+                                                <field name="rango_final" />
+                                                <field name="cantidad_boletas" />
+                                                <field name="cantidad_anulados" />
+                                            </group>
+                                            <group>
+                                                <field name="currency_id" invisible="True" />
+                                                <field name="neto" />
+                                                <field name="monto_exento" />
+                                                <field name="impuesto" />
+                                                <field name="monto_impuesto" />
+                                                <field name="monto_total" />
+                                            </group>
+                                        </group>
+                                    </form>
                                 </field>
                             </group>
                         </page>

@@ -100,11 +100,9 @@ class Libro(models.Model):
         string="Tipo de Envío",
         default="TOTAL",
         required=True,
-        readonly=True,
-
     )
     folio_notificacion = fields.Char(
-        string="Folio de Notificación", readonly=True,
+        string="Folio de Notificación",
     )
     impuestos = fields.One2many("account.move.book.tax", "book_id", string="Detalle Impuestos",)
     currency_id = fields.Many2one(
@@ -130,24 +128,19 @@ class Libro(models.Model):
         string="Compañía",
         required=True,
         default=lambda self: self.env.company.id,
-        readonly=True,
-
     )
-    name = fields.Char(string="Detalle", required=True, readonly=True, )
-    fact_prop = fields.Float(string="Factor proporcionalidad", readonly=True, )
-    nro_segmento = fields.Integer(string="Número de Segmento", readonly=True, )
+    name = fields.Char(string="Detalle", required=True)
+    fact_prop = fields.Float(string="Factor proporcionalidad")
+    nro_segmento = fields.Integer(string="Número de Segmento")
     date = fields.Date(
         string="Fecha",
         required=True,
-        readonly=True,
         default=lambda self: fields.Date.context_today(self),
     )
     boletas = fields.One2many(
         "account.move.book.boletas",
         "book_id",
         string="Boletas",
-        readonly=True,
-
     )
     codigo_rectificacion = fields.Char(string="Código de Rectificación",)
 
@@ -182,75 +175,21 @@ class Libro(models.Model):
         if self.tipo_operacion in ["VENTA"]:
             cfs = self.env["account.move.consumo_folios"].search(
                 [
+                    ("company_id", "=", self.company_id.id),
                     ("sii_result", "not in", ["draft", "Anulado", "Rechazado"]),
                     ("fecha_inicio", ">=", current),
                     ("fecha_inicio", "<", next_month),
                 ]
             )
-            if cfs:
-                cantidades = {}
-                for cf in cfs:
-                    for det in cf.detalles:
-                        if det.tpo_doc.sii_code in [39, 41]:
-                            if not cantidades.get((cf.id, det.tpo_doc)):
-                                cantidades[(cf.id, det.tpo_doc)] = 0
-                            cantidades[(cf.id, det.tpo_doc)] += det.cantidad
-                lineas = {}
-                for key, cantidad in cantidades.items():
-                    cf = key[0]
-                    tpo_doc = key[1]
-                    impuesto = self.env["account.move.consumo_folios.impuestos"].search(
-                        [("cf_id", "=", cf), ("tpo_doc.sii_code", "=", tpo_doc.sii_code)]
-                    )
-                    if not lineas.get(tpo_doc):
-                        lineas[tpo_doc] = {
-                            "cantidad": 0,
-                            "neto": 0,
-                            "monto_exento": 0,
-                            "monto_impuesto": 0.0,
-                            "monto_total": 0.0,
-                        }
-                    lineas[tpo_doc] = {
-                        "cantidad": lineas[tpo_doc]["cantidad"] + cantidad,
-                        "neto": lineas[tpo_doc]["neto"] + impuesto.monto_neto,
-                        "monto_exento": lineas[tpo_doc]["monto_exento"] + impuesto.monto_exento,
-                        "monto_impuesto": lineas[tpo_doc]["monto_impuesto"] + impuesto.monto_iva,
-                        "monto_total": lineas[tpo_doc]["monto_total"] + impuesto.monto_total,
-                    }
-                for tpo_doc, det in lineas.items():
-                    tax_id = (
-                        self.env["account.tax"].search(
-                            [
-                                ("sii_code", "=", 14),
-                                ("type_tax_use", "=", "sale"),
-                                ("company_id", "=", self.company_id.id),
-                            ],
-                            limit=1,
-                        )
-                        if tpo_doc.sii_code == 39
-                        else self.env["account.tax"].search(
-                            [
-                                ("sii_code", "=", 0),
-                                ("type_tax_use", "=", "sale"),
-                                ("company_id", "=", self.company_id.id),
-                            ],
-                            limit=1,
-                        )
-                    )
-                    line = {
-                        "currency_id": self.env.company.currency_id,
-                        "tipo_boleta": tpo_doc.id,
-                        "cantidad_boletas": det["cantidad"],
-                        "neto": det["neto"] or det["monto_exento"],
-                        "monto_impuesto": det["monto_impuesto"],
-                        "monto_total": det["monto_total"],
-                        "impuesto": tax_id.id,
-                    }
-                    boleta_lines.append([0, 0, line])
+            boleta_lines.extend([0, 0, linea] for linea in self._lineas_boletas_consumo(cfs))
+            linea_48 = self._linea_comprobantes_pago()
+            if linea_48["impuesto"] and linea_48["tipo_boleta"]:
+                boleta_lines.append([0, 0, linea_48])
         elif self.tipo_operacion in ["BOLETA"]:
             docs = [35, 38, 39, 41]
             cfs = self.env["account.move.consumo_folios"].search(
                 [
+                    ("company_id", "=", self.company_id.id),
                     ("sii_result", "not in", ["draft", "Anulado", "Rechazado"]),
                     ("fecha_inicio", ">=", current),
                     ("fecha_inicio", "<", next_month),
@@ -308,6 +247,84 @@ class Libro(models.Model):
         self.impuestos = impuesto_lines
         self.move_ids = self.env["account.move"].search(query)
 
+    def _impuesto_boleta(self, sii_code):
+        return self.env["account.tax"].search([
+            ("sii_code", "=", 0 if sii_code == 41 else 14),
+            ("type_tax_use", "=", "sale"),
+            ("company_id", "=", self.company_id.id),
+        ], limit=1)
+
+    def _linea_boleta(self, tipo):
+        return {
+            "currency_id": self.company_id.currency_id.id,
+            "tipo_boleta": tipo.id,
+            "impuesto": self._impuesto_boleta(tipo.sii_code).id,
+            "rango_inicial": 0,
+            "rango_final": 0,
+            "cantidad_boletas": 0,
+            "cantidad_anulados": 0,
+            "neto": 0,
+            "monto_exento": 0,
+            "monto_impuesto": 0,
+            "monto_total": 0,
+        }
+
+    def _lineas_boletas_consumo(self, cfs):
+        lineas = {}
+        for cf in cfs:
+            for det in cf.detalles.filtered(lambda d: d.tpo_doc.sii_code in (39, 41)):
+                linea = lineas.setdefault(det.tpo_doc, self._linea_boleta(det.tpo_doc))
+                linea["cantidad_boletas"] += det.cantidad
+                if det.tipo_operacion == "anulados":
+                    linea["cantidad_anulados"] += det.cantidad
+                folios = [f for f in (linea["rango_inicial"], det.folio_inicio) if f]
+                linea["rango_inicial"] = min(folios) if folios else 0
+                linea["rango_final"] = max(linea["rango_final"], det.folio_final or 0)
+            for imp in cf.impuestos.filtered(lambda i: i.tpo_doc.sii_code in (39, 41)):
+                linea = lineas.setdefault(imp.tpo_doc, self._linea_boleta(imp.tpo_doc))
+                linea["neto"] += imp.monto_neto
+                linea["monto_exento"] += imp.monto_exento
+                linea["monto_impuesto"] += imp.monto_iva
+                linea["monto_total"] += imp.monto_total
+        dias_odoo = {(cf.fecha_inicio, det.tpo_doc.sii_code) for cf in cfs for det in cf.detalles}
+        for fila in self._boletas_diarias_sii((39, 41)):
+            if (fila.fecha, fila.tipo_dte) in dias_odoo:
+                continue
+            tipo = self.env["sii.document_class"].search([("sii_code", "=", fila.tipo_dte)], limit=1)
+            linea = lineas.setdefault(tipo, self._linea_boleta(tipo))
+            self._sumar_boleta_diaria(linea, fila)
+        return [l for l in lineas.values() if l["impuesto"]]
+
+    def _boletas_diarias_sii(self, tipos):
+        return self.env["sii.boleta.diaria"].search([
+            ("company_id", "=", self.company_id.id),
+            ("periodo", "=", (self.periodo_tributario or "").replace("-", "")),
+            ("tipo_dte", "in", list(tipos)),
+            ("informado", "=", True),
+        ])
+
+    def _sumar_boleta_diaria(self, linea, fila):
+        linea["cantidad_boletas"] += fila.cantidad
+        linea["neto"] += fila.neto
+        linea["monto_exento"] += fila.exento
+        linea["monto_impuesto"] += fila.iva
+        linea["monto_total"] += fila.total
+
+    def _linea_comprobantes_pago(self):
+        linea = self._linea_boleta(self.env["sii.document_class"].search([("sii_code", "=", 48)], limit=1))
+        for fila in self._boletas_diarias_sii((48,)):
+            self._sumar_boleta_diaria(linea, fila)
+        return linea
+
+    def _nc_boletas_voucher(self):
+        return self.env["account.move.boleta_voucher"].search([
+            ("company_id", "=", self.company_id.id),
+            ("periodo", "=", self.periodo_tributario),
+            ("sii_document_number", "not in", [False, 0]),
+            ("sii_result", "not in", ["Rechazado", "Anulado"]),
+            ("document_class_id.sii_code", "=", 61),
+        ])
+
     def _get_imps(self):
         imp = {}
         for move in self.move_ids:
@@ -339,7 +356,7 @@ class Libro(models.Model):
             if self.boletas:
                 for bol in self.boletas:
                     if not imp.get(bol.impuesto.id):
-                        imp[bol.impuesto.id] = {"credit": 0}
+                        imp[bol.impuesto.id] = {"tax_id": bol.impuesto.id, "credit": 0}
                     imp[bol.impuesto.id]["credit"] += bol.monto_impuesto
             if self.impuestos and isinstance(self.id, int):
                 self.env.cr.execute("DELETE FROM account_move_book_tax WHERE book_id=%s", (self.id,))
@@ -387,7 +404,9 @@ class Libro(models.Model):
         for r in recs:
             grupos.setdefault(r.document_class_id.sii_code, [])
             grupos[r.document_class_id.sii_code].append(r.with_context(tax_detail=True)._dte())
-        for b in self.boletas:
+        for v in self._nc_boletas_voucher():
+            grupos.setdefault(61, []).append(v.with_context(tax_detail=True)._dte())
+        for b in self.boletas.filtered(lambda b: not b.informativa):
             boletas.append(b._dte())
         datos["Libro"] = {
             "PeriodoTributario": self.periodo_tributario,
@@ -441,8 +460,20 @@ class Boletas(models.Model):
         domain=[("type_tax_use", "!=", "none"), "|", ("active", "=", False), ("active", "=", True)],
     )
     monto_impuesto = fields.Monetary(string="Monto Impuesto", required=True)
+    monto_exento = fields.Monetary(string="Monto Exento")
+    cantidad_anulados = fields.Integer(string="Folios Anulados")
     monto_total = fields.Monetary(string="Monto Total", required=True)
     book_id = fields.Many2one("account.move.book")
+    informativa = fields.Boolean(
+        compute="_compute_informativa", string="Solo informativa",
+        help="El comprobante de pago electrónico (48) no existe en el libro del SII: la línea solo sirve para "
+             "conciliar en Odoo y no se informa al SII en el libro",
+    )
+
+    @api.depends("tipo_boleta.sii_code")
+    def _compute_informativa(self):
+        for r in self:
+            r.informativa = r.tipo_boleta.sii_code == 48
 
     @api.onchange("rango_inicial", "rango_final")
     def get_cantidad(self):

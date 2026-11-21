@@ -44,6 +44,10 @@ class AccountMoveConvertDTE(models.TransientModel):
         string="Documents Type",
         check_company=True,
     )
+    jdc_disponible_ids = fields.Many2many(
+        "account.journal.sii_document_class",
+        compute="_compute_jdc_disponible_ids",
+    )
     company_id = fields.Many2one('res.company', required=True, readonly=True)
     warning_message = fields.Html(
         string="Aviso importante",

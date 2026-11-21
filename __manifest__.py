@@ -1,7 +1,7 @@
 {
     "name": """Facturación Electrónica para Chile\
     """,
-    "version": "17.0.0.61.0",
+    "version": "17.0.0.62.0",
     'countries': ['cl'],
     'category': 'Accounting/Localizations/Account Charts',
     "author": "Daniel Santibáñez Polanco, Cooperativa OdooCoop",
@@ -45,6 +45,10 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "wizard/masive_dte_accept.xml",
         "wizard/notas.xml",
         "wizard/upload_xml.xml",
+        "wizard/trafquin.xml",
+        "views/sii_revision.xml",
+        "views/sii_boleta_diaria.xml",
+        "data/mail_template_rcv.xml",
         "wizard/validar.xml",
         "wizard/sale_make_invoice_advance.xml",
         "wizard/journal_config_wizard_view.xml",
@@ -119,6 +123,8 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "security/state_manager.xml",
         "security/ir.model.access.csv",
         "security/sale_document_report_security.xml",
+        "security/sii_revision_rules.xml",
+        "security/l10n_cl_fe_company_rules.xml",
         "report/sale_document_report_views.xml",
         "report/voucher_factura_report_views.xml",
     ],
@@ -129,6 +135,7 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
             "l10n_cl_fe/static/src/js/report/action_manager_report.js",
             "l10n_cl_fe/static/src/js/totals_widget.js",
             "l10n_cl_fe/static/src/js/account_file_uploader_dte.js",
+            "l10n_cl_fe/static/src/components/account_file_uploader_dte.xml",
             "l10n_cl_fe/static/src/css/**/*",
         ],
         'web.report_assets_pdf': [

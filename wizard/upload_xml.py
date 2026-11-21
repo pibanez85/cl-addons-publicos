@@ -167,8 +167,19 @@ class UploadXMLWizard(models.TransientModel):
             return etree.fromstring(xml, parser=parser)
         return xml
 
-    def _get_datos_empresa(self, company_id):
+    def _resolve_firma(self, company_id):
+        firma_id = self.env.context.get('firma_id')
+        if firma_id:
+            return self.env['sii.firma'].sudo().browse(firma_id)
         firma = self.env.user.get_digital_signature(company_id)
+        if not firma:
+            raise UserError(_(
+                "El usuario '%s' no está autorizado a usar firma electrónica para %s."
+            ) % (self.env.user.name, company_id.name))
+        return firma
+
+    def _get_datos_empresa(self, company_id):
+        firma = self._resolve_firma(company_id)
         return {
             "Emisor": {
                 "RUTEmisor": company_id.partner_id.rut(),

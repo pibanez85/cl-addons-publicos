@@ -47,3 +47,9 @@ from . import sii_regional_offices
 from . import sii_respuesta_cliente
 from . import sii_xml_envio
 from . import template_cl
+from . import sii_revision
+from . import sii_revision_asiento
+from . import sii_revision_estado
+from . import sii_boleta_diaria
+from . import sii_revision_boletas
+from . import sii_revision_declarado

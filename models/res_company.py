@@ -110,6 +110,27 @@ stamp to be legally valid.""",
         string="Medios de pago Electrónico",
         domain=[('type', 'not in', ['sale', 'purchase'])],
     )
+    medios_de_pago_internet = fields.Many2many(
+        'account.journal',
+        'res_company_medios_pago_internet_rel',
+        'company_id',
+        'journal_id',
+        string="Medios de pago Electrónico por Internet",
+        domain=[('type', 'not in', ['sale', 'purchase'])],
+    )
+    modelo_emision_boleta = fields.Selection(
+        [
+            ('voucher', 'Voucher'),
+            ('boleta', 'Boleta'),
+        ],
+        string="Modelo de emisión de boleta",
+        default='voucher',
+        required=True,
+        help="Atributo del contribuyente en el SII (https://www4.sii.cl/actatributointernetui/#!/inicio). "
+             "Voucher: cada pago electrónico es un comprobante de pago (tipo 48) que el SII considera como boleta; "
+             "la boleta se emite solo por pagos en efectivo o transferencia. "
+             "Boleta: el voucher es solo comprobante de pago y siempre se emite boleta.",
+    )
     dte_lines = fields.Integer(
         string="Cantidad de Líneas",
         default=60,

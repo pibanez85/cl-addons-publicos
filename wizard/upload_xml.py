@@ -4,9 +4,13 @@ import logging
 from facturacion_electronica import facturacion_electronica as fe
 from lxml import etree
 
-from odoo import api, fields, models, tools
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
+
+from ..models.mail_message_dte_document import clave_rut
+
+TASAS_IMPUESTO_ADICIONAL = {"24": 31.5, "25": 20.5, "26": 20.5, "27": 10.0, "271": 18.0}
 
 _logger = logging.getLogger(__name__)
 

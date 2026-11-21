@@ -226,6 +226,23 @@
                                            widget="many2many_tags"
                                            domain="[('type', 'not in', ['sale', 'purchase']), ('company_id', '=', company_id)]"/>
                                 </div>
+                                <div class="row mt16">
+                                    <label for="medios_de_pago_internet" string="De ellos, por Internet" class="col-lg-4 o_light_label"/>
+                                    <field name="medios_de_pago_internet"
+                                           options="{'no_create': True}"
+                                           widget="many2many_tags"
+                                           domain="[('id', 'in', medios_de_pago_electronico)]"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting string="Modelo de emisión de boleta" help="Según el atributo del contribuyente en el SII">
+                            <field name="modelo_emision_boleta" widget="radio"/>
+                            <div class="text-muted">
+                                <ul>
+                                    <li><b>Voucher</b> (por defecto en el SII): cada pago electrónico es un comprobante de pago (tipo 48) que vale como boleta; se emite boleta solo por efectivo o transferencia. Los pagos electrónicos de facturas se rebajan en el Registro de Compras y Ventas con el informe <i>Pagos electrónicos de facturas</i>.</li>
+                                    <li><b>Boleta</b>: el voucher queda solo como comprobante de pago y siempre se emite boleta. Se cambia primero en el SII.</li>
+                                </ul>
+                                <a href="https://www4.sii.cl/actatributointernetui/#!/inicio" target="_blank">Consultar en el SII</a>
                             </div>
                         </setting>
                         <setting string="Acción por límite de líneas">

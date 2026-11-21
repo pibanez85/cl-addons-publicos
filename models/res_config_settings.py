@@ -36,6 +36,12 @@ class ResConfigSettings(models.TransientModel):
         related="company_id.medios_de_pago_electronico",
         string="Medios de pago Electrónico",
     )
+    modelo_emision_boleta = fields.Selection(related="company_id.modelo_emision_boleta", readonly=False)
+    medios_de_pago_internet = fields.Many2many(
+        'account.journal',
+        related="company_id.medios_de_pago_internet",
+        readonly=False,
+    )
     dte_receipt_method = fields.Selection([('manual', 'Manual'), ('create_move', 'Crear Factura Solamente'), ('create_po', 'Crear Orden Compra'), ('both', 'Ambas (Factura y OC)')], default='manual', string="Método Recepción DTE")
     cola_envio_sin_firma_count = fields.Integer(
         string="Cola sin firma", compute="_compute_cola_envio_sin_firma_count",

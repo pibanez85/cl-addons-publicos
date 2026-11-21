@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -31,6 +31,47 @@ class AccountJournal(models.Model):
     default_comision_account_id = fields.Many2one('account.account', string='Default Comision Account',
         company_dependent=True, domain="[('deprecated', '=', False), ('company_id', '=', current_company_id)]"
     )
+    sii_declara_ventas = fields.Boolean(
+        string="Declara ventas en el SII", compute="_compute_sii_declara_ventas",
+        inverse="_inverse_sii_declara_ventas", search="_search_sii_declara_ventas",
+        help="Diarios de banco de medios de pago que informan sus ventas al SII como comprobantes de pago "
+             "electrónico (48), por ejemplo Transbank, Webpay, Flow o Khipu. No lo marque en medios que no "
+             "declaran (por ejemplo Compraquí) ni en PayPal u otros medios extranjeros.",
+    )
+    sii_canal_48 = fields.Selection(
+        [("presencial", "Presencial (máquinas de pago)"), ("internet", "Internet (pasarelas de pago)")],
+        string="Canal en el SII", compute="_compute_sii_canal_48", inverse="_inverse_sii_canal_48",
+    )
+
+    @api.depends("company_id.medios_de_pago_electronico")
+    def _compute_sii_declara_ventas(self):
+        for r in self:
+            r.sii_declara_ventas = r in r.company_id.medios_de_pago_electronico
+
+    @api.depends("company_id.medios_de_pago_electronico", "company_id.medios_de_pago_internet")
+    def _compute_sii_canal_48(self):
+        for r in self:
+            r.sii_canal_48 = False if r not in r.company_id.medios_de_pago_electronico else (
+                "internet" if r in r.company_id.medios_de_pago_internet else "presencial")
+
+    def _inverse_sii_declara_ventas(self):
+        for r in self.filtered("company_id"):
+            company = r.company_id.sudo()
+            if r.sii_declara_ventas:
+                company.medios_de_pago_electronico = [(4, r.id)]
+            else:
+                company.write({"medios_de_pago_electronico": [(3, r.id)], "medios_de_pago_internet": [(3, r.id)]})
+
+    def _inverse_sii_canal_48(self):
+        for r in self.filtered(lambda j: j.company_id and j.sii_declara_ventas):
+            r.company_id.sudo().medios_de_pago_internet = [(4 if r.sii_canal_48 == "internet" else 3, r.id)]
+
+    def _search_sii_declara_ventas(self, operator, value):
+        if operator not in ("=", "!="):
+            raise UserError(_("Operador no soportado: %s") % operator)
+        value = bool(value)
+        ids = self.env["res.company"].sudo().search([]).medios_de_pago_electronico.ids
+        return [("id", "in" if (operator == "=") == value else "not in", ids)]
 
     @api.onchange("journal_document_class_ids")
     def set_documents(self):

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import math
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from .currency import float_round_custom
 from odoo.tools.float_utils import float_round as round

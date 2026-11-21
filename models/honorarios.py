@@ -10,13 +10,12 @@ _logger = logging.getLogger(__name__)
 
 class Honorarios(models.Model):
     _name = "account.move.book.honorarios"
+    _order = "periodo_tributario desc, id desc"
     _description = "Libro de Honorarios"
 
     date = fields.Date(
         string="Date",
         required=True,
-        readonly=True,
-
         default=lambda *a: datetime.now(),
     )
     tipo_libro = fields.Selection(

@@ -510,9 +510,7 @@ class AccountMove(models.Model):
         if not (self.es_boleta() or self.es_nc_boleta()):
             return
         extra_tax_lines = self.line_ids.filtered(
-            lambda l: l.tax_line_id and (
-                l.tax_line_id.es_adicional() or l.tax_line_id.es_especifico()
-            )
+            lambda l: l.tax_line_id and not l.tax_line_id.es_iva()
         )
         if not extra_tax_lines:
             return
@@ -523,7 +521,7 @@ class AccountMove(models.Model):
             return
         iva_rate = iva_tax_lines[0].tax_line_id.amount or 19.0
         iva_factor = 1 + iva_rate / 100.0
-        ctx = {"check_move_validity": False, "skip_invoice_sync": True}
+        ctx = {"check_move_validity": False, "skip_invoice_sync": True, "dynamic_unlink": True}
         currency = self.currency_id or self.company_id.currency_id
         total_iva_signed = 0.0
         any_changed = False
@@ -534,9 +532,7 @@ class AccountMove(models.Model):
             if not base.balance:
                 continue
             sign = -1 if base.balance < 0 else 1
-            has_extra = any(
-                t.es_adicional() or t.es_especifico() for t in base.tax_ids
-            )
+            has_extra = any(not t.es_iva() for t in base.tax_ids)
             if has_extra:
                 bruto = currency.round(base.price_total)
                 neto = currency.round(bruto / iva_factor)

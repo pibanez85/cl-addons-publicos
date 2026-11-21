@@ -73,6 +73,7 @@ allowed_docs = [
 
 class Libro(models.Model):
     _name = "account.move.book"
+    _order = "periodo_tributario desc, id desc"
     _inherit = ['l10n_cl_fe.dte.book.mixin']
     _description = "Libro de Compra / Venta DTE"
 

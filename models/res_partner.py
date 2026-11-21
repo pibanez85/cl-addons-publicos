@@ -25,18 +25,10 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
     def _get_default_tp_type(self):
-        try:
-            return self.env.ref("l10n_cl_fe.res_IVARI")
-        except Exception as ex:
-            _logger.error(tools.ustr(ex))
-            return self.env["sii.responsability"]
+        return self.env.ref("l10n_cl_fe.res_IVARI", raise_if_not_found=False) or self.env["sii.responsability"]
 
     def _get_default_doc_type(self):
-        try:
-            return self.env.ref("l10n_cl_fe.dt_RUT")
-        except Exception as ex:
-            _logger.error(tools.ustr(ex))
-            return self.env["sii.document_type"]
+        return self.env.ref("l10n_cl_fe.dt_RUT", raise_if_not_found=False) or self.env["sii.document_type"]
 
     @api.model
     def _get_default_country(self):

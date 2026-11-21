@@ -56,30 +56,8 @@ def _set_default_configs(env):
     ICPSudo.set_param("account.auto_send_email", True)
     ICPSudo.set_param("account.auto_send_persistencia", 24)
 
-    cash_rounding = env.ref("l10n_cl_fe.cash_rounding_ley_20956", raise_if_not_found=False)
-    if cash_rounding:
-        profit_codes = ["420104", "420105", "420103"]
-        loss_codes = ["410104", "620201"]
-        for company in env["res.company"].sudo().search([]):
-            cr_company = cash_rounding.sudo().with_company(company)
-            Account = env["account.account"].sudo()
-            vals = {}
-            if not cr_company.profit_account_id:
-                for code in profit_codes:
-                    profit = Account.search(
-                        [("code", "=", code), ("company_id", "=", company.id)], limit=1)
-                    if profit:
-                        vals["profit_account_id"] = profit.id
-                        break
-            if not cr_company.loss_account_id:
-                for code in loss_codes:
-                    loss = Account.search(
-                        [("code", "=", code), ("company_id", "=", company.id)], limit=1)
-                    if loss:
-                        vals["loss_account_id"] = loss.id
-                        break
-            if vals:
-                cr_company.write(vals)
+    for company in env["res.company"].sudo().search([]):
+        env["account.chart.template"]._cl_asignar_cuentas_redondeo(company)
 
     #Eliminar incompatibilidad con l10n_cl
     modules = env["ir.module.module"].sudo().search([

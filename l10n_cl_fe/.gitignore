@@ -1,0 +1,11 @@
+*.pyc
+*.pyo
+__pycache__/
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.orig
+*.rej
+.claude/
+CLAUDE.md

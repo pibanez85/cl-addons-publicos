@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="respuesta_xml_form" model="ir.ui.view">
+        <field name="name">respuesta_xml.form</field>
+        <field name="model">sii.respuesta.cliente</field>
+        <field name="arch" type="xml">
+            <form string="XML Respuesta">
+                <field name="type" />
+                <field name="recep_envio" invisible="not recep_envio" />
+                <field name="merc_recinto" invisible="not merc_recinto" />
+                <field name="merc_fecha" invisible="not merc_fecha" />
+                <field name="merc_declaracion" invisible="not merc_declaracion" />
+                <field name="merc_rut" invisible="not merc_rut" />
+                <field name="attachment_id" invisible="not attachment_id" />
+                <field name="glosa" invisible="not glosa" />
+                <field name="id_respuesta" invisible="not id_respuesta" />
+                <field name="recep_dte" invisible="not recep_dte" />
+                <field name="merc_estado" invisible="not merc_estado" />
+                <field name="recep_comercial" invisible="not recep_comercial" />
+                <field name="exchange_id" invisible="not exchange_id" />
+            </form>
+        </field>
+    </record>
+</odoo>

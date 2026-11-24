@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="mail_template_pedir_xml_rcv" model="mail.template">
+            <field name="name">Pedir XML de un documento del RCV</field>
+            <field name="model_id" ref="l10n_cl_fe.model_sii_revision_rcv_linea" />
+            <field name="subject">Solicitud de XML: {{ object.document_class_id.name }} folio {{ object.folio }}</field>
+            <field name="email_from">{{ (object.revision_id.company_id.dte_email_id.alias_full_name or object.revision_id.company_id.email or user.email_formatted) }}</field>
+            <field name="auto_delete" eval="False" />
+            <field name="body_html" type="html">
+<div>
+    <p>Estimados <t t-out="object.razon_social or ''" />:</p>
+    <p>
+        En el Registro de Compras del SII figura el documento
+        <strong><t t-out="object.document_class_id.name or ''" /> folio <t t-out="object.folio or ''" /></strong>,
+        de fecha <t t-out="object.fecha or ''" />, por un total de <t t-out="'{:,.0f}'.format(object.total).replace(',', '.')" />,
+        emitido a <t t-out="object.revision_id.company_id.name or ''" />, pero no hemos recibido su XML.
+    </p>
+    <p>Les pedimos enviarlo a nuestro correo de intercambio DTE<t t-if="object.revision_id.company_id.dte_email_id.alias_full_name">: <t t-out="object.revision_id.company_id.dte_email_id.alias_full_name" /></t>.</p>
+    <p>Saludos,<br /><t t-out="object.revision_id.company_id.name or ''" /></p>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>

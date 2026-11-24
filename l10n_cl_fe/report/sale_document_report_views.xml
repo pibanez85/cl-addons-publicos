@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sale_document_report_view_pivot" model="ir.ui.view">
+        <field name="name">l10n_cl.sale.document.report.pivot</field>
+        <field name="model">l10n_cl.sale.document.report</field>
+        <field name="arch" type="xml">
+            <pivot string="Ventas por tipo de documento" sample="1">
+                <field name="document_class_id" type="row"/>
+                <field name="date" interval="month" type="col"/>
+                <field name="amount_untaxed" type="measure"/>
+                <field name="amount_tax" type="measure"/>
+                <field name="amount_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sale_document_report_view_graph" model="ir.ui.view">
+        <field name="name">l10n_cl.sale.document.report.graph</field>
+        <field name="model">l10n_cl.sale.document.report</field>
+        <field name="arch" type="xml">
+            <graph string="Ventas por tipo de documento" type="bar" stacked="1" sample="1">
+                <field name="date" interval="month"/>
+                <field name="document_class_id"/>
+                <field name="amount_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sale_document_report_view_list" model="ir.ui.view">
+        <field name="name">l10n_cl.sale.document.report.list</field>
+        <field name="model">l10n_cl.sale.document.report</field>
+        <field name="arch" type="xml">
+            <tree string="Ventas por tipo de documento">
+                <field name="date"/>
+                <field name="document_class_id"/>
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="origen"/>
+                <field name="journal_id" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="amount_untaxed" sum="Total"/>
+                <field name="amount_tax" sum="Total"/>
+                <field name="amount_total" sum="Total"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="sale_document_report_view_search" model="ir.ui.view">
+        <field name="name">l10n_cl.sale.document.report.search</field>
+        <field name="model">l10n_cl.sale.document.report</field>
+        <field name="arch" type="xml">
+            <search string="Ventas por tipo de documento">
+                <field name="document_class_id"/>
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="user_id"/>
+                <filter name="filter_date" date="date" default_period="this_year" string="Periodo"/>
+                <separator/>
+                <filter name="origen_account" string="Contabilidad" domain="[('origen', '=', 'account')]"/>
+                <separator/>
+                <filter name="sin_documento" string="Sin documento tributario" domain="[('document_class_id', '=', False)]"/>
+                <group>
+                    <filter name="group_document_class" string="Tipo de documento" context="{'group_by': 'document_class_id'}"/>
+                    <filter name="group_origen" string="Origen" context="{'group_by': 'origen'}"/>
+                    <filter name="group_journal" string="Diario" context="{'group_by': 'journal_id'}"/>
+                    <filter name="group_user" string="Vendedor" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <separator/>
+                    <filter name="group_day" string="Día" context="{'group_by': 'date:day'}"/>
+                    <filter name="group_week" string="Semana" context="{'group_by': 'date:week'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'date:month'}"/>
+                    <filter name="group_quarter" string="Trimestre" context="{'group_by': 'date:quarter'}"/>
+                    <filter name="group_year" string="Año" context="{'group_by': 'date:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sale_document_report" model="ir.actions.act_window">
+        <field name="name">Ventas por tipo de documento</field>
+        <field name="res_model">l10n_cl.sale.document.report</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="search_view_id" ref="sale_document_report_view_search"/>
+        <field name="context">{'search_default_filter_date': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">Sin ventas en el periodo</p>
+            <p>Ventas agrupadas por tipo de documento SII. Las notas de crédito restan.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_sale_document_report"
+              name="Ventas por tipo de documento"
+              parent="account.account_reports_management_menu"
+              action="action_sale_document_report"
+              sequence="5"/>
+</odoo>

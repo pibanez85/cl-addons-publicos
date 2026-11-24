@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_balance_8_columnas" model="report.paperformat">
+        <field name="name">Balance 8 Columnas (Oficio Horizontal)</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_height">216</field>
+        <field name="page_width">330</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">7</field>
+        <field name="margin_right">7</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">10</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_balance_8_columnas" model="ir.actions.report">
+        <field name="name">Balance de 8 Columnas (PDF)</field>
+        <field name="model">l10n_cl_fe.balance8col.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_cl_fe.report_balance_8_columnas_document</field>
+        <field name="report_file">l10n_cl_fe.report_balance_8_columnas_document</field>
+        <field name="paperformat_id" ref="paperformat_balance_8_columnas"/>
+    </record>
+
+    <record id="action_report_balance_8_columnas_xlsx" model="ir.actions.report">
+        <field name="name">Balance de 8 Columnas (Excel)</field>
+        <field name="model">l10n_cl_fe.balance8col.wizard</field>
+        <field name="report_type">xlsx</field>
+        <field name="report_name">l10n_cl_fe.report_balance_8_columnas_xlsx</field>
+        <field name="report_file">l10n_cl_fe.report_balance_8_columnas_xlsx</field>
+    </record>
+
+    <template id="report_balance_8_columnas_document">
+        <t t-call="web.html_container">
+            <t t-call="web.internal_layout">
+                <div class="page">
+                    <div class="text-center">
+                        <h3 style="margin-bottom:2px;">BALANCE TRIBUTARIO DE 8 COLUMNAS</h3>
+                        <h4 style="margin-top:0;" t-esc="company.partner_id.name or company.name"/>
+                    </div>
+                    <table class="table table-sm" style="font-size: 10px; border:1px solid #000; margin-top:6px;">
+                        <tr>
+                            <td style="width:18%;"><strong>RUT:</strong></td>
+                            <td style="width:32%;" t-esc="company.partner_id.rut() if company.partner_id else company.vat"/>
+                            <td style="width:18%;"><strong>Período:</strong></td>
+                            <td style="width:32%;">Del <span t-esc="data['date_from']"/> al <span t-esc="data['date_to']"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Giro:</strong></td>
+                            <td t-esc="(company.activity_description and company.activity_description.name) or ''"/>
+                            <td><strong>Moneda:</strong></td>
+                            <td t-esc="company.currency_id.name"/>
+                        </tr>
+                        <tr>
+                            <td><strong>Domicilio:</strong></td>
+                            <td colspan="3">
+                                <span t-esc="company.partner_id.street or ''"/>
+                                <span t-if="company.partner_id.street2"> <t t-esc="company.partner_id.street2"/></span>
+                                <span t-if="company.partner_id.city">, <t t-esc="company.partner_id.city"/></span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Asientos:</strong></td>
+                            <td t-if="data['target_move'] == 'posted'">Solo contabilizados</td>
+                            <td t-if="data['target_move'] == 'all'">Todos (incluye borradores)</td>
+                            <td><strong>Cuentas:</strong></td>
+                            <td>
+                                <span t-if="data['display_account'] == 'all'">Todas</span>
+                                <span t-if="data['display_account'] == 'movement'">Con movimientos</span>
+                                <span t-if="data['display_account'] == 'not_zero'">Saldo distinto de cero</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Alcance:</strong></td>
+                            <td colspan="3">
+                                <span t-if="data['only_legal']">Solo documentos legales (con clase de documento SII)</span>
+                                <span t-if="not data['only_legal']">Todos los asientos (incluye internos sin clase de documento)</span>
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="table table-sm o_balance_8col" style="font-size: 9px;">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Código</th>
+                                <th rowspan="2">Cuenta</th>
+                                <th colspan="2" class="text-center">Sumas</th>
+                                <th colspan="2" class="text-center">Saldos</th>
+                                <th colspan="2" class="text-center">Inventario</th>
+                                <th colspan="2" class="text-center">Resultados</th>
+                            </tr>
+                            <tr>
+                                <th class="text-end">Debe</th>
+                                <th class="text-end">Haber</th>
+                                <th class="text-end">Deudor</th>
+                                <th class="text-end">Acreedor</th>
+                                <th class="text-end">Activo</th>
+                                <th class="text-end">Pasivo</th>
+                                <th class="text-end">Pérdida</th>
+                                <th class="text-end">Ganancia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="rows" t-as="row">
+                                <td><span t-esc="row['code']"/></td>
+                                <td><span t-esc="row['name']"/></td>
+                                <td class="text-end">
+                                    <span t-esc="row['debit']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="row['credit']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-if="row['deudor']" t-esc="row['deudor']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-if="row['acreedor']" t-esc="row['acreedor']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-if="row['activo']" t-esc="row['activo']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-if="row['pasivo']" t-esc="row['pasivo']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-if="row['perdida']" t-esc="row['perdida']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-if="row['ganancia']" t-esc="row['ganancia']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight:bold; border-top: 2px solid #000;">
+                                <td></td>
+                                <td>Sumas</td>
+                                <td class="text-end">
+                                    <span t-esc="totals['debit']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['credit']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['deudor']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['acreedor']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['activo']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['pasivo']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['perdida']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['ganancia']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                            </tr>
+                            <tr style="font-weight:bold;">
+                                <td></td>
+                                <td>Resultado del Ejercicio</td>
+                                <td colspan="4"></td>
+                                <td class="text-end">
+                                    <t t-if="resultado_inv &lt; 0">
+                                        <span t-esc="-resultado_inv"
+                                              t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                    </t>
+                                </td>
+                                <td class="text-end">
+                                    <t t-if="resultado_inv &gt; 0">
+                                        <span t-esc="resultado_inv"
+                                              t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                    </t>
+                                </td>
+                                <td class="text-end">
+                                    <t t-if="resultado_res &gt; 0">
+                                        <span t-esc="resultado_res"
+                                              t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                    </t>
+                                </td>
+                                <td class="text-end">
+                                    <t t-if="resultado_res &lt; 0">
+                                        <span t-esc="-resultado_res"
+                                              t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                    </t>
+                                </td>
+                            </tr>
+                            <tr style="font-weight:bold; border-top: 2px solid #000;">
+                                <td></td>
+                                <td>SUMAS IGUALES</td>
+                                <td class="text-end">
+                                    <span t-esc="totals['debit']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['credit']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['deudor']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="totals['acreedor']"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="max(totals['activo'], totals['pasivo'])"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="max(totals['activo'], totals['pasivo'])"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="max(totals['perdida'], totals['ganancia'])"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                                <td class="text-end">
+                                    <span t-esc="max(totals['perdida'], totals['ganancia'])"
+                                          t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <div t-if="descuadre" class="alert alert-danger" style="font-size:10px;">
+                        <strong>⚠ Atención:</strong> el balance presenta un descuadre de
+                        <span t-esc="descuadre"
+                              t-options='{"widget": "monetary", "display_currency": company.currency_id}'/>.
+                        Verifique los asientos antes de presentar al SII.
+                    </div>
+
+                    <div class="row mt-5" style="font-size:10px;">
+                        <div class="col-6 text-center">
+                            <div style="border-top:1px solid #000; margin-top:60px; padding-top:4px;">
+                                <strong t-if="data['representante_name']" t-esc="data['representante_name']"/>
+                                <span t-if="data['representante_rut']"> — RUT: <t t-esc="data['representante_rut']"/></span>
+                                <div>Representante Legal</div>
+                            </div>
+                        </div>
+                        <div class="col-6 text-center">
+                            <div style="border-top:1px solid #000; margin-top:60px; padding-top:4px;">
+                                <strong t-if="data['contador_name']" t-esc="data['contador_name']"/>
+                                <span t-if="data['contador_rut']"> — RUT: <t t-esc="data['contador_rut']"/></span>
+                                <div>
+                                    Contador
+                                    <span t-if="data['contador_registro']">— Reg. N° <t t-esc="data['contador_registro']"/></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3" style="font-size:9px;">
+                        <div class="col-6">
+                            <span t-if="data['lugar_emision']" t-esc="data['lugar_emision']"/>,
+                            <span t-esc="data['date_to']"/>
+                        </div>
+                        <div class="col-6 text-end">
+                            Hoja <span class="page"/> de <span class="topage"/>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

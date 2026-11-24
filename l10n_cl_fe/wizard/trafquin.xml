@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_sii_dte_trafquin_wizard" model="ir.ui.view">
+        <field name="name">sii.dte.trafquin.wizard.form</field>
+        <field name="model">sii.dte.trafquin.wizard</field>
+        <field name="arch" type="xml">
+            <form string="XML de DTE desde el SII">
+                <p class="text-muted">
+                    Lista los DTE del SII (sin fechas, todo el historial) y restaura los seleccionados. Los recibidos
+                    quedan como documentos recibidos; los emitidos, como facturas de venta publicadas sin
+                    volver a timbrarse ni enviarse al SII (solo trae lo emitido en el sistema gratuito del
+                    SII). Los que ya existen no se duplican.
+                </p>
+                <group>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company" />
+                        <field name="inicio_actividades" />
+                        <field name="origen" widget="radio" />
+                        <field name="desde" />
+                        <field name="hasta" />
+                    </group>
+                    <group>
+                        <field name="document_class_id" options="{'no_create': True}" />
+                        <field name="rut_contraparte" placeholder="11.111.111-1" />
+                        <field name="folio_desde" />
+                        <field name="folio_hasta" />
+                    </group>
+                </group>
+                <field name="resultado" invisible="not resultado" />
+                <field name="linea_ids" invisible="not linea_ids">
+                    <tree
+                        editable="bottom"
+                        create="false"
+                        delete="false"
+                        decoration-muted="estado == 'existente'"
+                        decoration-success="estado == 'restaurado'"
+                        decoration-danger="estado == 'error'"
+                    >
+                        <field name="seleccionado" readonly="estado != 'nuevo'" />
+                        <field name="fecha" readonly="1" />
+                        <field name="document_class_id" readonly="1" />
+                        <field name="folio" readonly="1" />
+                        <field name="rut" readonly="1" />
+                        <field name="razon_social" readonly="1" />
+                        <field name="total" readonly="1" />
+                        <field name="estado" readonly="1" />
+                        <field name="estado_sii" readonly="1" optional="hide" />
+                        <field name="mensaje" readonly="1" optional="hide" />
+                    </tree>
+                </field>
+                <footer>
+                    <button name="action_listar" string="Listar" type="object" class="btn-primary" />
+                    <field name="listado_completo" invisible="1" />
+                    <button
+                        name="action_listar_mas"
+                        string="Listar más"
+                        type="object"
+                        invisible="not linea_ids or listado_completo"
+                    />
+                    <button
+                        name="action_restaurar"
+                        string="Restaurar seleccionados"
+                        type="object"
+                        class="btn-primary"
+                        invisible="not linea_ids"
+                    />
+                    <button
+                        name="action_ver_documentos"
+                        string="Ver documentos"
+                        type="object"
+                        invisible="not linea_ids"
+                    />
+                    <button string="Cerrar" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_sii_dte_trafquin_wizard" model="ir.actions.act_window">
+        <field name="name">XML de DTE desde el SII</field>
+        <field name="res_model">sii.dte.trafquin.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    <menuitem
+        id="menu_sii_dte_trafquin_wizard"
+        action="action_sii_dte_trafquin_wizard"
+        parent="l10n_cl_fe.menu_sii_exchange"
+        sequence="3"
+    />
+    <data noupdate="1">
+    <record id="ir_cron_trafquin_xml_recibidos" model="ir.cron">
+        <field name="name">Obtener XML de proveedores desde el SII (trafquin)</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="model_id" ref="model_sii_dte_trafquin_wizard" />
+        <field name="state">code</field>
+        <field name="code">model._cron_xml_recibidos(3)</field>
+        <field name="active" eval="False" />
+    </record>
+    </data>
+</odoo>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="sii_revision_periodo_comp_rule" model="ir.rule">
+        <field name="name">Declaración Mensual F29: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_periodo"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_revision_f29_linea_comp_rule" model="ir.rule">
+        <field name="name">Líneas del F29: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_f29_linea"/>
+        <field name="domain_force">[('revision_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_revision_f29_declaracion_comp_rule" model="ir.rule">
+        <field name="name">Declaraciones del F29: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_f29_declaracion"/>
+        <field name="domain_force">[('revision_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_revision_rcv_linea_comp_rule" model="ir.rule">
+        <field name="name">Documentos del RCV: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_rcv_linea"/>
+        <field name="domain_force">[('revision_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_revision_boleta_linea_comp_rule" model="ir.rule">
+        <field name="name">Resumen de boletas: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_boleta_linea"/>
+        <field name="domain_force">[('revision_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_revision_f29_aporte_comp_rule" model="ir.rule">
+        <field name="name">Aportes al F29: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_f29_aporte"/>
+        <field name="domain_force">[('linea_id.revision_id.company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="sii_revision_f29_declaracion_codigo_comp_rule" model="ir.rule">
+        <field name="name">Códigos del F29 declarado: multi-compañía</field>
+        <field name="model_id" ref="model_sii_revision_f29_declaracion_codigo"/>
+        <field name="domain_force">[('declaracion_id.revision_id.company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

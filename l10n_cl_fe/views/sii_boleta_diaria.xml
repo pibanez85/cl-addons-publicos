@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_sii_boleta_diaria_list" model="ir.ui.view">
+        <field name="name">sii.boleta.diaria.list</field>
+        <field name="model">sii.boleta.diaria</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false"
+                  decoration-muted="not informado or estado_48 == 'conciliado'"
+                  decoration-danger="estado_48 in ('rebaja_pendiente', 'diferencia')"
+                  decoration-warning="estado_48 == 'sin_pagos'">
+                <field name="company_id" groups="base.group_multi_company" optional="show" />
+                <field name="fecha" />
+                <field name="tipo_dte" />
+                <field name="canal" />
+                <field name="currency_id" column_invisible="1" />
+                <field name="cantidad" sum="Total" />
+                <field name="neto" sum="Total" optional="show" />
+                <field name="exento" sum="Total" optional="hide" />
+                <field name="iva" sum="Total" />
+                <field name="total" sum="Total" />
+                <field name="primera_total" optional="hide" />
+                <field name="modificado" optional="show" />
+                <field name="motivo_codigo" optional="hide" />
+                <field name="boletas_voucher" optional="show" />
+                <field name="pagado_odoo" optional="show" />
+                <field name="con_factura" optional="show" />
+                <field name="rebajado" optional="hide" />
+                <field name="iva_en_riesgo" optional="show" />
+                <field name="estado_48" widget="badge" decoration-success="estado_48 == 'conciliado'" decoration-danger="estado_48 in ('rebaja_pendiente', 'diferencia')" decoration-warning="estado_48 == 'sin_pagos'" />
+                <field name="informado" column_invisible="1" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_sii_boleta_diaria_form" model="ir.ui.view">
+        <field name="name">sii.boleta.diaria.form</field>
+        <field name="model">sii.boleta.diaria</field>
+        <field name="arch" type="xml">
+            <form create="false" delete="false">
+                <header>
+                    <button name="action_vincular_pagos" string="Vincular pagos" type="object" invisible="tipo_dte != 48" />
+                    <button name="action_proponer_rebajas" string="Proponer rebaja" type="object" invisible="tipo_dte != 48" />
+                    <field name="estado_48" widget="badge" invisible="tipo_dte != 48" decoration-success="estado_48 == 'conciliado'" decoration-danger="estado_48 in ('rebaja_pendiente', 'diferencia')" decoration-warning="estado_48 == 'sin_pagos'" />
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="informado">
+                        El SII ya no informa esta fila.
+                    </div>
+                    <group>
+                        <group string="SII">
+                            <field name="company_id" groups="base.group_multi_company" />
+                            <field name="fecha" />
+                            <field name="tipo_dte" />
+                            <field name="canal" />
+                            <field name="canal_sii" />
+                            <field name="currency_id" invisible="1" />
+                            <field name="cantidad" />
+                            <field name="neto" />
+                            <field name="exento" />
+                            <field name="iva" />
+                            <field name="total" />
+                            <field name="iva_terceros" />
+                            <field name="operaciones_exentas" />
+                        </group>
+                        <group string="Cambios en el SII">
+                            <field name="primera_total" />
+                            <field name="primera_iva" />
+                            <field name="rebaja_inferida" />
+                            <field name="modificado" />
+                            <field name="motivo_codigo" />
+                            <field name="motivo" />
+                            <field name="informado" />
+                            <field name="consultado" />
+                        </group>
+                    </group>
+                    <group string="Conciliación con los pagos" invisible="tipo_dte != 48">
+                        <group>
+                            <field name="boletas_voucher" />
+                            <field name="pagado_odoo" />
+                            <field name="con_factura" />
+                            <field name="sin_factura" />
+                        </group>
+                        <group>
+                            <field name="rebajado" />
+                            <field name="rebaja_pendiente" />
+                            <field name="iva_en_riesgo" />
+                            <field name="diferencia_sii" />
+                        </group>
+                    </group>
+                    <notebook invisible="tipo_dte != 48">
+                        <page string="Pagos en Odoo" name="pagos">
+                            <field name="pago_ids" readonly="1">
+                                <tree>
+                                    <field name="date" />
+                                    <field name="fecha_48" />
+                                    <field name="name" />
+                                    <field name="partner_id" />
+                                    <field name="journal_id" />
+                                    <field name="sii_canal_48" />
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="amount" sum="Total" />
+                                    <field name="reconciled_invoice_ids" widget="many2many_tags" />
+                                    <field name="boleta_48_manual" />
+                                    <field name="state" column_invisible="1" />
+                                    <button name="action_desvincular_48" type="object" icon="fa-chain-broken" title="Desvincular" />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Rebajas por facturas" name="rebajas">
+                            <p class="text-muted">
+                                El SII no guarda un monto «respaldado con factura»: la rebaja se hace reemplazando el monto del día y canal en el SII.
+                                Odoo propone la rebaja con las facturas pagadas con medios electrónicos; márquela como aplicada cuando la haga en el SII y Odoo la verificará en la próxima consulta.
+                            </p>
+                            <field name="rebaja_ids" readonly="1">
+                                <tree decoration-danger="estado in ('por_aplicar', 'sin_reflejo')" decoration-success="estado == 'verificada'" decoration-muted="estado == 'descartada'">
+                                    <field name="currency_id" column_invisible="1" />
+                                    <field name="factura_ids" widget="many2many_tags" />
+                                    <field name="monto" sum="Total" />
+                                    <field name="iva" sum="Total" />
+                                    <field name="estado" />
+                                    <field name="aplicada_fecha" />
+                                    <field name="aplicada_uid" />
+                                    <button name="action_marcar_aplicada" string="Marcar aplicada" type="object" invisible="estado != 'por_aplicar'" />
+                                    <button name="action_descartar" string="Descartar" type="object" invisible="estado in ('descartada', 'verificada')" />
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" />
+                    <field name="message_ids" />
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_sii_boleta_diaria_search" model="ir.ui.view">
+        <field name="name">sii.boleta.diaria.search</field>
+        <field name="model">sii.boleta.diaria</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="periodo" />
+                <field name="tipo_dte" />
+                <field name="company_id" groups="base.group_multi_company" />
+                <filter name="tipo_48" string="Comprobantes 48" domain="[('tipo_dte', '=', 48)]" />
+                <filter name="boletas" string="Boletas 39 y 41" domain="[('tipo_dte', 'in', (39, 41))]" />
+                <separator />
+                <filter name="pendientes" string="Pendientes de conciliar" domain="[('estado_48', 'in', ('sin_pagos', 'rebaja_pendiente', 'diferencia'))]" />
+                <filter name="con_movimiento" string="Con movimiento" domain="['|', ('cantidad', '!=', 0), ('total', '!=', 0)]" />
+                <filter name="modificados" string="Modificados en el SII" domain="[('modificado', '=', True)]" />
+                <filter name="no_informados" string="Ya no informados" domain="[('informado', '=', False)]" />
+                <group>
+                    <filter name="por_periodo" string="Período" context="{'group_by': 'periodo'}" />
+                    <filter name="por_tipo" string="Tipo" context="{'group_by': 'tipo_dte'}" />
+                    <filter name="por_canal" string="Canal" context="{'group_by': 'canal'}" />
+                    <filter name="por_compania" string="Compañía" context="{'group_by': 'company_id'}" groups="base.group_multi_company" />
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_sii_boleta_diaria" model="ir.actions.act_window">
+        <field name="name">Boletas diarias del SII</field>
+        <field name="res_model">sii.boleta.diaria</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_con_movimiento': 1}</field>
+    </record>
+
+    <menuitem
+        id="menu_sii_boleta_diaria"
+        action="action_sii_boleta_diaria"
+        parent="account.menu_finance_reports"
+        sequence="5"
+        groups="account.group_account_invoice"
+    />
+
+    <record id="view_sii_boleta_vincular_form" model="ir.ui.view">
+        <field name="name">sii.boleta.vincular.form</field>
+        <field name="model">sii.boleta.vincular</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="fila_id" readonly="1" />
+                    <field name="company_id" invisible="1" />
+                    <field name="candidato_ids" invisible="1" />
+                    <field name="pago_ids" widget="many2many_tags" options="{'no_create': True}" />
+                </group>
+                <footer>
+                    <button name="action_confirmar" string="Vincular" type="object" class="btn-primary" />
+                    <button string="Cancelar" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_account_payment_form_48" model="ir.ui.view">
+        <field name="name">account.payment.form.48</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='group2']/field[@name='payment_method_line_id']" position="after">
+                <field name="sii_declara_ventas" invisible="1" />
+                <field name="sii_canal_48" invisible="not sii_declara_ventas" />
+                <field name="fecha_48" invisible="not sii_declara_ventas" />
+                <field name="boleta_48_id" invisible="not sii_declara_ventas" options="{'no_create': True}" />
+                <field name="boleta_48_manual" invisible="not sii_declara_ventas" readonly="1" />
+            </xpath>
+        </field>
+    </record>
+</odoo>

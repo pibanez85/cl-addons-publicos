@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_balance_8_columnas_wizard_form" model="ir.ui.view">
+        <field name="name">l10n_cl_fe.balance8col.wizard.form</field>
+        <field name="model">l10n_cl_fe.balance8col.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Balance de 8 Columnas">
+                <header>
+                    <button name="action_compute" string="Recalcular"
+                            type="object" class="oe_highlight"/>
+                    <button name="action_print_pdf" string="Imprimir PDF"
+                            type="object" class="btn-secondary"
+                            invisible="not line_ids"/>
+                    <button name="action_export_xlsx" string="Exportar Excel"
+                            type="object" class="btn-secondary"
+                            invisible="not line_ids"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_period_current_year" string="Año en curso"
+                                type="object" class="oe_stat_button" icon="fa-calendar"/>
+                        <button name="action_period_previous_year" string="Año anterior"
+                                type="object" class="oe_stat_button" icon="fa-calendar-o"/>
+                        <button name="action_period_current_month" string="Mes en curso"
+                                type="object" class="oe_stat_button" icon="fa-calendar-check-o"/>
+                        <button name="action_period_previous_month" string="Mes anterior"
+                                type="object" class="oe_stat_button" icon="fa-calendar-minus-o"/>
+                    </div>
+                    <h1>Balance Tributario de 8 Columnas</h1>
+                    <group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="lugar_emision"/>
+                        </group>
+                        <group>
+                            <field name="target_move" widget="radio"/>
+                            <field name="display_account" widget="radio"/>
+                            <field name="only_legal"/>
+                            <field name="journal_ids" widget="many2many_tags"
+                                   domain="[('company_id', 'in', allowed_company_ids)]"/>
+                            <field name="excluded_journal_ids" widget="many2many_tags"
+                                   domain="[('company_id', 'in', allowed_company_ids)]"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Resultado" name="resultado">
+                            <field name="line_ids" nolabel="1" readonly="1">
+                                <tree default_order="code" create="false" edit="false" delete="false">
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="account_type"/>
+                                    <field name="currency_id" invisible="1"/>
+                                    <field name="debit" sum="Total Debe"/>
+                                    <field name="credit" sum="Total Haber"/>
+                                    <field name="deudor" sum="Total Deudor"/>
+                                    <field name="acreedor" sum="Total Acreedor"/>
+                                    <field name="activo" sum="Total Activo"/>
+                                    <field name="pasivo" sum="Total Pasivo"/>
+                                    <field name="perdida" sum="Total Pérdida"/>
+                                    <field name="ganancia" sum="Total Ganancia"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Firmas para impresión" name="firmas">
+                            <group>
+                                <group>
+                                    <field name="representante_name"/>
+                                    <field name="representante_rut"/>
+                                </group>
+                                <group>
+                                    <field name="contador_name"/>
+                                    <field name="contador_rut"/>
+                                    <field name="contador_registro"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_balance_8_columnas_wizard" model="ir.actions.act_window">
+        <field name="name">Balance de 8 Columnas</field>
+        <field name="res_model">l10n_cl_fe.balance8col.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{}</field>
+    </record>
+
+    <record id="view_balance_8_columnas_line_tree" model="ir.ui.view">
+        <field name="name">l10n_cl_fe.balance8col.line.tree</field>
+        <field name="model">l10n_cl_fe.balance8col.line</field>
+        <field name="arch" type="xml">
+            <tree string="Balance de 8 Columnas"
+                  create="false" edit="false" delete="false"
+                  default_order="code">
+                <header>
+                    <button name="action_print_pdf" string="Imprimir PDF"
+                            type="object" class="btn-primary"/>
+                    <button name="action_export_xlsx" string="Exportar Excel"
+                            type="object" class="btn-secondary"/>
+                </header>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="account_type"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="debit" sum="Total Debe"/>
+                <field name="credit" sum="Total Haber"/>
+                <field name="deudor" sum="Total Deudor"/>
+                <field name="acreedor" sum="Total Acreedor"/>
+                <field name="activo" sum="Total Activo"/>
+                <field name="pasivo" sum="Total Pasivo"/>
+                <field name="perdida" sum="Total Pérdida"/>
+                <field name="ganancia" sum="Total Ganancia"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_balance_8_columnas_line_search" model="ir.ui.view">
+        <field name="name">l10n_cl_fe.balance8col.line.search</field>
+        <field name="model">l10n_cl_fe.balance8col.line</field>
+        <field name="arch" type="xml">
+            <search string="Balance de 8 Columnas">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="account_type"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="group_by_account_type" string="Tipo de cuenta"
+                            domain="[]" context="{'group_by': 'account_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_balance_8_columnas_lines" model="ir.actions.act_window">
+        <field name="name">Balance de 8 Columnas - Resultado</field>
+        <field name="res_model">l10n_cl_fe.balance8col.line</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_balance_8_columnas_line_tree"/>
+        <field name="search_view_id" ref="view_balance_8_columnas_line_search"/>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem
+        id="menu_balance_8_columnas"
+        name="Balance de 8 Columnas (Chile)"
+        parent="account.menu_finance_reports"
+        action="action_balance_8_columnas_wizard"
+        sequence="50"/>
+</odoo>

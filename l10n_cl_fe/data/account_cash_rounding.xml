@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data noupdate="1">
+        <record id="cash_rounding_ley_20956" model="account.cash.rounding">
+            <field name="name">Artículo 13 Ley Nº 20.956</field>
+            <field name="rounding">10</field>
+        </record>
+    </data>
+</odoo>

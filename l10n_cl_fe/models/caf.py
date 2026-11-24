@@ -328,9 +328,7 @@ has been exhausted.""",
         default=0)
     folios_vencidos = fields.Text(
         string="Folios Vencidos")
-    _sql_constraints = [
-        ("filename_unique", "unique(filename)", "Error! Filename Already Exist!"),
-    ]
+    _filename_unique = models.Constraint("unique(filename)", "Error! Filename Already Exist!")
     _order = "start_nm DESC"
 
     def obtener_folios_sin_usar(self):

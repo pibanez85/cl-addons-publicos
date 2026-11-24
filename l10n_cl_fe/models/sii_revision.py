@@ -304,10 +304,10 @@ class SiiRevisionPeriodo(models.Model):
     boletas_total_odoo = fields.Monetary(compute="_compute_totales", string="Total Odoo boletas")
     boletas_total_dif = fields.Monetary(compute="_compute_totales", string="Diferencia total boletas")
 
-    _sql_constraints = [
-        ("periodo_unico", "unique(company_id, periodo)",
-         "Ya existe la Declaración Mensual F29 de ese período para la compañía"),
-    ]
+    _periodo_unico = models.Constraint(
+        "unique(company_id, periodo)",
+        "Ya existe la Declaración Mensual F29 de ese período para la compañía",
+    )
 
     @api.depends("periodo", "company_id")
     def _compute_name(self):

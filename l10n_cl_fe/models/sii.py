@@ -36,9 +36,7 @@ class sii_document_letter(models.Model):
         "Vat Discriminated on Invoices?", help="If True, the vat will be discriminated on invoice report."
     )
 
-    _sql_constraints = [
-        ("name", "unique(name)", "Name must be unique!"),
-    ]
+    _name_uniq = models.Constraint("unique(name)", "Name must be unique!")
 
 
 class sii_responsability(models.Model):
@@ -60,10 +58,8 @@ class sii_responsability(models.Model):
         "Received Document Letters",
     )
 
-    _sql_constraints = [
-        ("name", "unique(name)", "Name must be unique!"),
-        ("code", "unique(code)", "Code must be unique!"),
-    ]
+    _name_uniq = models.Constraint("unique(name)", "Name must be unique!")
+    _code_uniq = models.Constraint("unique(code)", "Code must be unique!")
 
 
 class sii_document_type(models.Model):

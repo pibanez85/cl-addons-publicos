@@ -53,9 +53,9 @@ class AccountMoveComision(models.Model):
     )
 
     _order = 'sequence ASC'
-    _sql_constraints = [
-        ('name_uniq_per_move', 'unique(name, move_id)', 'Ya existe una línea con esta glosa para el documento')
-    ]
+    _name_uniq_per_move = models.Constraint(
+        'unique(name, move_id)', 'Ya existe una línea con esta glosa para el documento',
+    )
 
     @api.onchange('valor_neto_comision')
     @api.depends('move_id.move_type')

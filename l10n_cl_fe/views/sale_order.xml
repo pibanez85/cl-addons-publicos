@@ -17,13 +17,13 @@
 
             <page name="other_information" position="after">
               <page string="Referencias DTE">
-                <field name="referencia_ids" mode="tree">
-                    <tree editable="bottom">
+                <field name="referencia_ids" mode="list">
+                    <list editable="bottom">
                         <field name="fecha_documento" />
                         <field name="folio" required="True" />
                         <field name="ref_id" required="True" />
                         <field name="motivo" />
-                    </tree>
+                    </list>
                 </field>
               </page>
             </page>

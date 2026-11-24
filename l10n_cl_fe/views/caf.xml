@@ -94,7 +94,7 @@
             <field name="name">CAF</field>
             <field name="model">dte.caf</field>
             <field name="arch" type="xml">
-                <tree string="CAF Files">
+                <list string="CAF Files">
                     <field name="name" />
                     <field name="document_class_id" options="{'no_open': True, 'no_create': True}" readonly="True"/>
                     <field name="start_nm" />
@@ -106,13 +106,13 @@
                     <field name="cantidad_folios" readonly="True"/>
                     <field name="use_level" />
                     <field name="state" />
-                </tree>
+                </list>
             </field>
         </record>
         <record model="ir.actions.act_window" id="action_caf_files">
             <field name="name">SII CAF Files for DTE</field>
             <field name="res_model">dte.caf</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="help" type="html">
                 <p class="oe_view_nocontent_create">Please input CAF File</p>
             </field>

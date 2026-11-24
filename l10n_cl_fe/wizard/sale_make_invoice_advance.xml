@@ -8,7 +8,7 @@
     <field name="arch" type="xml">
       <group position="inside">
         <field name="sale_order_ids"  options="{'no_create': True}" >
-          <tree create="false" editable="bottom">
+          <list create="false" editable="bottom">
             <field name="company_id" invisible="True" />
             <field name="name" />
             <field name="journal_id" />
@@ -16,20 +16,20 @@
             <field name="document_class_ids" invisible="True" />
             <field name="journal_document_class_id" options="{'no_create': True}" />
             <field name="state" />
-          </tree>
+          </list>
         </field>
-        <field name="referencia_ids" mode="tree">
-            <tree editable="bottom">
-                <field name="so_id" domain="[('id', 'in', active_ids)]"/>
+        <field name="referencia_ids" mode="list">
+            <list editable="bottom">
+                <field name="so_id" domain="[('id', 'in', parent.sale_order_ids)]"/>
                 <field name="fecha_documento" />
                 <field name="folio" required="True" />
                 <field name="ref_id" required="True" />
                 <field name="motivo" />
-            </tree>
+            </list>
             <form>
               <sheet>
                 <group>
-                  <field name="so_id" domain="[('id', 'in', active_ids)]"/>
+                  <field name="so_id" domain="[('id', 'in', parent.sale_order_ids)]"/>
                   <field name="fecha_documento" />
                   <field name="folio" required="True" />
                   <field name="ref_id" required="True" />

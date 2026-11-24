@@ -47,7 +47,7 @@
                     <notebook>
                         <page string="Resultado" name="resultado">
                             <field name="line_ids" nolabel="1" readonly="1">
-                                <tree default_order="code" create="false" edit="false" delete="false">
+                                <list default_order="code" create="false" edit="false" delete="false">
                                     <field name="code"/>
                                     <field name="name"/>
                                     <field name="account_type"/>
@@ -60,7 +60,7 @@
                                     <field name="pasivo" sum="Total Pasivo"/>
                                     <field name="perdida" sum="Total Pérdida"/>
                                     <field name="ganancia" sum="Total Ganancia"/>
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="Firmas para impresión" name="firmas">
@@ -94,7 +94,7 @@
         <field name="name">l10n_cl_fe.balance8col.line.tree</field>
         <field name="model">l10n_cl_fe.balance8col.line</field>
         <field name="arch" type="xml">
-            <tree string="Balance de 8 Columnas"
+            <list string="Balance de 8 Columnas"
                   create="false" edit="false" delete="false"
                   default_order="code">
                 <header>
@@ -115,7 +115,7 @@
                 <field name="pasivo" sum="Total Pasivo"/>
                 <field name="perdida" sum="Total Pérdida"/>
                 <field name="ganancia" sum="Total Ganancia"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -127,7 +127,7 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="account_type"/>
-                <group expand="0" string="Agrupar por">
+                <group>
                     <filter name="group_by_account_type" string="Tipo de cuenta"
                             domain="[]" context="{'group_by': 'account_type'}"/>
                 </group>
@@ -138,7 +138,7 @@
     <record id="action_balance_8_columnas_lines" model="ir.actions.act_window">
         <field name="name">Balance de 8 Columnas - Resultado</field>
         <field name="res_model">l10n_cl_fe.balance8col.line</field>
-        <field name="view_mode">tree</field>
+        <field name="view_mode">list</field>
         <field name="view_id" ref="view_balance_8_columnas_line_tree"/>
         <field name="search_view_id" ref="view_balance_8_columnas_line_search"/>
         <field name="target">current</field>

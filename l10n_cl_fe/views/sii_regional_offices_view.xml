@@ -21,14 +21,14 @@
         <field name="name">view.sii.regional.offices.tree</field>
         <field name="model">sii.regional.offices</field>
         <field name="arch" type="xml">
-            <tree string="SII Document Class">
+            <list string="SII Document Class">
                 <field name="name" />
-            </tree>
+            </list>
         </field>
     </record>
     <record model="ir.actions.act_window" id="act_sii_regional_offices">
         <field name="name">SII Regional Offices</field>
         <field name="res_model">sii.regional.offices</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 </odoo>

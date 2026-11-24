@@ -15,10 +15,10 @@
         <field name="name">res.country.state.provincia.tree</field>
         <field name="model">res.country.state.provincia</field>
         <field name="arch" type="xml">
-            <tree string="City">
+            <list string="City">
                 <field name="code" />
                 <field name="name" />
-            </tree>
+            </list>
         </field>
     </record>
 </odoo>

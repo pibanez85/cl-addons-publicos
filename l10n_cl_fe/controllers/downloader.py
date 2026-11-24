@@ -1,6 +1,7 @@
 from base64 import b64decode
 from odoo import http
-from odoo.http import content_disposition, request
+from odoo.http import request
+from odoo.http.stream import content_disposition
 
 
 class Binary(http.Controller):

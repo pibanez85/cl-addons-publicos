@@ -8,7 +8,6 @@ from odoo.tools.translate import _
 _logger = logging.getLogger(__name__)
 
 CORREOS_MIPYME_SII = ("facturacionmipyme2@sii.cl", "facturacionmipyme@sii.cl")
-_DUNS_RUT_PREFIX = "CLRUT:"
 SRE_SESIONES = {}
 
 try:
@@ -91,8 +90,8 @@ class ResPartner(models.Model):
         vals.append('city_id')
         return vals
 
-    def _prepare_display_address(self, without_company=False):
-        address_format, args = super()._prepare_display_address(without_company=without_company)
+    def _prepare_display_address(self, without_name=False):
+        address_format, args = super()._prepare_display_address(without_name=without_name)
         args['comuna_name'] = self.city_id.name or ''
         return address_format, args
 
@@ -384,53 +383,6 @@ class ResPartner(models.Model):
         if not self.check_vat_cl(rut):
             return False
         return "{}.{}.{}-{}".format(rut[0:2], rut[2:5], rut[5:8], rut[-1])
-
-    @api.model
-    def _sugerencia_autocomplete_rut(self, document_number, data):
-        sugerencia = {
-            "name": data["razon_social"],
-            "description": " · ".join(filter(None, [document_number, data.get("glosa_giro")])),
-            "document_number": document_number,
-            "vat": "CL%s" % re.sub(r"[^0-9kK]", "", document_number).upper(),
-            "country_code": "CL",
-            "duns": "%s%s" % (_DUNS_RUT_PREFIX, document_number),
-        }
-        for origen, campo in (("direccion", "street"), ("telefono", "phone"), ("url", "website")):
-            if data.get(origen):
-                sugerencia[campo] = data[origen]
-        if data.get("dte_email") and data["dte_email"].lower() not in CORREOS_MIPYME_SII:
-            sugerencia["dte_email"] = data["dte_email"]
-        if data.get("es_mipyme"):
-            sugerencia["es_mipyme"] = True
-        return self._iap_replace_location_codes(sugerencia)
-
-    @api.model
-    def _autocomplete_rut(self, query):
-        document_number = self._rut_formateado(query)
-        if not document_number:
-            return []
-        data = self.get_remote_user_data(document_number, process_data=False)
-        if not data or not data.get("razon_social"):
-            return []
-        return [self._sugerencia_autocomplete_rut(document_number, data)]
-
-    @api.model
-    def autocomplete_by_name(self, query, query_country_id, timeout=15):
-        if not self._busqueda_es_rut(query):
-            return super().autocomplete_by_name(query, query_country_id, timeout=timeout)
-        return self._autocomplete_rut(query)
-
-    @api.model
-    def autocomplete_by_vat(self, vat, query_country_id, timeout=15):
-        if not self._busqueda_es_rut(vat):
-            return super().autocomplete_by_vat(vat, query_country_id, timeout=timeout)
-        return self._autocomplete_rut(vat)
-
-    @api.model
-    def enrich_by_duns(self, duns, timeout=15):
-        if not (duns or "").startswith(_DUNS_RUT_PREFIX):
-            return super().enrich_by_duns(duns, timeout=timeout)
-        return (self._autocomplete_rut(duns[len(_DUNS_RUT_PREFIX):]) or [{}])[0]
 
     @api.onchange("name")
     def fill_partner(self):

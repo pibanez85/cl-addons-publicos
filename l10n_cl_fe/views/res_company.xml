@@ -8,7 +8,7 @@
             <field name="website" position="after">
                 <field
                     name="dte_email_id"
-                    context="{'alias_model_name': 'mail.message.dte', 'alias_parent_model_name': 'res.company', 'default_alias_user_id': 3, 'alias_parent_thread_id': active_id}"
+                    context="{'alias_model_name': 'mail.message.dte', 'alias_parent_model_name': 'res.company', 'default_alias_user_id': 3, 'alias_parent_thread_id': id}"
                 />
                 <field name="dte_service_provider" />
                 <field
@@ -31,7 +31,7 @@
                 />
                 <field name="sucursal_ids"  widget="many2many_tags" optional="show"/>
                 <field name="sii_firma_ids" groups="account.group_account_manager">
-                    <tree>
+                    <list>
                         <field name="name"/>
                         <field name="subject_serial_number"/>
                         <field name="subject_common_name"/>
@@ -40,7 +40,7 @@
                         <field name="expire_date"/>
                         <field name="state"/>
                         <field name="active" invisible="1"/>
-                    </tree>
+                    </list>
                 </field>
             </field>
             <field name="vat" position="replace">

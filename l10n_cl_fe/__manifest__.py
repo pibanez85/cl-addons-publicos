@@ -1,7 +1,7 @@
 {
     "name": """Facturación Electrónica para Chile\
     """,
-    "version": "17.0.0.62.0",
+    "version": "20.0.0.62.0",
     'countries': ['cl'],
     'category': 'Accounting/Localizations/Account Charts',
     "author": "Daniel Santibáñez Polanco, Cooperativa OdooCoop",
@@ -20,19 +20,15 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "sale_management",
         "contacts",
         "portal",
-        "partner_autocomplete",
     ],
     "external_dependencies": {
         "python": [
             "facturacion_electronica>=0.25.0",
-            "base64",
             "zeep",
-            "ast",
             "num2words",
             "xlsxwriter",
             "xlrd",
-            "io",
-            "PIL",  # Via Pillow
+            "pillow",
             "urllib3",
         ]
     },
@@ -96,12 +92,14 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "views/res_config_settings.xml",
         "views/portal_boleta_layout.xml",
         "views/portal_invoice.xml",
-        "views/portal_my_details.xml",
+        # "views/portal_my_details.xml",  # TODO(Task 4): portal.portal_my_details_fields no existe en Odoo 20 (formulario de dirección reescrito)
         "views/sale_order.xml",
         "views/uom_uom.xml",
         "views/account_tax_repartition_line.xml",
-        "data/account_report.xml",
+        # Odoo 18+: las etiquetas tax_tags no llevan signo; cargar las etiquetas antes
+        # del informe para que este reutilice tag_cl_02 en vez de crear un duplicado.
         "data/account_account_tag_data.xml",
+        "data/account_report.xml",
         "data/responsability.xml",
         "data/account_cash_rounding.xml",
         "data/counties_data.xml",
@@ -118,10 +116,10 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "data/sii.regional.offices.csv",
         "data/decimal_precision.xml",
         "data/res.currency.csv",
-        "data/res.bank.csv",
+        # "data/res.bank.csv",  # Odoo 20 eliminó el modelo res.bank (banco en res.partner.bank.bank_name); ver PORT_NOTES
         "data/uom_uom.xml",
         "security/state_manager.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         "security/sale_document_report_security.xml",
         "security/sii_revision_rules.xml",
         "security/l10n_cl_fe_company_rules.xml",

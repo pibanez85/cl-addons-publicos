@@ -204,10 +204,10 @@ class AccountMove(models.Model):
     )
 
     @api.depends(
-        'line_ids.matched_debit_ids.debit_move_id.move_id.payment_id.is_matched',
+        'line_ids.matched_debit_ids.debit_move_id.move_id.origin_payment_id.is_matched',
         'line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual',
         'line_ids.matched_debit_ids.debit_move_id.move_id.line_ids.amount_residual_currency',
-        'line_ids.matched_credit_ids.credit_move_id.move_id.payment_id.is_matched',
+        'line_ids.matched_credit_ids.credit_move_id.move_id.origin_payment_id.is_matched',
         'line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual',
         'line_ids.matched_credit_ids.credit_move_id.move_id.line_ids.amount_residual_currency',
         'line_ids.balance',
@@ -817,7 +817,6 @@ class AccountMove(models.Model):
                         lambda l: l.display_type == 'tax'
                     ).with_context(dynamic_unlink=True).unlink()
 
-    @api.returns('self', lambda value: value.id)
     def copy(self, default=None):
         copied_am = super().copy(default)
         if default and default.get("referencias"):

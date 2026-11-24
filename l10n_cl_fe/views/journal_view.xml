@@ -88,7 +88,7 @@
                             editable="bottom"
                             widget="one2many"
                         >
-                            <tree string="Journal SII Documents" editable="bottom">
+                            <list string="Journal SII Documents" editable="bottom">
                                 <field name="sequence" widget="handle" />
                                 <field name="is_dte" invisible="1" />
                                 <field name="sii_document_class_id" options="{'no_open': True, 'no_create': True}" domain="['|', ('dte', '=', True), ('sii_code', '=', 48)]" />
@@ -100,7 +100,7 @@
                                     required="is_dte"
                                 />
                                 <field name="qty_available" readonly="1" />
-                            </tree>
+                            </list>
                         </field>
                     </page>
                 </notebook>

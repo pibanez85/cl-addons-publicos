@@ -29,22 +29,22 @@
             <field name="name">sii.sucursal.tree</field>
             <field name="model">sii.sucursal</field>
             <field name="arch" type="xml">
-                <tree string="Sucursales">
+                <list string="Sucursales">
                     <field name="name" />
                     <field name="sii_code" />
                     <field name="partner_id" />
                     <field name="company_id" groups="base.group_multi_company" />
-                </tree>
+                </list>
             </field>
         </record>
         <record id="action_sii_sucursal" model="ir.actions.act_window">
             <field name="name">Sucursales DTE</field>
             <field name="res_model">sii.sucursal</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
         </record>
         <record model="ir.actions.act_window.view" id="action_sii_sucursal_tree">
             <field name="sequence" eval="1"/>
-            <field name="view_mode">tree</field>
+            <field name="view_mode">list</field>
             <field name="view_id" ref="sii_sucursal_tree_view"/>
             <field name="act_window_id" ref="action_sii_sucursal"/>
         </record>

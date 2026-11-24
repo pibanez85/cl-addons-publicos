@@ -5,7 +5,7 @@
         <field name="name">Tax Report</field>
         <field name="root_report_id" ref="account.generic_tax_report"/>
         <field name="country_id" ref="base.cl"/>
-        <field name="filter_fiscal_position" eval="True"/>
+        <field name="allow_foreign_vat" eval="True"/>
         <field name="availability_condition">country</field>
         <field name="column_ids">
             <record id="tax_report_balance" model="account.report.column">
@@ -62,7 +62,7 @@
                     <record id="tax_report_ventas_netas_gravadas_c_iva_tag" model="account.report.expression">
                         <field name="label">balance</field>
                         <field name="engine">tax_tags</field>
-                        <field name="formula">Ventas Netas Gravadas con IVA</field>
+                        <field name="formula">-Ventas Netas Gravadas con IVA</field>
                     </record>
                 </field>
             </record>
@@ -82,7 +82,7 @@
                     <record id="tax_report_iva_debito_fiscal_tag" model="account.report.expression">
                         <field name="label">balance</field>
                         <field name="engine">tax_tags</field>
-                        <field name="formula">IVA Debito Fiscal</field>
+                        <field name="formula">-IVA Debito Fiscal</field>
                     </record>
                 </field>
             </record>
@@ -302,7 +302,7 @@
                     <record id="tax_report_base_ila_ventas_tag" model="account.report.expression">
                         <field name="label">balance</field>
                         <field name="engine">tax_tags</field>
-                        <field name="formula">Base Retenciones ILA (ventas)</field>
+                        <field name="formula">-Base Retenciones ILA (ventas)</field>
                     </record>
                 </field>
             </record>
@@ -312,7 +312,7 @@
                     <record id="tax_report_tax_ila_ventas_tag" model="account.report.expression">
                         <field name="label">balance</field>
                         <field name="engine">tax_tags</field>
-                        <field name="formula">Retenciones ILA (ventas)</field>
+                        <field name="formula">-Retenciones ILA (ventas)</field>
                     </record>
                 </field>
             </record>

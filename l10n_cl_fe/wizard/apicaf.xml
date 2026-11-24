@@ -4,7 +4,7 @@
         <record id="view_dte_caf_apicaf" model="ir.ui.view">
             <field name="name">dte.caf.apicaf.form</field>
             <field name="model">dte.caf.apicaf</field>
-            <field name="groups_id" eval="[(4,ref('base.group_user'))]"/>
+            <field name="group_ids" eval="[(4,ref('base.group_user'))]"/>
             <field name="arch" type="xml">
                   <form string="DTE CAF API EMISION FOLIOS">
                       <header>
@@ -79,10 +79,10 @@
                           <field
                               name="lineas_disponibles"
                               widget="one2many_list"
-                              mode="tree"
-                              context="{'default_apicaf_id': active_id}"
+                              mode="list"
+                              context="{'default_apicaf_id': id}"
                           >
-                              <tree string="CAFs disponibles" editable="bottom">
+                              <list string="CAFs disponibles" editable="bottom">
                                   <field name="apicaf_id" invisible="True" />
                                   <field name="fecha" readonly="True" />
                                   <field name="inicial" readonly="True" />
@@ -92,7 +92,7 @@
                                   <field name="sequence" invisible="True" />
                                   <field name="form_name" invisible="True" />
                                   <field name="caf_id" invisible="True" />
-                              </tree>
+                              </list>
                           </field>
                       </group>
                       <group invisible="operacion not in ['reobtener', 'anular'] or not reob_has_next_page">

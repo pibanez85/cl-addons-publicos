@@ -8,7 +8,7 @@
             <form string="SII DTE masive send Wizard">
                 <group>
                     <field name="documentos" widget="one2many">
-                        <tree string="DTes a enviar" editable="top/bottom">
+                        <list string="DTes a enviar" editable="bottom">
                             <field name="state" invisible="True" />
                             <field name="company_id" invisible="True" />
                             <field name="invoice_date" />
@@ -24,7 +24,7 @@
                                 decoration-success="sii_result in ['Proceso', 'Aceptado']"
                                 decoration-danger="sii_result == 'Rechazado'"
                                 decoration-warning="sii_result == 'Reparo'"/>
-                        </tree>
+                        </list>
                     </field>
                     <field name="set_pruebas" invisible="1" />
                     <field name="numero_atencion" invisible="not set_pruebas" />
@@ -41,10 +41,10 @@
     <record id="action_account_invoice_send" model="ir.actions.act_window">
         <field name="name">Enviar Documentos al SII</field>
         <field name="res_model">sii.dte.masive_send.wizard</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="view_id" ref="sii_dte_masive_send_wizard_form"/>
         <field name="target">new</field>
-        <field name="groups_id" eval="[(4, ref('account.group_account_invoice'))]"/>
+        <field name="group_ids" eval="[(4, ref('account.group_account_invoice'))]"/>
         <field name="binding_model_id" ref="account.model_account_move" />
         <field name="binding_view_types">list</field>
     </record>

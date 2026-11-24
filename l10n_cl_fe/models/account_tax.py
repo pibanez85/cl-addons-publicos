@@ -23,7 +23,7 @@ try:
 except ImportError:
     _logger.warning("no se ha cargado urllib3")
 try:
-    import fitz
+    import pymupdf as fitz
 except Exception as e:
     fitz = False
     _logger.warning("error en PyMUPDF: %s" % str(e))

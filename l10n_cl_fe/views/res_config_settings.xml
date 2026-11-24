@@ -357,27 +357,27 @@
                             <div class="content-group">
                                 <div class="row mt8">
                                     <label for="f29_cuenta_debito_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_debito_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_debito_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_credito_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_credito_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_credito_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_remanente_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_remanente_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_remanente_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_ppm_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_ppm_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_ppm_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_retencion_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_retencion_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_retencion_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_impuesto_unico_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_impuesto_unico_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_impuesto_unico_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_por_pagar_id" class="col-lg-5 o_light_label"/>
@@ -385,15 +385,15 @@
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_recargo_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_recargo_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_recargo_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_reajuste_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_reajuste_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_reajuste_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_cuenta_postergado_id" class="col-lg-5 o_light_label"/>
-                                    <field name="f29_cuenta_postergado_id" domain="[('deprecated', '=', False)]" options="{'no_create': True}"/>
+                                    <field name="f29_cuenta_postergado_id" domain="[('active', '=', True)]" options="{'no_create': True}"/>
                                 </div>
                                 <div class="row mt8">
                                     <label for="f29_diario_id" class="col-lg-5 o_light_label"/>
@@ -436,7 +436,6 @@
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">res.config.settings</field>
         <field name="view_mode">form</field>
-        <field name="target">inline</field>
         <field name="context">{'module': 'l10n_cl_fe'}</field>
     </record>
 

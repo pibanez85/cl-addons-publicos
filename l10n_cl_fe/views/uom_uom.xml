@@ -2,8 +2,7 @@
 <odoo>
   <record id="product_uom_mcub" model="uom.uom">
     <field name="name">MCUB</field>
-    <field name="category_id" ref="uom.product_uom_categ_vol"/>
-    <field name="uom_type">bigger</field>
-    <field name="factor_inv" eval="1000" />
+    <field name="relative_uom_id" ref="uom.product_uom_litre"/>
+    <field name="relative_factor" eval="1000"/>
   </record>
 </odoo>

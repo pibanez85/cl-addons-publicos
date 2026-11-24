@@ -19,18 +19,18 @@
             <field name="name">sii.concept_type.tree</field>
             <field name="model">sii.concept_type</field>
             <field name="arch" type="xml">
-                <tree string="SII Concept type">
+                <list string="SII Concept type">
                     <field name="name" />
                     <field name='product_types' />
                     <field name="sii_code" />
                     <field name='active' />
-                </tree>
+                </list>
             </field>
         </record>
         <record model="ir.actions.act_window" id="act_sii_concept_type">
             <field name="name">SII Concept type</field>
             <field name="res_model">sii.concept_type</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
         </record>
     </data>
 </odoo>

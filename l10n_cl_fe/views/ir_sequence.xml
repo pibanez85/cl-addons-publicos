@@ -28,7 +28,7 @@
                   name="%(action_apicaf_form)d"
                   string="Obtener Folios desde el SII"
                   type="action"
-                  context="{'default_sequence_id': active_id}"
+                  context="{'default_sequence_id': id}"
                   invisible="not is_dte"
                   class="btn-primary"
               />
@@ -61,7 +61,7 @@
                   </group>
                   <field
                       name="dte_caf_ids"
-                      context="{'default_sequence_id':active_id}"
+                      context="{'default_sequence_id': id}"
                   />
               </page>
           </xpath>

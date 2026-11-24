@@ -27,7 +27,6 @@
             <field name="name">Cron Verificación en el SII de Documentos Recibidos</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="model_mail_message_dte_document" />
             <field name="state">code</field>
             <field name="code">model._cron_verificar_sii(50)</field>
@@ -50,7 +49,6 @@
             <field name="name">Cron Alerta vencimiento Firma Electrónica</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="model_sii_firma" />
             <field name="state">code</field>
             <field name="code">model._cron_alerta_vencimiento()</field>
@@ -64,7 +62,6 @@
             <field name="name">Cron AutoReponer CAF</field>
             <field name="interval_number">1</field>
             <field name="interval_type">minutes</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="model_ir_sequence" />
             <field name="state">code</field>
             <field name="code">model.check_cafs()</field>
@@ -78,7 +75,6 @@
             <field name="name">Actualizar UF, UTM, dólar y euro desde la CMF</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
             <field name="model_id" ref="base.model_res_currency" />
             <field name="state">code</field>
             <field name="code">model.currency_schedule_update()</field>

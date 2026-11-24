@@ -76,7 +76,7 @@ class GlobalDescuentoRecargo(models.Model):
         string='Account',
         required=True,
         check_company=True,
-        domain="[('deprecated', '=', False), ('account_type', '!=', 'off_balance')]",
+        domain="[('active', '=', True), ('account_type', '!=', 'off_balance')]",
         default=lambda self: self.move_id.journal_id.default_gd_account_id if self.type == 'D' else self.move_id.journal_id.default_gr_account_id
     )
     amount_untaxed = fields.Float(

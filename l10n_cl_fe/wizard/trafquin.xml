@@ -28,7 +28,7 @@
                 </group>
                 <field name="resultado" invisible="not resultado" />
                 <field name="linea_ids" invisible="not linea_ids">
-                    <tree
+                    <list
                         editable="bottom"
                         create="false"
                         delete="false"
@@ -46,7 +46,7 @@
                         <field name="estado" readonly="1" />
                         <field name="estado_sii" readonly="1" optional="hide" />
                         <field name="mensaje" readonly="1" optional="hide" />
-                    </tree>
+                    </list>
                 </field>
                 <footer>
                     <button name="action_listar" string="Listar" type="object" class="btn-primary" />
@@ -92,7 +92,6 @@
         <field name="name">Obtener XML de proveedores desde el SII (trafquin)</field>
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>
-        <field name="numbercall">-1</field>
         <field name="model_id" ref="model_sii_dte_trafquin_wizard" />
         <field name="state">code</field>
         <field name="code">model._cron_xml_recibidos(3)</field>

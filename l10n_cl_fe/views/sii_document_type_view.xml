@@ -19,18 +19,18 @@
             <field name="name">sii.document_type.tree</field>
             <field name="model">sii.document_type</field>
             <field name="arch" type="xml">
-                <tree string="SII Document type">
+                <list string="SII Document type">
                     <field name="name" />
                     <field name="code" />
                     <field name="sii_code" />
                     <field name='active' />
-                </tree>
+                </list>
             </field>
         </record>
         <record model="ir.actions.act_window" id="act_sii_document_type">
             <field name="name">SII Document type</field>
             <field name="res_model">sii.document_type</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
         </record>
     </data>
 </odoo>

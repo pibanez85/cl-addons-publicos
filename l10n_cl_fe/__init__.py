@@ -1,30 +1,4 @@
 # -*- coding: utf-8 -*-
-from odoo.addons.account import SYSCOHADA_LIST, VAT_LIST
-
-
-def _auto_install_l10n(env):
-    # Check the country of the main company (only) and eventually load some module needed in that country
-    country = env.company.country_id
-    country_code = country.code
-    if country_code:
-        module_list = []
-        if not env.company.chart_template:
-            template_code = env['account.chart.template']._guess_chart_template(country)
-            module_list.append(env['account.chart.template']._get_chart_template_mapping()[template_code]['module'])
-        if country_code in ['US', 'CA']:
-            module_list.append('account_check_printing')
-        if country_code in SYSCOHADA_LIST + VAT_LIST:
-            module_list.append('base_vat')
-        if country_code == 'uk':
-            module_list.append('account_bacs')
-        elif country_code == 'CL':
-            module_list.append('l10n_cl_fe')
-
-        module_ids = env['ir.module.module'].search([('name', 'in', module_list), ('state', '=', 'uninstalled')])
-        if module_ids:
-            module_ids.sudo().button_install()
-
-
 from . import controllers, models, wizard, report
 import logging
 
@@ -52,12 +26,15 @@ def _check_pre_init(env):
 
 def _set_default_configs(env):
     ICPSudo = env["ir.config_parameter"].sudo()
-    ICPSudo.set_param("account.auto_send_dte", 1)
-    ICPSudo.set_param("account.auto_send_email", True)
-    ICPSudo.set_param("account.auto_send_persistencia", 24)
+    ICPSudo.set_int("account.auto_send_dte", 1)
+    ICPSudo.set_bool("account.auto_send_email", True)
+    ICPSudo.set_int("account.auto_send_persistencia", 24)
 
     for company in env["res.company"].sudo().search([]):
         env["account.chart.template"]._cl_asignar_cuentas_redondeo(company)
+
+    # Odoo 20: que l10n_cl/l10n_latam* no se auto-instalen (ver ir_module_module.py)
+    env["ir.module.module"]._cl_fe_desactivar_auto_install()
 
     #Eliminar incompatibilidad con l10n_cl
     modules = env["ir.module.module"].sudo().search([

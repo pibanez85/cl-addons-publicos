@@ -65,7 +65,7 @@ class ProcessMailsDocument(models.Model):
     )
     move_id = fields.Many2one("account.move", string="Factura", readonly=True,)
     id_dte = fields.Char(string="ID DTE")
-    dte_xml = fields.Binary(related="dte_id.xml_id.datas")
+    dte_xml = fields.Binary(related="dte_id.xml_id.raw")
     xml = fields.Text(string="XML Documento")
     purchase_to_done = fields.Many2one(
         "purchase.order", string="Ordenes de Compra a validar", domain=[("state", "not in", ["accepted", "rejected"])],
@@ -553,6 +553,6 @@ class MMDTEDGlobalDescuentoRecargo(models.Model):
     document_id = fields.Many2one("mail.message.dte.document", string="DTE", copy=False,)
     account_id = fields.Many2one('account.account', string='Account',
         company_dependent=True,
-        domain="[('deprecated', '=', False), ('company_id', '=', current_company_id)]",
+        domain="[('active', '=', True), ('company_ids', 'parent_of', current_company_id)]",
         #default=lambda self: self.move_id.journal_id.default_gd_account_id if self.type == 'D' else self.move_id.journal_id.default_gr_account_id
     )

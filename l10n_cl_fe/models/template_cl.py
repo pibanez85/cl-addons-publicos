@@ -1,7 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 import logging
 
-from odoo import models
+from odoo import Command, models
 from odoo.addons.account.models.chart_template import template
 
 _logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class AccountChartTemplate(models.AbstractModel):
         valores = {}
         for campo, codigo in CUENTAS_F29.items():
             if not company[campo]:
-                cuenta = Cuenta.search([('code', '=', codigo), ('company_id', 'parent_of', company.id)], limit=1)
+                cuenta = Cuenta.search([('code', '=', codigo), ('company_ids', 'parent_of', company.id)], limit=1)
                 if cuenta:
                     valores[campo] = cuenta.id
         if not company.f29_diario_id:
@@ -59,20 +59,22 @@ class AccountChartTemplate(models.AbstractModel):
 
     def _cl_cuenta_redondeo(self, company, datos):
         codigo, nombre, tipo = datos
-        Cuenta = self.env['account.account'].sudo().with_company(company).with_context(lang='es_CL')
+        Cuenta = self.env['account.account'].sudo().with_company(company)
+        if self.env['res.lang']._lang_get('es_CL'):  # Odoo 20 falla con un idioma no activo en el contexto
+            Cuenta = Cuenta.with_context(lang='es_CL')
         tipos = ('income', 'income_other') if tipo == 'income_other' else ('expense', 'expense_other')
-        cuentas = Cuenta.search([('company_id', 'parent_of', company.id), ('account_type', 'in', tipos)])
+        cuentas = Cuenta.search([('company_ids', 'parent_of', company.id), ('account_type', 'in', tipos)])
         cuenta = cuentas.filtered(lambda c: any(palabra in (c.name or '').lower() for palabra in ('redondeo', 'rounding')))[:1]
         if cuenta:
             return cuenta
-        if Cuenta.search_count([('code', '=', codigo), ('company_id', 'parent_of', company.id)], limit=1):
+        if Cuenta.search_count([('code', '=', codigo), ('company_ids', 'parent_of', company.id)], limit=1):
             _logger.warning('El código %s ya está ocupado en %s: asigne a mano la cuenta de redondeo.', codigo, company.name)
             return Cuenta
-        return Cuenta.create({'code': codigo, 'name': nombre, 'account_type': tipo, 'company_id': company.root_id.id})
+        return Cuenta.create({'code': codigo, 'name': nombre, 'account_type': tipo, 'company_ids': [Command.set(company.root_id.ids)]})
 
     def _cl_asignar_cuentas_redondeo(self, company):
         Cuenta = self.env['account.account'].sudo().with_company(company)
-        if not Cuenta.search_count([('company_id', 'parent_of', company.id)], limit=1):
+        if not Cuenta.search_count([('company_ids', 'parent_of', company.id)], limit=1):
             return
         ganancia = self._cl_cuenta_redondeo(company, CUENTA_GANANCIA_REDONDEO)
         perdida = self._cl_cuenta_redondeo(company, CUENTA_PERDIDA_REDONDEO)
@@ -95,7 +97,7 @@ class AccountChartTemplate(models.AbstractModel):
         faltantes = [k for k in CUENTAS_ILA if not Plantilla.ref(k, raise_if_not_found=False)]
         ocupados = self.env['account.account'].sudo().search_count([
             ('code', 'in', [cuentas[k]['code'] for k in faltantes]),
-            ('company_id', 'parent_of', company.id),
+            ('company_ids', 'parent_of', company.id),
         ], limit=1)
         if ocupados:
             _logger.warning('Los códigos de cuenta ILA ya están ocupados en %s: cree a mano los impuestos ILA.', company.name)

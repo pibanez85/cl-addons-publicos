@@ -64,5 +64,6 @@ class SaleDocumentReport(models.Model):
         return [self._query_account()]
 
     @property
-    def _table_query(self):
-        return SQL(" UNION ALL ").join(self._queries())
+    def _table_sql(self):
+        # Odoo 20: _table_query pasó a _table_sql (subconsulta entre paréntesis)
+        return SQL("(%s)", SQL(" UNION ALL ").join(self._queries()))

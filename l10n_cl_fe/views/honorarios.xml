@@ -90,7 +90,7 @@
                         <notebook>
                             <page string="Bill">
                                 <field context="{'move_type': move_type, 'journal_id': journal_id}" name="invoice_line_ids">
-                                    <tree string="Bill lines" editable="bottom">
+                                    <list string="Bill lines" editable="bottom">
                                         <field name="sequence" widget="handle" />
                                         <field name="product_id" context="{'partner_id': parent.partner_id}" />
                                         <field name="name" />
@@ -118,13 +118,13 @@
                                         />
                                         <field name="price_subtotal" />
                                         <field name="currency_id" invisible="True" />
-                                    </tree>
+                                    </list>
                                 </field>
                                 <group>
                                     <group>
                                         <div class="oe_inline">
                                             <field name="tax_line_ids">
-                                                <tree editable="bottom" string="Taxes">
+                                                <list editable="bottom" string="Taxes">
                                                     <field name="name" />
                                                     <!--Need invisible fields for on_change to create all necessary info -->
                                                     <field name="tax_id" invisible="True" />
@@ -143,7 +143,7 @@
                                                     <field name="amount" />
                                                     <field name="amount_retencion" />
                                                     <field name="currency_id" invisible="True" />
-                                                </tree>
+                                                </list>
                                             </field>
                                         </div>
                                     </group>
@@ -236,7 +236,7 @@
                                         />
                                     </group>
                                 </group>
-                                <field name="referencias" mode="tree">
+                                <field name="referencias" mode="list">
                                     <form>
                                         <group>
                                             <field name="folio" required="True" />
@@ -246,13 +246,13 @@
                                             <field name="fecha_documento" />
                                         </group>
                                     </form>
-                                    <tree>
+                                    <list>
                                         <field name="folio" required="True" />
                                         <field name="ref_id" required="True" />
                                         <field name="cod_ref" />
                                         <field name="motivo" />
                                         <field name="fecha_documento" />
-                                    </tree>
+                                    </list>
                                 </field>
                             </page>
                         </notebook>
@@ -265,7 +265,7 @@
             <field name="name">account.move.supplier.tree</field>
             <field name="model">account.move</field>
             <field name="arch" type="xml">
-                <tree decoration-info="state == 'draft'" decoration-muted="state == 'cancel'" string="Invoice">
+                <list decoration-info="state == 'draft'" decoration-muted="state == 'cancel'" string="Invoice">
                     <field name="partner_id" groups="base.group_user" string="Vendor" />
                     <field name="date" string="Bill Date" />
                     <field name="name" string="Number" />
@@ -282,13 +282,13 @@
                     <field name="company_currency_id" invisible="True" />
                     <field name="state" />
                     <field name="move_type" invisible="context.get('move_type',True)" />
-                </tree>
+                </list>
             </field>
         </record>
         <record id="honorarios_tree2" model="ir.actions.act_window">
             <field name="name">Boletas Honorarios</field>
             <field name="res_model">account.move</field>
-            <field name="view_mode">tree,kanban,form,calendar,pivot,graph</field>
+            <field name="view_mode">list,kanban,form,calendar,pivot,graph</field>
             <field eval="False" name="view_id" />
             <field name="domain">[('move_type','in',('in_invoice', 'in_refund'))]</field>
             <field

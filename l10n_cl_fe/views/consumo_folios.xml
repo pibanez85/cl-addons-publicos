@@ -5,7 +5,7 @@
             <field name="name">l10n_cl_fe.libro_compra_venta.tree</field>
             <field name="model">account.move.consumo_folios</field>
             <field name="arch" type="xml">
-                <tree decoration-info="sii_result == 'draft'" decoration-muted="sii_result == 'cancel'">
+                <list decoration-info="sii_result == 'draft'" decoration-muted="sii_result == 'cancel'">
                     <field name="name" />
                     <field name="correlativo" />
                     <field name="fecha_inicio" />
@@ -20,7 +20,7 @@
                     <field name="date" />
                     <field name="company_id" />
                     <field name="sii_result" widget="badge" decoration-muted="sii_result in ['draft', 'NoEnviado', 'Anulado']" decoration-info="sii_result in ['Enviado', 'EnProceso']" decoration-success="sii_result == 'Proceso'" decoration-danger="sii_result == 'Rechazado'" decoration-warning="sii_result == 'Reparo'"/>
-                </tree>
+                </list>
             </field>
         </record>
         <record id="view_cf_filter" model="ir.ui.view">
@@ -35,7 +35,7 @@
                     <filter name="filter_by_rejected" string="Rechazado" domain="[('sii_result', '=', 'Rechazado')]" />
                     <filter name="filter_by_cancel" string="Anulado" domain="[('sii_result', '=', 'Anulado')]" />
                     <filter name="filter_by_done" string="Posted" domain="[('sii_result', '=', 'done')]" />
-                    <group expand="0" string="Group By">
+                    <group>
                         <filter
                             name="group_by_fecha"
                             string="Consumos Mensuales Válidos"
@@ -99,23 +99,23 @@
                     </group>
                     <group>
                         <field name="impuestos" options="{'no_open': True, 'no_create': True}">
-                            <tree>
+                            <list>
                                 <field name="tpo_doc" />
                                 <field name="monto_neto" />
                                 <field name="monto_iva" />
                                 <field name="monto_exento" />
                                 <field name="monto_total" />
-                            </tree>
+                            </list>
                         </field>
                         <field name="detalles">
-                            <tree>
+                            <list>
                                 <field name="cf_id" invisible="True" />
                                 <field name="tipo_operacion" />
                                 <field name="folio_inicio" />
                                 <field name="folio_final" />
                                 <field name="cantidad" />
                                 <field name="tpo_doc" />
-                            </tree>
+                            </list>
                         </field>
                     </group>
                     <notebook>
@@ -125,10 +125,10 @@
                                 <field name="name" />
                                 <field name="date" />
                                 <field name="line_ids" widget="one2many_list">
-                                    <tree editable="bottom" string="Journal Items">
+                                    <list editable="bottom" string="Journal Items">
                                         <field name="debit" sum="Total Debit" />
                                         <field name="credit" sum="Total Credit" />
-                                    </tree>
+                                    </list>
                                 </field>
                               </form>
                             </field>
@@ -136,11 +136,11 @@
                         <page string="Anulaciones Manuales de Folio">
                             <group>
                                 <field name="anulaciones" editable="bottom" widget="one2many">
-                                    <tree editable="top/bottom">
+                                    <list editable="bottom">
                                         <field name="tpo_doc" />
                                         <field name="rango_inicio" />
                                         <field name="rango_final" />
-                                    </tree>
+                                    </list>
                                 </field>
                             </group>
                         </page>
@@ -156,7 +156,7 @@
         <record id="action_move_consumo_folios" model="ir.actions.act_window">
             <field name="name">Consumo de Folios</field>
             <field name="res_model">account.move.consumo_folios</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
             <field name="view_id" ref="electronic_consumo_folios_tree" />
             <field name="search_view_id" ref="view_cf_filter" />
             <field name="help" type="html">

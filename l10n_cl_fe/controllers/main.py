@@ -3,10 +3,11 @@
 
 import json
 
-from odoo.http import content_disposition, request, route
+from odoo.http import request, route
+from odoo.http.stream import content_disposition
 from odoo.tools.safe_eval import safe_eval
 
-from odoo.addons.web.controllers import main as report
+from odoo.addons.web.controllers import report
 
 
 class ReportController(report.ReportController):
@@ -28,7 +29,7 @@ class ReportController(report.ReportController):
                     del data["context"]["lang"]
                 context.update(data["context"])
             xlsx = report.with_context(context)._render_xlsx(docids, data=data)[0]
-            report_name = report.report_file
+            report_name = report.report_name
             if report.print_report_name and not len(docids) > 1:
                 obj = request.env[report.model].browse(docids[0])
                 report_name = safe_eval(report.print_report_name, {"object": obj})

@@ -4,7 +4,7 @@
         <field name="name">sii.revision.periodo.list</field>
         <field name="model">sii.revision.periodo</field>
         <field name="arch" type="xml">
-            <tree decoration-muted="estado in ('sin_consultar', 'fuera_actividades')" decoration-danger="estado in ('error', 'por_declarar')" decoration-warning="estado in ('descuadrado', 'fuera_plazo')" decoration-info="estado == 'declarado'" decoration-success="estado == 'pagado'">
+            <list decoration-muted="estado in ('sin_consultar', 'fuera_actividades')" decoration-danger="estado in ('error', 'por_declarar')" decoration-warning="estado in ('descuadrado', 'fuera_plazo')" decoration-info="estado == 'declarado'" decoration-success="estado == 'pagado'">
                 <field name="company_id" groups="base.group_multi_company" optional="show" />
                 <field name="periodo" />
                 <field name="currency_id" column_invisible="1" />
@@ -27,7 +27,7 @@
                 <field name="f29_descuadres" optional="hide" decoration-warning="f29_descuadres" />
                 <field name="rcv_estado" optional="hide" widget="badge" decoration-muted="rcv_estado == 'sin_consultar'" decoration-danger="rcv_estado == 'error'" decoration-warning="rcv_estado in ('incompleto', 'diferencias')" decoration-success="rcv_estado == 'conciliado'" />
                 <field name="contable_estado" optional="hide" widget="badge" decoration-muted="contable_estado == 'sin_asiento'" decoration-warning="contable_estado == 'borrador'" decoration-info="contable_estado == 'publicado'" decoration-success="contable_estado == 'pagado'" />
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -105,7 +105,7 @@
                                 Los ajustes quedan como borrador en Odoo. Odoo nunca presenta ni declara el F29: eso se hace en el portal del SII.
                             </p>
                             <field name="f29_formulario_ids">
-                                <tree editable="bottom" create="false" delete="false"
+                                <list editable="bottom" create="false" delete="false"
                                       decoration-warning="explicacion"
                                       decoration-danger="calculado_odoo and not explicacion and (diferencia &gt; 1 or diferencia &lt; -1)">
                                     <field name="orden" column_invisible="1" />
@@ -129,19 +129,19 @@
                                     <field name="ajuste_uid" force_save="1" optional="show" />
                                     <field name="ajuste_fecha" force_save="1" optional="hide" />
                                     <field name="explicacion" optional="show" />
-                                </tree>
+                                </list>
                             </field>
                             <separator string="Códigos administrativos del SII" invisible="not f29_admin_ids" />
                             <field name="f29_admin_ids" readonly="1" invisible="not f29_admin_ids">
-                                <tree decoration-muted="1">
+                                <list decoration-muted="1">
                                     <field name="codigo" options="{'enable_formatting': false}" />
                                     <field name="glosa" />
                                     <field name="valor_sii_texto" string="Valor SII" />
-                                </tree>
+                                </list>
                             </field>
                             <separator string="Declaraciones del período" />
                             <field name="f29_declaracion_ids" readonly="1">
-                                <tree>
+                                <list>
                                     <field name="estado" />
                                     <field name="folio" />
                                     <field name="fecha" />
@@ -154,7 +154,7 @@
                                     <field name="pdf_id" optional="show" />
                                     <button name="action_ver_codigos" type="object" icon="fa-list" title="Ver lo declarado" invisible="not detalle_fecha" />
                                     <field name="detalle_fecha" column_invisible="1" />
-                                </tree>
+                                </list>
                             </field>
                             <field name="declarado_detalle" invisible="1" />
                             <field name="f29_otros" invisible="not f29_otros" groups="base.group_no_one" />
@@ -195,7 +195,7 @@
                             </p>
                             <field name="compras_avisos" invisible="not compras_avisos" />
                             <field name="compras_linea_ids" readonly="1">
-                                <tree decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
+                                <list decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
                                       decoration-warning="estado in ('recibido', 'sin_xml')"
                                       decoration-muted="estado == 'coincide'">
                                     <field name="fecha" />
@@ -223,7 +223,7 @@
                                     <button name="action_abrir" type="object" icon="fa-external-link" title="Abrir" invisible="not move_id and not document_id" />
                                     <field name="move_id" column_invisible="1" />
                                     <field name="document_id" column_invisible="1" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="RCV Ventas" name="ventas">
@@ -253,7 +253,7 @@
                             </div>
                             <field name="ventas_avisos" invisible="not ventas_avisos" />
                             <field name="ventas_linea_ids" readonly="1">
-                                <tree decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
+                                <list decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
                                       decoration-muted="estado == 'coincide'">
                                     <field name="fecha" />
                                     <field name="document_class_id" />
@@ -274,7 +274,7 @@
                                     <field name="puede_descargar" column_invisible="1" />
                                     <button name="action_abrir" type="object" icon="fa-external-link" title="Abrir" invisible="not move_id" />
                                     <field name="move_id" column_invisible="1" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="Libro de boletas" name="boletas">
@@ -308,7 +308,7 @@
                             </p>
                             <field name="boletas_avisos" invisible="not boletas_avisos" />
                             <field name="boleta_linea_ids" readonly="1">
-                                <tree decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
+                                <list decoration-danger="estado in ('falta_odoo', 'falta_sii', 'diferencia')"
                                       decoration-muted="estado == 'coincide'">
                                     <field name="tipo_dte" />
                                     <field name="fecha" />
@@ -325,7 +325,7 @@
                                     <field name="diferencia" />
                                     <field name="estado" />
                                     <button name="action_ver_odoo" type="object" icon="fa-list" title="Ver en Odoo" />
-                                </tree>
+                                </list>
                             </field>
                             <separator string="Boletas diarias del SII" />
                             <field name="boleta_diaria_ids" readonly="1" context="{'search_default_con_movimiento': 1}" />
@@ -404,12 +404,12 @@
                         </group>
                     </group>
                     <field name="codigo_ids">
-                        <tree>
+                        <list>
                             <field name="codigo" options="{'enable_formatting': false}" />
                             <field name="glosa" />
                             <field name="valor" />
                             <field name="valor_texto" optional="hide" />
-                        </tree>
+                        </list>
                     </field>
                 </sheet>
             </form>
@@ -442,7 +442,7 @@
                     <notebook>
                         <page string="Cálculo de Odoo" name="odoo">
                             <field name="aporte_odoo_ids" readonly="1">
-                                <tree create="false" delete="false" decoration-danger="origen == 'diferencia'">
+                                <list create="false" delete="false" decoration-danger="origen == 'diferencia'">
                                     <field name="origen" column_invisible="1" />
                                     <field name="descripcion" />
                                     <field name="tipo_dte" />
@@ -465,12 +465,12 @@
                                     <field name="boleta_id" optional="show" />
                                     <field name="sii_boleta_id" optional="hide" />
                                     <field name="componente_id" optional="show" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="Respaldo del SII" name="sii">
                             <field name="aporte_sii_ids" readonly="1">
-                                <tree create="false" delete="false" decoration-danger="origen == 'diferencia'">
+                                <list create="false" delete="false" decoration-danger="origen == 'diferencia'">
                                     <field name="origen" column_invisible="1" />
                                     <field name="descripcion" />
                                     <field name="tipo_dte" />
@@ -493,12 +493,12 @@
                                     <field name="boleta_id" optional="show" />
                                     <field name="sii_boleta_id" optional="hide" />
                                     <field name="componente_id" optional="show" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="Diferencia explicada" name="diferencia">
                             <field name="aporte_diferencia_ids" readonly="1">
-                                <tree create="false" delete="false" decoration-danger="origen == 'diferencia'">
+                                <list create="false" delete="false" decoration-danger="origen == 'diferencia'">
                                     <field name="origen" column_invisible="1" />
                                     <field name="descripcion" />
                                     <field name="tipo_dte" />
@@ -521,7 +521,7 @@
                                     <field name="boleta_id" optional="show" />
                                     <field name="sii_boleta_id" optional="hide" />
                                     <field name="componente_id" optional="show" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                     </notebook>
@@ -580,7 +580,7 @@
     <record id="action_sii_revision_periodo" model="ir.actions.act_window">
         <field name="name">Declaración Mensual F29</field>
         <field name="res_model">sii.revision.periodo</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
     </record>
 
     <menuitem
@@ -596,7 +596,6 @@
             <field name="name">Declaración Mensual F29 con el SII (propuesta, RCV y boletas)</field>
             <field name="interval_number">1</field>
             <field name="interval_type">months</field>
-            <field name="numbercall">-1</field>
             <field name="nextcall" eval="(DateTime.now().replace(day=1, hour=10, minute=0, second=0) + relativedelta(months=1)).strftime('%Y-%m-%d %H:%M:%S')" />
             <field name="model_id" ref="model_sii_revision_periodo" />
             <field name="state">code</field>
@@ -607,7 +606,6 @@
             <field name="name">Declaración Mensual F29: conciliar RCV del mes corrido con el SII</field>
             <field name="interval_number">1</field>
             <field name="interval_type">days</field>
-            <field name="numbercall">-1</field>
             <field name="nextcall" eval="(DateTime.now() + relativedelta(days=1)).replace(hour=9, minute=0, second=0).strftime('%Y-%m-%d %H:%M:%S')" />
             <field name="model_id" ref="model_sii_revision_periodo" />
             <field name="state">code</field>

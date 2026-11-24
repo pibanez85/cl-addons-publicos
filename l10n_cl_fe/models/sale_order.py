@@ -110,28 +110,3 @@ class SOL(models.Model):
             fecha = order.date_order.date() if order.date_order else fields.Date.today()
             res['price_unit'] = self.currency_id._convert(self.price_unit, order.company_id.currency_id, order.company_id, fecha)
         return res
-
-    @api.depends("product_uom_qty", "discount", "price_unit", "tax_id")
-    def _compute_amount(self):
-        """
-        Compute the amounts of the SO line.
-        """
-        return super(SOL, self)._compute_amount()
-        ''' Esto quedará aquí hasta comprobar de que la nueva forma de cálculo de odoo esté bien'''
-        for line in self:
-            taxes = line.tax_id.compute_all(
-                line.price_unit,
-                line.order_id.currency_id,
-                line.product_uom_qty,
-                product=line.product_id,
-                partner=line.order_id.partner_shipping_id,
-                discount=line.discount,
-                uom_id=line.product_uom,
-            )
-            line.update(
-                {
-                    "price_tax": sum(t.get("amount", 0.0) for t in taxes.get("taxes", [])),
-                    "price_total": taxes["total_included"],
-                    "price_subtotal": taxes["total_excluded"],
-                }
-            )

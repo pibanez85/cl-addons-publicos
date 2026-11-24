@@ -23,13 +23,13 @@ class AccountJournal(models.Model):
     )
     restore_mode = fields.Boolean(string="Restore Mode", default=False,)
     default_gd_account_id = fields.Many2one('account.account', string='Default GD Account',
-        company_dependent=True, domain="[('deprecated', '=', False), ('company_id', '=', current_company_id)]"
+        company_dependent=True, domain="[('active', '=', True), ('company_ids', 'parent_of', current_company_id)]"
     )
     default_gr_account_id = fields.Many2one('account.account', string='Default GR Account',
-        company_dependent=True, domain="[('deprecated', '=', False), ('company_id', '=', current_company_id)]"
+        company_dependent=True, domain="[('active', '=', True), ('company_ids', 'parent_of', current_company_id)]"
     )
     default_comision_account_id = fields.Many2one('account.account', string='Default Comision Account',
-        company_dependent=True, domain="[('deprecated', '=', False), ('company_id', '=', current_company_id)]"
+        company_dependent=True, domain="[('active', '=', True), ('company_ids', 'parent_of', current_company_id)]"
     )
     sii_declara_ventas = fields.Boolean(
         string="Declara ventas en el SII", compute="_compute_sii_declara_ventas",

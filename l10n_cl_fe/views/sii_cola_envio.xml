@@ -42,44 +42,44 @@
                     <notebook>
                         <page name="page_documents" string="Facturas" invisible="not document_ids">
                             <field name="document_ids" nolabel="1" readonly="processing">
-                                <tree>
+                                <list>
                                     <field name="name" string="Documento"/>
                                     <field name="partner_id" string="Cliente"/>
                                     <field name="document_class_id" string="Tipo Doc"/>
                                     <field name="sii_document_number" string="Folio"/>
                                     <field name="amount_total" string="Total" sum="Total"/>
                                     <field name="sii_result" string="Estado DTE"/>
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page name="page_boleta_voucher" string="Boletas Voucher" invisible="not boleta_voucher_ids">
                             <field name="boleta_voucher_ids" nolabel="1" readonly="processing">
-                                <tree>
+                                <list>
                                     <field name="name"/>
                                     <field name="sii_document_number" string="Folio"/>
                                     <field name="sii_result" string="Estado"/>
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page name="page_books" string="Libros" invisible="not book_ids">
                             <field name="book_ids" nolabel="1" readonly="processing">
-                                <tree>
+                                <list>
                                     <field name="name"/>
                                     <field name="tipo_libro" string="Tipo"/>
                                     <field name="tipo_operacion"/>
                                     <field name="periodo_tributario" string="Período"/>
                                     <field name="sii_result" string="Estado"/>
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page name="page_consumo_folios" string="Consumo Folios" invisible="not consumo_folios_ids">
                             <field name="consumo_folios_ids" nolabel="1" readonly="processing">
-                                <tree>
+                                <list>
                                     <field name="name"/>
                                     <field name="fecha_inicio" string="Desde"/>
                                     <field name="fecha_final" string="Hasta"/>
                                     <field name="sii_result" string="Estado"/>
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="XML Envío" name="xml_envio" invisible="not envio_id">
@@ -100,7 +100,7 @@
         <field name="name">sii.cola_envio.tree</field>
         <field name="model">sii.cola_envio</field>
         <field name="arch" type="xml">
-            <tree string="Cola de Envío DTE" decoration-danger="intento &gt; 5" decoration-muted="not active">
+            <list string="Cola de Envío DTE" decoration-danger="intento &gt; 5" decoration-muted="not active">
                 <field name="sequence" widget="handle"/>
                 <field name="company_id" optional="hide"/>
                 <field name="document_count" string="Docs"/>
@@ -114,7 +114,7 @@
                 <field name="set_pruebas" optional="hide"/>
                 <field name="send_email" optional="hide"/>
                 <field name="active" optional="hide"/>
-            </tree>
+            </list>
         </field>
     </record>
     <record id="view_sii_cola_envio_search" model="ir.ui.view">
@@ -144,14 +144,14 @@
     <record model="ir.actions.act_window" id="cola_envio">
         <field name="name">Cola de Envío DTE</field>
         <field name="res_model">sii.cola_envio</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="view_sii_cola_envio_search"/>
     </record>
 
     <record model="ir.actions.act_window" id="action_cola_envio_sin_firma">
         <field name="name">Cola sin firma</field>
         <field name="res_model">sii.cola_envio</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">list,form</field>
         <field name="domain">[('firma_id', '=', False), ('active', '=', True)]</field>
         <field name="context">{'search_default_filter_sin_firma': 1}</field>
         <field name="help" type="html">

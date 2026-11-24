@@ -25,7 +25,7 @@
             <field name="name">sii.document_class.tree</field>
             <field name="model">sii.document_class</field>
             <field name="arch" type="xml">
-                <tree string="SII Document Class">
+                <list string="SII Document Class">
                     <field name="name" />
                     <field name="sii_code" />
                     <field name="doc_code_prefix" />
@@ -35,13 +35,13 @@
                     <field name='document_type' />
                     <field name='dte' />
                     <field name='use_prefix' />
-                </tree>
+                </list>
             </field>
         </record>
         <record model="ir.actions.act_window" id="act_sii_document_class">
             <field name="name">SII Document Class</field>
             <field name="res_model">sii.document_class</field>
-            <field name="view_mode">tree,form</field>
+            <field name="view_mode">list,form</field>
         </record>
     </data>
 </odoo>

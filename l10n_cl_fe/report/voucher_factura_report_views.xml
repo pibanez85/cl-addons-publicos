@@ -20,7 +20,7 @@
         <field name="name">l10n_cl.voucher.factura.report.list</field>
         <field name="model">l10n_cl.voucher.factura.report</field>
         <field name="arch" type="xml">
-            <tree string="Pagos electrónicos de facturas">
+            <list string="Pagos electrónicos de facturas">
                 <field name="date"/>
                 <field name="canal"/>
                 <field name="document_class_id"/>
@@ -36,7 +36,7 @@
                 <field name="monto_neto" sum="Total"/>
                 <field name="monto_iva" sum="Total"/>
                 <field name="monto_exento" sum="Total"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -67,7 +67,7 @@
     <record id="action_voucher_factura_report" model="ir.actions.act_window">
         <field name="name">Pagos electrónicos de facturas</field>
         <field name="res_model">l10n_cl.voucher.factura.report</field>
-        <field name="view_mode">tree,pivot</field>
+        <field name="view_mode">list,pivot</field>
         <field name="search_view_id" ref="voucher_factura_report_view_search"/>
         <field name="context">{'search_default_filter_date': 1, 'search_default_group_day': 1, 'search_default_group_canal': 1}</field>
         <field name="help" type="html">

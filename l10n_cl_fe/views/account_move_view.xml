@@ -29,12 +29,7 @@
             <field name="model">account.move</field>
             <field name="inherit_id" ref="account.view_account_move_kanban" />
             <field name="arch" type="xml">
-                <field name="ref" position="after">
-                    <field name="document_class_id" />
-                    <field name="sii_document_number" />
-                    <field name="sii_result" />
-                </field>
-                <xpath expr="//div[hasclass('row')][1]" position="after">
+                <xpath expr="//t[@t-name='card']/div[1]" position="after">
                     <div class="row mb4">
                         <div class="col-8">
                             <span><field name="document_class_id" /></span>
@@ -63,7 +58,7 @@
                     <field name="document_class_id" />
                     <field name="sii_document_number"/>
                 </field>
-                <field name="payment_state" position="after">
+                <field name="status_in_payment" position="after">
                     <field name="sii_result" widget="badge" decoration-muted="sii_result in ['draft', 'NoEnviado', 'Anulado'] or state == 'cancel'" decoration-info="sii_result in ['Enviado', 'EnProceso']" decoration-success="sii_result == 'Proceso'" decoration-danger="sii_result == 'Rechazado'" decoration-warning="sii_result == 'Reparo'"/>
                 </field>
             </field>
@@ -185,12 +180,12 @@
                     <field
                         name="global_descuentos_recargos"
                         widget="one2many_list"
-                        mode="tree"
-                        context="{'default_move_id': active_id}"
+                        mode="list"
+                        context="{'default_move_id': id}"
                         nolabel="1"
                         readonly="state != 'draft'"
                     >
-                        <tree string="Descuetos / Recargos Globales" editable="bottom">
+                        <list string="Descuetos / Recargos Globales" editable="bottom">
                             <field name="type" />
                             <field name="gdr_type" />
                             <field name="valor" />
@@ -202,17 +197,17 @@
                             <field name="aplicacion" />
                             <field name="move_id" invisible="True" />
                             <field name="company_id" invisible="True" />
-                        </tree>
+                        </list>
                     </field>
                 </xpath>
-                <xpath expr="//field[@name='line_ids']/tree/field[@name='account_type']" position="before">
+                <xpath expr="//field[@name='line_ids']/list/field[@name='account_type']" position="before">
                     <field name="is_gd_line" column_invisible="True"/>
                     <field name="is_gr_line" column_invisible="True"/>
                 </xpath>
                 <page id="other_tab" position="after">
                   <page id="referencias" string="Referencias" invisible="move_type not in ['out_invoice', 'out_refund', 'in_invoice', 'in_refund']">
                     <group>
-                      <field name="referencias" mode="tree" readonly="state != 'draft'">
+                      <field name="referencias" mode="list" readonly="state != 'draft'">
                           <form>
                               <group>
                                   <field name="sequence" widget="handle" />
@@ -225,7 +220,7 @@
                                   <field name="rut_otro" />
                               </group>
                           </form>
-                          <tree editable="bottom">
+                          <list editable="bottom">
                               <field name="sequence" widget="handle" />
                               <field name="folio" required="True" />
                               <field name="ref_id" required="True" />
@@ -234,7 +229,7 @@
                               <field name="motivo" required="ind_global" />
                               <field name="fecha_documento" />
                               <field name="rut_otro" optional="hide" />
-                          </tree>
+                          </list>
                       </field>
                     </group>
                   </page>
@@ -257,7 +252,7 @@
                   <page string="Comisiones Liquidación Factura" name="liquidacion"  invisible="sii_code not in [43, 46]">
                       <group>
                           <field name="comision_ids" editable="bottom" widget="one2many" readonly="state != 'draft'">
-                            <tree editable="top/bottom">
+                            <list editable="bottom">
                               <field name="sequence" widget="handle" />
                               <field name="name" />
                               <field name="currency_id" column_invisible="True"/>
@@ -269,7 +264,7 @@
                               <field name="move_id" column_invisible="True"/>
                               <field name="company_id" column_invisible="True"/>
                               <field name="account_id" />
-                            </tree>
+                            </list>
                           </field>
                       </group>
                   </page>
@@ -364,10 +359,10 @@
                         invisible="not use_documents or sii_result in [False, '', 'NoEnviado', 'Rechazado']"
                     >
                         <group string="La respuesta puede variar, todo depende de si el cliente cumple con darla">
-                            <field name="respuesta_ids" mode="tree">
-                                <tree>
+                            <field name="respuesta_ids" mode="list">
+                                <list>
                                     <field name="type" />
-                                </tree>
+                                </list>
                             </field>
                         </group>
                     </page>

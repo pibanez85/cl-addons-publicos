@@ -8,7 +8,7 @@
             <xpath expr="//notebook" position="inside">
                 <page string="Firmas Electrónicas" name="sii_firmas" groups="account.group_account_manager">
                     <field name="sii_firma_ids" options="{'no_create': True}">
-                        <tree>
+                        <list>
                             <field name="name"/>
                             <field name="subject_serial_number"/>
                             <field name="subject_common_name"/>
@@ -17,7 +17,7 @@
                             <field name="expire_date"/>
                             <field name="state"/>
                             <field name="active" invisible="1"/>
-                        </tree>
+                        </list>
                     </field>
                 </page>
             </xpath>

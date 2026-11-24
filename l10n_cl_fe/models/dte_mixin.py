@@ -42,11 +42,11 @@ class DteMixin(models.AbstractModel):
     )
     sii_code = fields.Integer(
         related="document_class_id.sii_code", string="SII Code",
-        store=True, readonly=True, group_operator=False,
+        store=True, readonly=True, aggregator=False,
     )
     sii_document_number = BigInt(
         string="Document Number", copy=False, readonly=True,
-        index=True, group_operator=False,
+        index=True, aggregator=False,
     )
     use_documents = fields.Boolean(string="Use Documents?",)
     canceled = fields.Boolean(string="Canceled?",)

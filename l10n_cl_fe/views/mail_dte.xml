@@ -4,7 +4,7 @@
         <field name="name">dte.tree</field>
         <field name="model">mail.message.dte</field>
         <field name="arch" type="xml">
-            <tree string="Dtes">
+            <list string="Dtes">
               <field string="Creado en" name="create_date" optional="show"/>
               <field string="Creado por" name="create_uid" optional="hide"/>
               <field name="name" optional="show"/>
@@ -12,7 +12,7 @@
               <field name="company_id" optional="hide"/>
               <field string="Last Update" name="write_date" optional="hide"/>
               <field string="Actualizado por" name="write_uid" optional="hide"/>
-            </tree>
+            </list>
         </field>
     </record>
     <record id="dte_view_tree_select" model="ir.ui.view">
@@ -20,7 +20,7 @@
         <field name="model">mail.message.dte</field>
         <field name="arch" type="xml">
           <search string="Search">
-            <group expand="0" string="Group By">
+            <group>
                 <filter string="Create Date" name="create_date" context="{'group_by':'create_date'}"/>
                 <filter string="Creado por" name="created_by" context="{'group_by':'create_uid'}"/>
                 <filter string="Name" name="name" context="{'group_by':'name'}"/>
@@ -34,7 +34,7 @@
         <field name="name">dte.document.tree</field>
         <field name="model">mail.message.dte.document</field>
         <field name="arch" type="xml">
-            <tree string="Documentos" decoration-info="state == 'draft'" decoration-muted="state == 'rejected'">
+            <list string="Documentos" decoration-info="state == 'draft'" decoration-muted="state == 'rejected'">
                 <field name="date" optional="show"/>
                 <field name="document_class_id" optional="show"/>
                 <field name="number" optional="show"/>
@@ -71,7 +71,7 @@
                     invisible="state != 'draft'"
                     context="{'default_tipo': 'mail.message.dte.document'}"
                 />
-            </tree>
+            </list>
         </field>
     </record>
     <record id="dte_view_form" model="ir.ui.view">
@@ -87,12 +87,12 @@
                         <field name="name" />
                         <field name="mail_id" />
                         <field name="company_id" />
-                        <field name="xml_id" domain="[('res_model', '=', active_id), ('res_model', '=', 'mail.message.dte')]"/>
+                        <field name="xml_id" domain="[('res_id', '=', id), ('res_model', '=', 'mail.message.dte')]"/>
                     </group>
                     <notebook>
                         <page string="Documentos">
                             <field name="document_ids" editable="bottom" widget="one2many">
-                                <tree editable="top/bottom">
+                                <list editable="bottom">
                                     <field name="id_dte" optional="show"/>
                                     <field name="date" />
                                     <field name="document_class_id" />
@@ -104,7 +104,7 @@
                                     <field name="currency_id" />
                                     <field name="invoice_line_ids" options="{'no_create_edit':True}" />
                                     <field name="company_id" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                     </notebook>
@@ -174,8 +174,8 @@
                         <page string="Líneas del documento">
                             <field name="invoice_line_ids"
                               widget="one2many"
-                              mode="tree">
-                                <tree editable="bottom">
+                              mode="list">
+                                <list editable="bottom">
                                     <field name="sequence" />
                                     <field name="document_id" invisible="True" />
                                     <field name="product_id" />
@@ -189,15 +189,15 @@
                                     <field name="create_pol" />
                                     <field name="create_move_line" />
                                     <field name="currency_id" invisible="True" />
-                                </tree>
+                                </list>
                             </field>
                             <field
                                 name="global_descuentos_recargos"
                                 widget="one2many_list"
-                                mode="tree"
-                                context="{'default_move_id': active_id}"
+                                mode="list"
+                                context="{'default_move_id': id}"
                             >
-                                <tree string="Descuetos / Recargos Globales" editable="bottom">
+                                <list string="Descuetos / Recargos Globales" editable="bottom">
                                     <field name="type" />
                                     <field name="gdr_type" />
                                     <field name="valor" />
@@ -207,7 +207,7 @@
                                     <field name="account_id"/>
                                     <field name="amount_untaxed_global_dr" invisible="True" />
                                     <field name="document_id" invisible="True" />
-                                </tree>
+                                </list>
                             </field>
                         </page>
                         <page string="XML DTE">
@@ -221,13 +221,13 @@
                             </header>
                             <field name="claim_description" />
                             <field name="claim_ids" readonly="True">
-                                <tree>
+                                <list>
                                     <field name="date" />
                                     <field name="claim" />
                                     <field name="estado_dte" />
                                     <field name="claim_description" />
                                     <field name="user_id" />
-                                </tree>
+                                </list>
                             </field>
                             <field name="sii_message" />
                         </page>
@@ -282,7 +282,7 @@
               <filter string="Sin XML (Registro de Compras)" name="sin_xml" domain="[('source', '=', 'rcv')]"/>
               <filter string="XML que no está en el SII" name="no_en_sii" domain="[('en_sii', '=', 'no')]"/>
               <filter string="Sin verificar en el SII" name="sin_verificar_sii" domain="[('en_sii', '=', False), ('source', '!=', 'rcv')]"/>
-              <group expand="0" string="Group By">
+              <group>
                   <filter string="Tipo Documento" name="document_class_id" context="{'group_by':'document_class_id'}"/>
                   <filter string="RUT Proveedor" name="new_partner" context="{'group_by':'new_partner'}"/>
                   <filter string="Proveedor" name="partner_id" context="{'group_by':'partner_id'}"/>

@@ -65,7 +65,12 @@ class VoucherFacturaReport(models.Model):
         return [self._pagos_account()]
 
     @property
-    def _table_query(self):
+    def _table_sql(self):
+        # Odoo 20: _table_query pasó a _table_sql (subconsulta entre paréntesis)
+        return SQL("(%s)", self._consulta())
+
+    @api.model
+    def _consulta(self):
         return SQL(
             """
             SELECT x.*,

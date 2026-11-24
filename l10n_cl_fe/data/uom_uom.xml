@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+  <!-- Odoo 19+: sin categorías de UdM; se usa relative_uom_id/relative_factor. -->
   <record id="product_uom_mcub" model="uom.uom">
     <field name="name">MCUB</field>
-    <field name="category_id" ref="uom.product_uom_categ_vol"/>
-    <field name="uom_type">bigger</field>
-    <field name="factor_inv" eval="1000" />
+    <field name="relative_uom_id" ref="uom.product_uom_litre"/>
+    <field name="relative_factor" eval="1000"/>
   </record>
   <record id="product_uom_mensual" model="uom.uom">
     <field name="name">Mensual</field>
-    <field name="uom_type">bigger</field>
-    <field name="category_id" ref="uom.uom_categ_wtime"/>
+    <!-- En 17.0 quedaba con factor 1 respecto a la unidad de referencia (Días). -->
+    <field name="relative_uom_id" ref="uom.product_uom_day"/>
+    <field name="relative_factor" eval="1"/>
   </record>
 </odoo>

@@ -42,7 +42,7 @@ class DteEnvioMixin(models.AbstractModel):
     )
     sii_batch_number = fields.Integer(
         string="Batch Number", copy=False, readonly=True,
-        group_operator=False,
+        aggregator=False,
         help="Batch number for processing multiple invoices together",
     )
     sii_barcode = fields.Char(

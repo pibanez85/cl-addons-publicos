@@ -5,13 +5,13 @@
         <field name="model">account.tax.mepco</field>
         <field name="priority" eval="2" />
         <field name="arch" type="xml">
-            <tree string="Valores Mepco">
+            <list string="Valores Mepco">
                 <field name="name" />
                 <field name="date" />
                 <field name="amount" />
                 <field name="type" />
                 <field name="factor" />
-            </tree>
+            </list>
         </field>
     </record>
     <record id="view_account_tax_mepco_search" model="ir.ui.view">

@@ -6,7 +6,7 @@ from odoo.addons.portal.controllers.portal import CustomerPortal
 
 class PortalDTE(http.Controller):
 
-    @http.route(['/portal/state_infos/<model("res.country.state"):state>'], type='json', auth="public", methods=['POST'], website=True)
+    @http.route(['/portal/state_infos/<model("res.country.state"):state>'], type='jsonrpc', auth="public", methods=['POST'], website=True)
     def state_infos(self, state, mode='billing', **kw):
         return dict(
             cities=[{
@@ -17,7 +17,7 @@ class PortalDTE(http.Controller):
             } for city in state.get_website_sale_cities(mode=mode)]
         )
 
-    @http.route(['/portal/partner_remote'], type='json', methods=['POST'], auth="public", website=True)
+    @http.route(['/portal/partner_remote'], type='jsonrpc', methods=['POST'], auth="public", website=True)
     def partner_remote(self, rut, **kw):
         return request.env['res.partner'].sudo().get_remote_user_data(rut, process_data=False)
 

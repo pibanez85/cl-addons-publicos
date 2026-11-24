@@ -93,70 +93,111 @@ Resumen: `1 failed, 16 error(s) of 75 tests` (107 pruebas en las estadísticas d
 | `test_trafquin.TestBoletasDiariasSii.test_concilia_pagos_con_el_48_y_verifica_la_rebaja` | `KeyError: 'compute_all_tax'` |
 | `test_trafquin.TestBoletasConVoucher.test_boleta_39_pagada_con_voucher_pide_nc` | `KeyError: 'compute_all_tax'` |
 
-## Pendiente — Task 3 (Python)
+## Hecho en la Task 3 (Python)
 
-Línea base de pruebas upstream al terminar la Task 2 (`--test-tags /l10n_cl_fe`): 72 pruebas
-ejecutadas (3 de instalación + 69 upstream), **1 falla y 16 errores**; además 2 clases no pasan de
-`setUpClass` (`TestRecepcionBhe`, `TestAsientoF29`, 17 pruebas que no se cuentan). Causas vistas:
+Resultado: `scripts/test.sh l10n_cl_fe` → `0 failed, 0 error(s) of 102 tests` (todas las clases
+pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
 
-- `KeyError: 'compute_all_tax'` en `account_move.py::_sync_dynamic_lines` (7 pruebas): el cálculo
-  de líneas de impuesto de Odoo 18+ cambió (`_prepare_base_line_for_taxes_computation`,
-  `_add_tax_details_in_base_line`); también `_compute_tax_totals` usa
-  `_convert_to_tax_base_line_dict`, que ya no existe.
-- `ir.attachment.datas` eliminado (solo `raw`, valores `BinaryValue`): `controllers/downloader.py:31`,
-  `wizard/upload_xml.py:202` (rompe `_create_attachment`: "_check_contents should handle that"),
-  `models/sii_dte_claim.py:87`, `models/mail_message_dte.py:35,48`, `models/mail.py:149`,
-  `models/dte_envio_mixin.py:287`, `models/sii_revision_declarado.py:86`, y
-  `migrations/17.0.0.51.0`. Revisar además todos los `fields.Binary` (Odoo 20 entrega
-  `BinaryValue`, no base64).
-- `ir.config_parameter.get_param`/`set_param` eliminados → `get_str/get_int/get_bool/get_float` y
-  `set_*` (34 usos en `mail_message_dte*.py`, `caf.py`, `sii_cola_envio.py`, `currency.py`,
-  `dte_envio_mixin.py`, `res_partner.py`, `res_config_settings.py`).
-- `account.account.company_id` → `company_ids` (también en las pruebas upstream:
-  `test_recepcion.py:36`, `test_trafquin.py:1092`; la Task 3 debe adaptar el *setup*, no las aserciones).
-- `res.partner.company_type` eliminado (`sii_revision.py:1506,1512`, `sii_revision_asiento.py:85`,
-  `wizard/upload_xml.py:312,1133`, y la aserción de `test_recepcion.py:68`).
-- `_sql_constraints` ya no se aplica (Odoo solo avisa): `account_move_comision.py:56`,
-  `caf.py:329`, `sii_revision.py:307`, `sii.py:39,63` → `models.Constraint`/`models.UniqueIndex`.
-  **Hoy esas restricciones únicas no existen en la base.**
-- `_name_search` ya no existe en el ORM (ahora `_search_display_name`): los overrides de
-  `res_partner.py:83`, `partner_activities.py:15`, `account_move.py:919`,
-  `account_journal_sii_document_class.py:73` no se llaman (búsqueda por RUT/folio rota).
-- `read_group` sobrescrito en `consumo_folios.py:95` (API de agrupación cambió en 18/19).
-- `with_context(lang='es_CL')` falla si `es_CL` no está activo: `libro.py:393`,
-  `dte_envio_mixin.py:191,279`, `account_move.py:1424`, `consumo_folios.py:141`. Decidir entre
-  activar `es_CL` en el `post_init_hook` o proteger cada uso (en `template_cl.py` ya se protege).
-- Acciones Python con `view_mode` `tree`: `wizard/upload_xml.py:81,134,137`, `wizard/notas.py:152`,
-  `wizard/trafquin.py:264,272`, `models/mail_message_dte_document.py:342`,
-  `models/sii_revision.py:1679,1687`, `models/sii_revision_boletas.py:217`.
-- Fórmulas del informe y código del F29/libros que dependan del signo de las etiquetas
-  (`tax_negate` ya no existe). En `account.tax-cl.csv` había líneas de nota de crédito con `+`
-  (p. ej. `IVAV_17`); al quitar el signo quedan como en Odoo 18+, pero hay que verificar totales.
-- `controllers/main.py::ReportController.report_routes`: revisar la firma de la ruta en Odoo 20
-  (`readonly=True`, `website=True`).
-- `migrations/17.0.*`: no corren en una instalación nueva; una base 17 actualizada a 20 necesita
-  scripts propios (`ir_rule`/`ir_model_access` → `ir_access`, `datas`, etiquetas con signo, …).
-- `_check_pre_init` borra los registros `ir.module.module` de `l10n_cl`/`l10n_latam*` (y `update_list`
-  los recrea). Con `excludes`, si una base con compañía chilena intentara instalar `account` y
-  `l10n_cl_fe` en la misma operación, `button_install` ahora falla con un error de módulos
-  incompatibles en vez de instalar `l10n_cl` (no probado): instalar `account` antes o sin país.
-- La consulta de RUT a `sre.cl` sigue en `res.partner.get_remote_user_data` y en el onchange
-  `fill_partner`; el plan pide que quede desactivada por defecto.
-- `partner_autocomplete` **se auto-instala igual** (es `auto_install` en Odoo core al tener
-  `iap_mail`/`base_setup`): se ve en el log de `scripts/test.sh`. Quitar la dependencia no basta
-  para la restricción de privacidad; hay que impedirlo (p. ej. el mismo mecanismo de
-  `auto_install=False` o un módulo de marca en el repositorio privado).
-- Seguridad (`ir.access`): `dte.caf` sigue con `cru` para `base.group_user` (como en 17.0 para los
-  internos), así que cualquier usuario interno puede leer `caf_string`/`caf_file` (llave privada RSA
-  del timbre). Restringir esos campos con `groups=` y leerlos con sudo al timbrar (revisar
-  `caf.py`, `dte_mixin.py`). Revisar también qué internos necesitan `crud` en
-  `account.move.referencias`, `sale.order.referencias`, `partner.activities`,
-  `sii.activity.description`. Hay ids con punto (`access_sucursal.manager`) que crean registros en un
-  módulo ajeno (heredado de 17.0).
-- Vistas con `firma_id` (`sii_cola_envio.xml`) para usuarios sin acceso a `sii.firma`: comprobar
-  que el nombre se muestre (o mostrarlo con un related sudo) — Task 4.
-- Avisos de etiquetas duplicadas (`account.move.gdr`, `sii.dte.claim`, `dte.caf.apicaf`,
-  `account.move.reversal`, `sii.revision.f29.linea`).
+- `self._context/_cr/_uid` (eliminados) → `self.env.context/cr/uid`.
+- `ir.config_parameter.get_param/set_param` → `get_str/get_int/get_bool` y `set_*`.
+  `account.auto_send_email` se lee como booleano (antes `'False'` era verdadero) y la persistencia
+  se guarda en `account.auto_send_persistencia` (se escribía en `...peresistencia`).
+- Binarios: los campos entregan `BinaryValue` (contenido en bruto); se lee `.content` o
+  `.to_base64()` (lo que espera `facturacion_electronica`), se escribe `BinaryBytes` o base64 `str`,
+  los adjuntos se crean con `raw`. `models/binario.py::contenido_binario()` para valores mixtos.
+  El código de barras del TED (`sii_barcode_img`) se guarda en bruto (`image_data_uri` de Odoo 20
+  recibe bytes en bruto).
+- `_name_search` → `_rec_names_search` (RUT en `res.partner`, `partner.activities`,
+  `account.journal.sii_document_class`); se quitó el override de `account.move` (Odoo ya busca por
+  nombre). `read_group` es `final` en Odoo 20: se quitó el override de consumo de folios (los
+  totales son campos almacenados).
+- `account.account.company_id` → `company_ids` (`parent_of`); `res.partner.company_type` eliminado
+  → campo de compatibilidad calculado desde `is_company` (con inverso).
+- VAT: Odoo 20 normaliza el VAT al guardar (`_inverse_vat`) y para Chile dejaba `12345678-5`. Este
+  módulo guarda y busca `CL` + 9 dígitos: `format_vat_cl` lo mantiene y `check_vat_cl` acepta el
+  prefijo `CL`.
+- `view_mode` `tree` → `list` en acciones Python; `account.move.payment_id` → `origin_payment_id`
+  (`_get_last_sequence_domain`, también en SQL); `purchase.order.line` `product_uom/taxes_id` →
+  `uom_id/tax_ids`; `/download/boleta` usa `_render_qweb_pdf(<ref>, ids)`; pago del F29:
+  `_get_total_amount_in_wizard_currency_to_full_reconcile` → `_get_total_amounts_to_pay`.
+- `check_company` quitado de `account.move.document_class_ids` (`sii.document_class` no tiene
+  compañía; Odoo 20 falla al validar).
+- `es_CL` se activa en el `post_init_hook` (Odoo 20 rechaza `with_context(lang=...)` con un idioma
+  inactivo; el XML de los DTE y los libros se arman con `lang='es_CL'`).
+- Plan `cl`: las claves `property_*` del `template_data` se descartan desde Odoo 18; las cuentas por
+  defecto pasan a `res.company` (`receivable/payable/income/expense_account_id`,
+  `account_stock_valuation_id`). Sin esto, el diario de ventas de una compañía nueva quedaba sin
+  cuenta y no se podía crear una factura.
+- Impuestos (API de *base lines*): se borró la copia del motor de 17.0 (`compute_all`,
+  `_convert_to_tax_base_line_dict`, `_compute_taxes_for_single_line`, `_aggregate_taxes`,
+  `_prepare_tax_totals`, `compute_all_tax` de las líneas y el override de `_compute_tax_totals`).
+  Ahora: `account.move._get_sync_stack` agrega la sincronización de descuentos/recargos globales y
+  comisiones (55/56, entre impuestos y epd); `_get_rounded_base_and_tax_lines` incluye las líneas
+  `D`/`R`/`C` como base lines; `account.move.line._compute_totals` les calcula subtotal/total;
+  `account.tax._eval_tax_amount_fixed_amount` aplica `compute_factor` (impuesto fijo por unidad);
+  `_compute_amount` y `_compute_needed_terms` son los de Odoo 20 con la separación de retenciones
+  (`sii_type` `R`/`A`, `amount_tax_retencion`). `compute_all` de Odoo 20 sigue existiendo (sin
+  `discount`/`uom_id`) y es el que usan el XML del DTE, comisiones y la recepción.
+- `_sql_constraints` → `models.Constraint` (CAF por nombre de archivo, glosa de comisión por
+  documento, F29 por compañía y período, nombre/código de letras y responsabilidades del SII).
+  Los nombres de las de `sii.py` cambian (`name` → `name_uniq`, `code` → `code_uniq`: `_name` es un
+  atributo reservado). Prueba: `tests/test_restricciones.py`.
+- Etiquetas sin signo: verificado con `tests/test_etiquetas_impuestos.py` (factura 33 con IVA 19%:
+  `IVA Debito Fiscal` con saldo −190 y el informe `-IVA Debito Fiscal` suma +190; compra:
+  `IVA Pagado Compras Recuperables` +190; la nota de crédito resta). Los signos ya eran correctos.
+  `IVAV_17` tenía en 17.0 `+` en las líneas de nota de crédito (sumaban al débito); sin signo, la
+  nota de crédito resta, que es lo correcto.
+- CAF: `caf_string`/`caf_file` con `groups=GRUPOS_SECRETOS`; el timbraje los lee con sudo
+  (`dte.caf._contenido_caf_b64`, `decode_caf`, `load_caf`, `ir.sequence.get_caf_file`) y apicaf
+  crea el CAF con sudo tras validar la firma.
+- `firma_id` del contexto: `sii.firma._firma_autorizada(company)` (mismas reglas que
+  `res.users.get_digital_signature`, o modo sudo) en `dte.envio.mixin`, el asistente de XML,
+  `sii.xml.envio` y apicaf. La cola de envío se procesa con sudo (cron y botón) y
+  `sii.cola_envio` valida al asignar `firma_id` que sea del usuario o del admin (el respaldo de
+  `_resolve_cola_firma`). Pruebas en `tests/test_accesos.py`.
+- Pruebas upstream: solo se adaptó el *setup* (ver el commit `test(l10n_cl_fe): adaptar el setup…`):
+  `company_id` → `company_ids` en cuentas, `xml_file` como base64 `str`, y `TestBoletaSoloIva`
+  pone la compañía en CLP (la base sin demo queda en USD con redondeo 0,0001).
+
+## Pendiente tras la Task 3
+
+- Impuestos, lo que no se portó del motor de 17.0 (Odoo 20 calcula como el estándar):
+  - Líneas `A` (anticipadas): en 17.0 no sumaban al `price_total` de la línea; ahora sí. Los totales
+    del documento (`_compute_amount`) siguen restándolas como antes.
+  - `include_base_amount_cl`: ya no tiene efecto propio; varios impuestos incluidos en el precio
+    sin `include_base_amount` se calculan sobre la misma base neta (lote de Odoo 18+), que era el
+    caso de uso.
+  - Redondeo del descuento a pesos (SII) dentro del motor: solo queda en
+    `_get_price_total_and_subtotal_model` (XML del DTE). Puede haber 1 peso de diferencia entre
+    el asiento y el XML en líneas con descuento.
+  - El cálculo en el navegador (`account_tax.js`) no conoce `compute_factor` (impuesto fijo por
+    unidad): la vista previa puede diferir hasta guardar.
+  - `tax_totals` es el estándar de Odoo 20 (sin `amount_retencion` ni grupos de retención): revisar
+    `totals_widget.js` en la Task 4.
+  - Cambiar solo un descuento/recargo global (sin tocar líneas) no recalcula las líneas de impuesto:
+    `_sync_tax_lines` de Odoo 20 solo sigue las líneas producto/epd/redondeo.
+  - En borrador, `amount_residual` sale de `tax_totals` (Odoo 20) y no descuenta las líneas `A`.
+- `excludes` de `l10n_latam_invoice_document`: Odoo 20 instala `l10n_latam_invoice_document` al
+  crear compañías de AR/PE/EC/BR/DO/PA/UY (sus `l10n_*` dependen de él), y con `l10n_cl_fe` instalado
+  `button_install` lo rechaza por incompatible: **crear una compañía de esos países falla**.
+  Limitación conocida (base chilena).
+- `migrations/17.0.*` no se tocaron (no corren en una instalación nueva). Una base 17 que suba a 20
+  necesita scripts propios: `ir_rule`/`ir_model_access` → `ir_access`, `datas` → `raw`, etiquetas
+  con signo, VAT `12345678-5` → `CL123456785` si se guardó con el formato de Odoo, y las
+  restricciones viejas `sii_document_letter_name`/`sii_responsability_name`/`_code` (quedan
+  duplicadas, sin daño).
+- `views/export.xml`: `'data:image/png;base64,%s' % company.logo` → `image_data_uri(company.logo)`
+  (Odoo 20 entrega el logo en bruto) — Task 4.
+- Seguridad (ya estaba en 17.0): `/download/boleta` (`auth='public'`) entrega el PDF de cualquier
+  registro por `model`/`model_id` con sudo. Revisar aparte.
+- `sale.order._amount_all` es código muerto (Odoo usa `_compute_amounts`); `dte_envio_mixin` y
+  otros conservan imports de `base64` sin uso.
+- Siguen pendientes de la lista anterior: `partner_autocomplete` se auto-instala; la consulta de RUT a
+  `sre.cl` no está desactivada por defecto; accesos de `account.move.referencias`,
+  `sale.order.referencias`, `partner.activities`, `sii.activity.description`; ids con punto
+  (`access_sucursal.manager`); vistas con `firma_id` para usuarios sin acceso a `sii.firma`; avisos
+  de etiquetas duplicadas; revisar `_check_pre_init` + `excludes` al instalar `account` y
+  `l10n_cl_fe` juntos en una base con compañía chilena.
 
 ## Pendiente — Task 4 (vistas y JS)
 

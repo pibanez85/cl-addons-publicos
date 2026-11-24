@@ -5,12 +5,23 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.tools.translate import _
 
+from .ir_module_module import es_incompatible
+
 
 SISTEMAS_XML = [("mipyme", "Sistema MIPYME del SII"), ("propio", "Software propio o de mercado")]
 
 
 class DTECompany(models.Model):
     _inherit = "res.company"
+
+    @api.depends("country_id")
+    def _compute_uninstalled_l10n_module_ids(self):
+        # Odoo 20 instala estos módulos al crear una compañía chilena (install_l10n_modules);
+        # l10n_cl y l10n_latam* son incompatibles con l10n_cl_fe.
+        super()._compute_uninstalled_l10n_module_ids()
+        for company in self:
+            company.uninstalled_l10n_module_ids = company.uninstalled_l10n_module_ids.filtered(
+                lambda m: not es_incompatible(m.name))
 
     def _get_default_tp_type(self):
         try:

@@ -8,6 +8,10 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools.translate import _
 
 _logger = logging.getLogger(__name__)
+
+# El .p12, su clave y la llave privada: solo contadores y administradores. La firma de
+# documentos lee estos campos con sudo (res.users.get_digital_signature).
+GRUPOS_SECRETOS = "account.group_account_manager,base.group_system"
 try:
     from facturacion_electronica.firma import Firma
     from facturacion_electronica.signature_cert import SignatureCert
@@ -166,8 +170,8 @@ class SignatureCert(models.Model):
             self.state = "incomplete"
 
     name = fields.Char(string="File Name", required=True,)
-    file_content = fields.Binary(string="Signature File", help="Upload the Signature File",)
-    password = fields.Char(string="Password",)
+    file_content = fields.Binary(string="Signature File", help="Upload the Signature File", groups=GRUPOS_SECRETOS)
+    password = fields.Char(string="Password", groups=GRUPOS_SECRETOS)
     emision_date = fields.Date(string="Emision Date", help="Not Before this Date", readonly=True,)
     expire_date = fields.Date(string="Expire Date", help="Not After this Date", readonly=True,)
     state = fields.Selection(
@@ -197,8 +201,8 @@ class SignatureCert(models.Model):
     private_key_bits = fields.Char(string="Private Key Bits", readonly=True)
     private_key_check = fields.Char(string="Private Key Check", readonly=True)
     private_key_type = fields.Char(string="Private Key Type", readonly=True)
-    cert = fields.Text(string="Certificate", readonly=True)
-    priv_key = fields.Text(string="Private Key", readonly=True)
+    cert = fields.Text(string="Certificate", readonly=True, groups=GRUPOS_SECRETOS)
+    priv_key = fields.Text(string="Private Key", readonly=True, groups=GRUPOS_SECRETOS)
     user_ids = fields.Many2many("res.users", string="Authorized Users", default=lambda self: [self.env.uid],)
     company_ids = fields.Many2many(
         "res.company", string="Authorized Companies", default=lambda self: [self.env.company.id], required=True,

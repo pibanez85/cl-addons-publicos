@@ -22,9 +22,18 @@ sigue pendiente. Aquí se anota lo hecho y lo visto.
 - `mail.message.dte.document.dte_xml`: related a `xml_id.raw` (Odoo 20 eliminó `ir.attachment.datas`).
 - Informes SQL (`l10n_cl.sale.document.report`, `l10n_cl.voucher.factura.report`):
   `_table_query` → `_table_sql` (subconsulta entre paréntesis).
-- Seguridad: `ir.model.access.csv` → `security/ir.access.csv` (modelo `ir.access` de Odoo 20:
-  `operation` en `crud`; los ACL sin grupo pasan a `base.group_everyone`, que es lo equivalente).
+- Seguridad: `ir.model.access.csv` → `security/ir.access.csv` (modelo `ir.access` de Odoo 20,
+  `operation` en `crud`). Los ACL sin grupo de 17.0 (que en 17 valían también para portal y
+  público) pasan a `base.group_user`; solo los catálogos de referencia quedan para
+  `base.group_everyone` y en lectura (`sii.document_class`, `sii.document_type`,
+  `sii.document_letter`, `sii.responsability`, `sii.regional.offices`,
+  `res.country.state.provincia`, `sii.activity.description`). `sii.firma` (`.p12`, clave, llave
+  privada) ya no es legible por `base.group_user`: solo `account.group_account_manager` y
+  `base.group_system`, también con `groups=` en `file_content`, `password`, `cert` y `priv_key`;
+  la firma de documentos usa el registro con sudo de `res.users.get_digital_signature`, y el
+  asistente de apicaf lee la llave con sudo solo si el usuario está autorizado en la firma.
   Los `ir.rule` globales pasan a registros `ir.access` sin grupo (restricciones).
+  Pruebas: `tests/test_accesos.py`.
 - Datos: `uom.uom` sin categorías (`relative_uom_id`/`relative_factor`); `res.bank.csv` desactivado
   (Odoo 20 eliminó `res.bank`); `ir.cron.numbercall` eliminado; `account.report.filter_fiscal_position`
   → `allow_foreign_vat`; `target=inline` eliminado de la acción de ajustes.
@@ -46,11 +55,17 @@ sigue pendiente. Aquí se anota lo hecho y lo visto.
   `views/mail_dte.xml`: el dominio de `xml_id` comparaba `res_model` con `active_id` (nunca
   coincidía); ahora `res_id = id`.
 - `views/portal_my_details.xml` **desactivado** en el manifiesto (ver Task 4).
-- No instalar `l10n_cl` ni `l10n_latam*`: `ir.module.module._cl_fe_desactivar_auto_install()` pone
-  `auto_install=False` en esos módulos al instalar y después de cada `update_list()`. Sin esto,
-  Odoo 20 instala `l10n_cl` al crear una compañía con país Chile (`res.company.install_l10n_modules`,
-  fuera del modo de pruebas) porque `l10n_cl` tiene `auto_install: ['account']` y
-  `countries: ['cl']`. La plantilla `cl` ya apunta a `l10n_cl_fe` gracias al override de
+- No instalar `l10n_cl` ni `l10n_latam*`: Odoo 20 instala `l10n_cl` al crear una compañía con país
+  Chile (`res.company.install_l10n_modules`, fuera del modo de pruebas) porque `l10n_cl` tiene
+  `auto_install: ['account']` y `countries: ['cl']`. Defensas:
+  1. `res.company._compute_uninstalled_l10n_module_ids` descarta `l10n_cl`/`l10n_latam*` (vale
+     aunque `auto_install` vuelva a `True`).
+  2. `"excludes"` en el manifiesto: `button_install` se niega a instalarlos junto a `l10n_cl_fe`
+     ("Modules ... are incompatible"). Consecuencia: no se puede instalar `l10n_cl_fe` en una base
+     que ya tiene `l10n_cl`; migrar desde `l10n_cl` exige desinstalarlo antes.
+  3. Ayuda menor: `_cl_fe_desactivar_auto_install()` pone `auto_install=False` en el post_init y tras
+     `update_list()`. Un `odoo -u`/`-i` corre `update_list` antes de cargar `l10n_cl_fe` y lo deja
+     otra vez en `True` (comprobado); por eso lo que manda son 1 y 2. La plantilla `cl` ya apunta a `l10n_cl_fe` gracias al override de
   `_get_chart_template_mapping` en `template_cl.py`, así que `try_loading('cl')` no instala `l10n_cl`.
 
 ## Pendiente — Task 3 (Python)
@@ -96,21 +111,25 @@ ejecutadas (3 de instalación + 69 upstream), **1 falla y 16 errores**; además 
   (`readonly=True`, `website=True`).
 - `migrations/17.0.*`: no corren en una instalación nueva; una base 17 actualizada a 20 necesita
   scripts propios (`ir_rule`/`ir_model_access` → `ir_access`, `datas`, etiquetas con signo, …).
-- `_check_pre_init` borra los registros `ir.module.module` de `l10n_cl`/`l10n_latam*`. No cubre el
-  caso de una base cuya compañía ya es chilena antes de instalar `l10n_cl_fe`: al instalar `account`
-  en la misma operación, `button_install` puede marcar `l10n_cl` para instalar antes de que corra el
-  código de `l10n_cl_fe` (no probado). Instalar siempre en una base sin país chileno o con `account` ya instalado.
+- `_check_pre_init` borra los registros `ir.module.module` de `l10n_cl`/`l10n_latam*` (y `update_list`
+  los recrea). Con `excludes`, si una base con compañía chilena intentara instalar `account` y
+  `l10n_cl_fe` en la misma operación, `button_install` ahora falla con un error de módulos
+  incompatibles en vez de instalar `l10n_cl` (no probado): instalar `account` antes o sin país.
 - La consulta de RUT a `sre.cl` sigue en `res.partner.get_remote_user_data` y en el onchange
   `fill_partner`; el plan pide que quede desactivada por defecto.
 - `partner_autocomplete` **se auto-instala igual** (es `auto_install` en Odoo core al tener
   `iap_mail`/`base_setup`): se ve en el log de `scripts/test.sh`. Quitar la dependencia no basta
   para la restricción de privacidad; hay que impedirlo (p. ej. el mismo mecanismo de
   `auto_install=False` o un módulo de marca en el repositorio privado).
-- Seguridad (`ir.access`): los ACL globales de 17.0 quedaron para `base.group_everyone`, que incluye
-  portal y público. Revisar especialmente `access_dte_caf` (cru), `access_account_move_referencias_user`,
-  `access_sale_order_referencias_user`, `edit_partner_activities_manager`,
-  `edit_sii_activity_description_manager` (crud). Hay ids con punto (`access_sucursal.manager`) que
-  crean registros en un módulo ajeno (heredado de 17.0).
+- Seguridad (`ir.access`): `dte.caf` sigue con `cru` para `base.group_user` (como en 17.0 para los
+  internos), así que cualquier usuario interno puede leer `caf_string`/`caf_file` (llave privada RSA
+  del timbre). Restringir esos campos con `groups=` y leerlos con sudo al timbrar (revisar
+  `caf.py`, `dte_mixin.py`). Revisar también qué internos necesitan `crud` en
+  `account.move.referencias`, `sale.order.referencias`, `partner.activities`,
+  `sii.activity.description`. Hay ids con punto (`access_sucursal.manager`) que crean registros en un
+  módulo ajeno (heredado de 17.0).
+- Vistas con `firma_id` (`sii_cola_envio.xml`) para usuarios sin acceso a `sii.firma`: comprobar
+  que el nombre se muestre (o mostrarlo con un related sudo) — Task 4.
 - Avisos de etiquetas duplicadas (`account.move.gdr`, `sii.dte.claim`, `dte.caf.apicaf`,
   `account.move.reversal`, `sii.revision.f29.linea`).
 

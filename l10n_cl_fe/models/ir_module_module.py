@@ -5,6 +5,10 @@ from odoo.exceptions import UserError
 DOMINIO_INCOMPATIBLES = ["|", ("name", "=", "l10n_cl"), ("name", "=like", "l10n_latam%")]
 
 
+def es_incompatible(nombre):
+    return nombre == "l10n_cl" or nombre.startswith("l10n_latam")
+
+
 class IRModule(models.Model):
     _inherit = "ir.module.module"
 
@@ -12,7 +16,11 @@ class IRModule(models.Model):
     def _cl_fe_desactivar_auto_install(self):
         """Odoo 20 auto-instala l10n_cl (auto_install + countries=['cl']) al crear una compañía
         chilena (res.company.install_l10n_modules) o al instalar account con una compañía chilena
-        (button_install). Se apaga auto_install de los módulos incompatibles."""
+        (button_install). Se apaga auto_install de los módulos incompatibles.
+
+        Es solo una ayuda: `odoo -u/-i` corre update_list antes de cargar este módulo y vuelve a
+        leer auto_install de los manifiestos. Lo que impide la instalación es el filtro en
+        res.company._compute_uninstalled_l10n_module_ids y el 'excludes' del manifiesto."""
         modulos = self.sudo().search(DOMINIO_INCOMPATIBLES + [("auto_install", "=", True)])
         if modulos:
             modulos.write({"auto_install": False})

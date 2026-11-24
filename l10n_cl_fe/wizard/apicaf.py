@@ -54,7 +54,10 @@ class APICAF(models.TransientModel):
     @api.onchange("firma", "operacion")
     def conectar_api(self):
         motivo = False
-        if not self.firma:
+        # sii.firma solo es legible por contadores/administradores: la llave se lee con sudo,
+        # pero solo si el usuario está autorizado en la firma.
+        firma = self.firma.sudo()
+        if not firma or not (self.env.su or self.env.user in firma.user_ids):
             motivo = "el usuario %s no tiene firma electrónica autorizada para %s" % (
                 self.env.user.name, self.company_id.name)
         elif not self.company_id.url_apicaf or not self.company_id.token_apicaf:
@@ -73,10 +76,10 @@ class APICAF(models.TransientModel):
             etapa = "an_conectar"
         params = {
             "firma_electronica": {
-                "priv_key": self.firma.priv_key,
-                "cert": self.firma.cert,
+                "priv_key": firma.priv_key,
+                "cert": firma.cert,
                 "init_signature": False,
-                "subject_serial_number": self.firma.subject_serial_number,
+                "subject_serial_number": firma.subject_serial_number,
             },
             "token": token,
             "rut": self.company_id.document_number,

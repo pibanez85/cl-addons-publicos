@@ -21,6 +21,14 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "contacts",
         "portal",
     ],
+    # l10n_cl_fe reemplaza a la localización oficial: no pueden instalarse juntos.
+    "excludes": [
+        "l10n_cl",
+        "l10n_latam_base",
+        "l10n_latam_invoice_document",
+        "l10n_latam_account_sequence",
+        "l10n_latam_check",
+    ],
     "external_dependencies": {
         "python": [
             "facturacion_electronica>=0.25.0",

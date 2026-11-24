@@ -380,7 +380,7 @@ class AccountMove(models.Model):
             return "WHERE FALSE", {}
         where_string = "WHERE journal_id = %(journal_id)s AND name != '/'"
         param = {'journal_id': self.journal_id.id}
-        is_payment = self.payment_id or self.env.context.get('is_payment')
+        is_payment = self.origin_payment_id or self.env.context.get('is_payment')
 
         if not relaxed:
             domain = [('journal_id', '=', self.journal_id.id), ('id', '!=', self.id or self._origin.id), ('name', 'not in', ('/', '', False)), ('use_documents', '=', self.use_documents)]
@@ -390,7 +390,7 @@ class AccountMove(models.Model):
                 refund_types = ('out_refund', 'in_refund')
                 domain += [('move_type', 'in' if self.move_type in refund_types else 'not in', refund_types)]
             if self.journal_id.payment_sequence:
-                domain += [('payment_id', '!=' if is_payment else '=', False)]
+                domain += [('origin_payment_id', '!=' if is_payment else '=', False)]
             reference_move_name = self.search(domain + [('date', '<=', self.date)], order='date desc', limit=1).name
             if not reference_move_name:
                 reference_move_name = self.search(domain, order='date asc', limit=1).name
@@ -415,9 +415,9 @@ class AccountMove(models.Model):
                 where_string += " AND move_type NOT IN ('out_refund', 'in_refund') "
         elif self.journal_id.payment_sequence:
             if is_payment:
-                where_string += " AND payment_id IS NOT NULL "
+                where_string += " AND origin_payment_id IS NOT NULL "
             else:
-                where_string += " AND payment_id IS NULL "
+                where_string += " AND origin_payment_id IS NULL "
 
         if self.use_documents and self.document_class_id.dte:
             where_string += " AND use_documents AND document_class_id = %(document_class_id)s "

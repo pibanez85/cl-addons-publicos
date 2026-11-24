@@ -667,8 +667,8 @@ class UploadXMLWizard(models.TransientModel):
         )
         if self.crear_po:
             data.update({
-                "product_uom": uom_id,
-                "taxes_id": [(6, 0, tax_ids.ids)],
+                "uom_id": uom_id,
+                "tax_ids": [(6, 0, tax_ids.ids)],
             })
         else:
             discount = 0

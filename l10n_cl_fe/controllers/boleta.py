@@ -43,7 +43,7 @@ class Boleta(http.Controller):
         return request.render("l10n_cl_fe.boleta_layout", values)
 
     def _get_report(self, document):
-        return request.env.ref("account.account_invoices").sudo().render_qweb_pdf([document.id])[0]
+        return request.env["ir.actions.report"].sudo()._render_qweb_pdf("account.account_invoices", [document.id])[0]
 
     @http.route(["/download/boleta"], type="http", auth="public", website=True)
     def download_boleta(self, **post):

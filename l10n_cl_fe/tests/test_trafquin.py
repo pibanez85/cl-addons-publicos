@@ -1090,7 +1090,7 @@ class TestAsientoF29(RevisionBase):
 
         def cuenta(codigo, tipo, **extra):
             return Cuenta.create(dict({"code": codigo, "name": "F29 prueba %s" % codigo, "account_type": tipo,
-                                       "company_id": cls.company.id}, **extra))
+                                       "company_ids": [(6, 0, cls.company.ids)]}, **extra))
 
         cls.debito = cuenta("F29T01", "liability_current")
         cls.credito = cuenta("F29T02", "asset_current")
@@ -1384,7 +1384,7 @@ class TestAsientoF29(RevisionBase):
         with self.assertRaisesRegex(UserError, "Cuenta reajuste remanente"):
             octubre.action_generar_asiento_f29()
         reajuste = self.env["account.account"].create({"code": "F29T09", "name": "Reajuste remanente", "account_type": "income_other",
-                                                       "company_id": self.company.id})
+                                                       "company_ids": [(6, 0, self.company.ids)]})
         self.company.f29_cuenta_reajuste_id = reajuste
         octubre.action_generar_asiento_f29()
         self.assertEqual(self._lineas(octubre.move_f29_id), sorted([

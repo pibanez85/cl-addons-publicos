@@ -33,11 +33,11 @@ class TestRecepcionBhe(RecepcionBase):
     def setUpClass(cls):
         super().setUpClass()
         Cuenta = cls.env["account.account"]
-        if not Cuenta.search([("company_id", "=", cls.company.id), ("code", "=", "210704")]):
+        if not Cuenta.search([("company_ids", "parent_of", cls.company.id), ("code", "=", "210704")]):
             Cuenta.create({"name": "Retención Segunda Categoría", "code": "210704", "account_type": "liability_current",
-                           "company_id": cls.company.id})
+                           "company_ids": [(6, 0, cls.company.ids)]})
         gasto = Cuenta.create({"name": "Honorarios", "code": "519971", "account_type": "expense",
-                               "company_id": cls.company.id})
+                               "company_ids": [(6, 0, cls.company.ids)]})
         cls.dc = cls.env["sii.document_class"].search([("sii_code", "=", 71)], limit=1)
         cls.env["account.journal"].search([("company_id", "=", cls.company.id), ("type", "=", "purchase")]).write(
             {"document_class_ids": [(3, cls.dc.id)]})
@@ -49,7 +49,7 @@ class TestRecepcionBhe(RecepcionBase):
     def _subir(self, folio, bruto, tasa, retencion, retiene="N"):
         xml = BHE % {"folio": folio, "bruto": bruto, "tasa": tasa, "retencion": retencion, "retiene": retiene}
         wizard = self.env["sii.dte.upload_xml.wizard"].create({
-            "xml_file": base64.b64encode(xml.encode("UTF-8")), "filename": "bhe_%s.xml" % folio})
+            "xml_file": base64.b64encode(xml.encode("UTF-8")).decode(), "filename": "bhe_%s.xml" % folio})
         return self.env["account.move"].browse(wizard.confirm(ret=True))
 
     def _montos(self, move):
@@ -84,6 +84,11 @@ class TestBoletaSoloIva(RecepcionBase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Odoo 20 (port): la base de pruebas sin demo crea la compañía principal en USD (redondeo 0,0001
+        # según data/res.currency.csv); las boletas son en pesos chilenos, como en la base de 17.0.
+        clp = cls.env.ref("base.CLP")
+        clp.active = True
+        cls.company.currency_id = clp
         Tax = cls.env["account.tax"]
         cls.iva = Tax.search([("sii_code", "=", 14), ("type_tax_use", "=", "sale"), ("amount", "=", 19),
                               ("price_include", "=", False), ("company_id", "=", cls.company.id)], limit=1)

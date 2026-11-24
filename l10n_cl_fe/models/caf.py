@@ -10,6 +10,7 @@ from odoo.exceptions import UserError
 from odoo.tools.translate import _
 
 from .binario import BinaryBytes
+from .sii_firma import GRUPOS_SECRETOS
 
 _logger = logging.getLogger(__name__)
 
@@ -263,8 +264,11 @@ class CAF(models.Model):
 
     name = fields.Char(string="Nombre", readonly=True, related="filename",)
     filename = fields.Char(string="File Name", required=True,)
-    caf_file = fields.Binary(string="CAF XML File", help="Upload the CAF XML File in this holder",)
-    caf_string = fields.Text(string="Archivo CAF")
+    # El CAF trae la llave privada RSA (RSASK) con la que se timbra el TED: solo contadores y
+    # administradores lo leen; el timbraje lo lee con sudo (dte.mixin._caf_file, decode_caf).
+    caf_file = fields.Binary(string="CAF XML File", help="Upload the CAF XML File in this holder",
+                             groups=GRUPOS_SECRETOS)
+    caf_string = fields.Text(string="Archivo CAF", groups=GRUPOS_SECRETOS)
     issued_date = fields.Date(string="Issued Date", compute='_load_data', store=True)
     expiration_date = fields.Date(string="Expiration Date", compute='_load_data', store=True)
     document_class_id = fields.Many2one(
@@ -377,15 +381,16 @@ has been exhausted.""",
             })
 
     def load_caf(self):
-        if not self.caf_file and not self.caf_string:
+        secreto = self.sudo()
+        if not secreto.caf_file and not secreto.caf_string:
             return
         if not self.sequence_id:
             context = dict(self.env.context or {})
             self.sequence_id = context.get("default_sequence_id", False)
-        if not self.caf_file:
-            self.caf_file = BinaryBytes(self.caf_string.encode('ISO-8859-1'))
-        if not self.caf_string:
-            self.caf_string = self.caf_file.content.decode("ISO-8859-1")
+        if not secreto.caf_file:
+            secreto.caf_file = BinaryBytes(secreto.caf_string.encode('ISO-8859-1'))
+        if not secreto.caf_string:
+            secreto.caf_string = secreto.caf_file.content.decode("ISO-8859-1")
         result = self.decode_caf().find("CAF/DA")
         self.start_nm = result.find("RNG/D").text
         self.final_nm = result.find("RNG/H").text
@@ -431,7 +436,15 @@ to work properly!"""
                 r.use_level = float(100 * r.cantidad_usados) / r.cantidad_folios
 
     def decode_caf(self):
-        return etree.fromstring(self.caf_string)
+        return etree.fromstring(self.sudo().caf_string)
+
+    def _contenido_caf_b64(self):
+        """Archivo CAF en base64 (lo que espera facturacion_electronica), leído con sudo."""
+        self.ensure_one()
+        caf = self.sudo()
+        if caf.caf_file:
+            return caf.caf_file.to_base64()
+        return base64.b64encode((caf.caf_string or "").encode("ISO-8859-1")).decode()
 
     def expirar_folios(self):
         self.inspeccionar_folios_sin_usar()

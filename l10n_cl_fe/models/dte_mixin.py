@@ -1138,8 +1138,8 @@ class DteMixin(models.AbstractModel):
         ], limit=1)
 
     def _caf_file(self, caf, folio):
-        """Contenido del archivo CAF para fe.timbrar."""
-        return caf.caf_file.to_base64()
+        """Contenido del archivo CAF para fe.timbrar (con sudo: el CAF trae la llave privada)."""
+        return caf._contenido_caf_b64()
 
     def _validaciones_caf(self, caf):
         fecha_timbre = fields.Date.context_today(self)

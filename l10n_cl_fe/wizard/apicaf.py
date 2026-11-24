@@ -491,7 +491,8 @@ class APICAF(models.TransientModel):
             return
 
         data = json.loads(resp.data.decode("ISO-8859-1"))
-        caf = self.env["dte.caf"].create(
+        # caf_file/caf_string solo los escriben contadores: el usuario ya fue validado contra la firma.
+        caf = self.env["dte.caf"].sudo().create(
             {
                 "caf_file": data["archivo_caf"],
                 "caf_string": base64.b64decode(data["archivo_caf"]).decode("ISO-8859-1"),

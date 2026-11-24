@@ -1,3 +1,5 @@
+import base64
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields
@@ -44,6 +46,29 @@ class TestAccesos(TransactionCase):
                        "sii.activity.description"):
             with self.subTest(modelo=modelo):
                 self.env[modelo].with_user(self.portal).search([], limit=1)
+
+    def _caf(self):
+        return self.env["dte.caf"].create({
+            "filename": "caf_accesos.xml", "company_id": self.env.company.id,
+            "caf_string": "<AUTORIZACION><CAF/><RSASK>llave privada</RSASK></AUTORIZACION>",
+        })
+
+    def test_caf_llave_privada_solo_para_contadores(self):
+        # caf_string/caf_file traen la llave privada RSA con la que se timbra (TED).
+        caf = self._caf()
+        for campo in ("caf_string", "caf_file"):
+            with self.subTest(campo=campo), self.assertRaises(AccessError):
+                caf.with_user(self.interno)[campo]
+        self.assertIn("RSASK", caf.with_user(self.contador).caf_string)
+        # El usuario interno sigue viendo el CAF (folios, vencimiento) sin la llave.
+        self.assertEqual(caf.with_user(self.interno).filename, "caf_accesos.xml")
+
+    def test_timbre_lee_el_caf_con_sudo(self):
+        caf = self._caf()
+        factura = self.env["account.move"].with_user(self.interno).browse()
+        contenido = factura._caf_file(caf.with_user(self.interno), 1)
+        self.assertTrue(contenido)
+        self.assertIn(b"RSASK", base64.b64decode(contenido))
 
     def _firma(self, usuarios, companias=None, **extra):
         return self.env["sii.firma"].sudo().create(dict({

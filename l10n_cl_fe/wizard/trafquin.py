@@ -344,7 +344,7 @@ class TrafquinXmlWizard(models.TransientModel):
         if firma.file_content and firma.password:
             contenido = firma.file_content
             return {
-                "string_firma": contenido.decode() if isinstance(contenido, bytes) else contenido,
+                "string_firma": contenido.to_base64(),
                 "string_password": firma.password,
                 "rut_firmante": firma.subject_serial_number,
             }

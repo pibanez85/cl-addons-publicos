@@ -2,6 +2,8 @@ import logging
 
 from odoo import api, fields, models
 
+from ..models.binario import BinaryBytes
+
 _logger = logging.getLogger(__name__)
 
 
@@ -84,7 +86,7 @@ class ValidarDTEWizard(models.TransientModel):
             for r in self.document_ids:
                 if not r.move_id:
                     vals = {
-                        "xml_file": r.xml.encode("ISO-8859-1"),
+                        "xml_file": BinaryBytes(r.xml.encode("ISO-8859-1")),
                         "filename": r.dte_id.name,
                         "pre_process": False,
                         "document_id": r.id,

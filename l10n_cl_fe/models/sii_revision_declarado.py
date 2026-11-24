@@ -83,7 +83,7 @@ class SiiRevisionF29DeclaracionDetalle(models.Model):
             valores["pdf_id"] = self.env["ir.attachment"].create({
                 "name": "F29 %s folio %s.pdf" % (self.revision_id.periodo, self.folio),
                 "type": "binary",
-                "datas": data["pdf_b64"],
+                "raw": base64.b64decode(data["pdf_b64"]),
                 "mimetype": "application/pdf",
                 "res_model": "sii.revision.periodo",
                 "res_id": self.revision_id.id,

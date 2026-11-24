@@ -7,6 +7,8 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
 
+from .binario import BinaryBytes
+
 _logger = logging.getLogger(__name__)
 
 try:
@@ -86,7 +88,7 @@ class DteEnvioMixin(models.AbstractModel):
         barcodefile = BytesIO()
         image = self.pdf417bc(ted, columns, ratio)
         image.save(barcodefile, "PNG")
-        return base64.b64encode(barcodefile.getvalue())
+        return BinaryBytes(barcodefile.getvalue())
 
     def _get_barcode_img(self):
         for r in self:
@@ -284,7 +286,7 @@ class DteEnvioMixin(models.AbstractModel):
             "res_model": res_model,
             "res_id": self.id,
             "type": "binary",
-            "datas": base64.b64encode(xml_intercambio),
+            "raw": xml_intercambio,
         })
         return att
 

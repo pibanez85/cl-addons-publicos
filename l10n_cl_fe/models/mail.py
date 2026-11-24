@@ -1,9 +1,10 @@
 import logging
-from base64 import b64decode
 
 from lxml import etree
 
 from odoo import api, models
+
+from .binario import contenido_binario
 
 _logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class ProcessMails(models.Model):
     _inherit = "mail.message"
 
     def _parse_xml(self, string_xml):
-        raw = b64decode(string_xml)
+        raw = contenido_binario(string_xml)
         raw = raw.replace(b' xmlns="http://www.sii.cl/SiiDte"', b'')
         parser = etree.XMLParser(remove_blank_text=True)
         return etree.fromstring(raw, parser=parser)
@@ -146,7 +147,7 @@ class ProcessMails(models.Model):
             self._process_recepcion_mercaderias(el, company_id, att)
 
     def _process_xml(self, att):
-        el = self._parse_xml(att.datas)
+        el = self._parse_xml(att.raw)
         if el.tag == "EnvioDTE":
             if self.model == "mail.message.dte":
                 '''Se asume un .xml por correo, @TODO casos en que hay más '''

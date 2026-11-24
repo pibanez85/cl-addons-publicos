@@ -145,7 +145,7 @@ class UploadXMLWizard(models.TransientModel):
         return "CL" + rut
 
     def _get_xml(self):
-        return base64.b64decode(self.xml_file).decode("ISO-8859-1")\
+        return self.xml_file.content.decode("ISO-8859-1")\
         .replace('<ds:','<')\
         .replace('</ds:','</')\
         .replace(':ds', '')
@@ -189,7 +189,7 @@ class UploadXMLWizard(models.TransientModel):
         }
 
     def _create_attachment(self, xml, name, id=False, model="account.move", url=True):
-        data = base64.b64encode(xml.encode("ISO-8859-1"))
+        data = xml.encode("ISO-8859-1")
         filename = (name + ".xml").replace(" ", "")
         if url:
             url_path = "/download/xml/resp/%s" % (id)
@@ -199,7 +199,7 @@ class UploadXMLWizard(models.TransientModel):
         if att:
             return att
         values = dict(
-            name=filename, res_model=model, res_id=id, type="binary", datas=data,
+            name=filename, res_model=model, res_id=id, type="binary", raw=data,
         )
         if url:
              values["url"] = url_path
@@ -1070,7 +1070,7 @@ class UploadXMLWizard(models.TransientModel):
 
     def _bhe(self):
         try:
-            xml = etree.fromstring(base64.b64decode(self.xml_file))
+            xml = etree.fromstring(self.xml_file.content)
         except Exception:
             return None
         if xml.tag == "datos" and xml.findtext("numeroBoleta"):
@@ -1165,7 +1165,7 @@ class UploadXMLWizard(models.TransientModel):
         retencion = -float(bhe.findtext("impuestoHonorarios") or 0)
         if linea and move.currency_id.compare_amounts(linea.amount_currency, retencion):
             move.write({"line_ids": [(1, linea.id, {"amount_currency": retencion, "balance": retencion})]})
-        self._create_attachment(base64.b64decode(self.xml_file).decode("UTF-8"), self.filename or "BHE_%s" % folio, move.id, "account.move", False)
+        self._create_attachment(self.xml_file.content.decode("UTF-8"), self.filename or "BHE_%s" % folio, move.id, "account.move", False)
         return move
 
     def _get_dtes(self):

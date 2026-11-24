@@ -1,4 +1,3 @@
-from base64 import b64decode
 from odoo import http
 from odoo.http import request
 from odoo.http.stream import content_disposition
@@ -28,7 +27,7 @@ class Binary(http.Controller):
     def download_document_exchange(self, rec_id, **post):
         filename = ("%s.xml" % rec_id.name).replace(" ", "_")
         att = rec_id._create_attachment()
-        return self.document(filename, b64decode(att.datas))
+        return self.document(filename, att.raw.content)
 
     @http.route(["/download/xml/cf/<model('account.move.consumo_folios'):rec_id>"], type="http", auth="user")
     def download_cf(self, rec_id, **post):

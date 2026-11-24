@@ -1796,7 +1796,7 @@ class AccountMove(models.Model):
 
         buffered = BytesIO()
         img.save(buffered, format="PNG")
-        imm = base64.b64encode(buffered.getvalue())
+        imm = base64.b64encode(buffered.getvalue()).decode()
         return imm
 
 

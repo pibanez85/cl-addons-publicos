@@ -69,7 +69,7 @@ class DTEClaim(models.Model):
                 raise UserError(("%s: %s" % (msg, str(e))))
 
     def _create_attachment(self, xml, name, id=False, model="account.move"):
-        data = base64.b64encode(xml.encode("ISO-8859-1"))
+        data = xml.encode("ISO-8859-1")
         filename = (name).replace(" ", "")
         url_path = (
             "/web/binary/download_document?model="
@@ -84,7 +84,7 @@ class DTEClaim(models.Model):
         if att:
             return att
         values = dict(
-            name=filename, url=url_path, res_model=model, res_id=id, type="binary", datas=data,
+            name=filename, url=url_path, res_model=model, res_id=id, type="binary", raw=data,
         )
         att = self.env["ir.attachment"].create(values)
         return att

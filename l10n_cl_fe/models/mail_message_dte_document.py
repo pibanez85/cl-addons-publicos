@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
-from base64 import b64encode
+from .binario import BinaryBytes
 import logging
 import re
 from lxml import etree
@@ -289,7 +289,7 @@ class ProcessMailsDocument(models.Model):
                 "El documento %s %s viene del Registro de Compras y aún no tiene XML"
             ) % (self.document_class_id.name, self.number))
         vals = {
-            "xml_file": b64encode(xml.encode("ISO-8859-1")),
+            "xml_file": BinaryBytes(xml.encode("ISO-8859-1")),
             "filename": filename,
             "pre_process": False,
             "document_id": self.id,

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models
 from lxml import etree
-from base64 import b64decode
+from .binario import contenido_binario
 import logging
 
 
@@ -22,7 +22,7 @@ class ProccessMail(models.Model):
     _order = "create_date DESC"
 
     def _parse_xml(self, xml_string):
-        string_xml = b64decode(xml_string).decode("ISO-8859-1")
+        string_xml = contenido_binario(xml_string).decode("ISO-8859-1")
         xml = string_xml.replace('<?xml version="1.0" encoding="ISO-8859-1"?>', "").replace(
             '<?xml version="1.0" encoding="ISO-8859-1" ?>', ""
         )
@@ -32,7 +32,7 @@ class ProccessMail(models.Model):
 
     def parsed_xml(self):
         att = self.xml_id
-        return self._parse_xml(att.datas)
+        return self._parse_xml(att.raw)
 
     def pre_process(self):
         self.process_message(pre=True)
@@ -45,7 +45,7 @@ class ProccessMail(models.Model):
         for r in self:
             if r.xml_id:
                 vals = {
-                    "xml_file": r.xml_id.datas,
+                    "xml_file": r.xml_id.raw,
                     "filename": r.xml_id.name,
                     "pre_process": pre,
                     "dte_id": r.id,

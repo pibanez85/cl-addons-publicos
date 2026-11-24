@@ -9,6 +9,8 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
 
+from .binario import BinaryBytes
+
 _logger = logging.getLogger(__name__)
 
 CAF_DIAS_AVISO_DEFECTO = 30
@@ -383,9 +385,9 @@ has been exhausted.""",
             context = dict(self.env.context or {})
             self.sequence_id = context.get("default_sequence_id", False)
         if not self.caf_file:
-            self.caf_file = base64.b64encode(self.caf_string.encode('ISO-8859-1'))
+            self.caf_file = BinaryBytes(self.caf_string.encode('ISO-8859-1'))
         if not self.caf_string:
-            self.caf_string = base64.b64decode(self.caf_file).decode("ISO-8859-1")
+            self.caf_string = self.caf_file.content.decode("ISO-8859-1")
         result = self.decode_caf().find("CAF/DA")
         self.start_nm = result.find("RNG/D").text
         self.final_nm = result.find("RNG/H").text

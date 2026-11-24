@@ -233,7 +233,7 @@ class SignatureCert(models.Model):
         if self.subject_serial_number:
             return self.check_signature()
         firma = SignatureCert({
-            "string_firma": self.file_content,
+            "string_firma": self.file_content.to_base64(),
             "string_password": self.password or None,
             "init_signature": True,
         })

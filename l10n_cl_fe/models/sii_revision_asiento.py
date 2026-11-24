@@ -265,8 +265,8 @@ class AccountPaymentRegisterF29(models.TransientModel):
     def _compute_amount(self):
         super()._compute_amount()
         for wizard in self.filtered(lambda w: w.f29_revision_id and w.can_edit_wizard and w.payment_date):
-            total = wizard._get_total_amount_in_wizard_currency_to_full_reconcile(
-                wizard._get_batches()[0], early_payment_discount=False)[0]
+            # Odoo 20: _get_total_amount_in_wizard_currency_to_full_reconcile → _get_total_amounts_to_pay
+            total = wizard._get_total_amounts_to_pay(wizard._get_batches())['full_amount']
             wizard.amount = abs(total) + (wizard.f29_recargo or 0)
 
     @api.onchange("f29_recargo")

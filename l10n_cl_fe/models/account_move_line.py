@@ -4,7 +4,6 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from .currency import float_round_custom
 from odoo.tools.float_utils import float_round as round
-from odoo.tools import frozendict
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -52,91 +51,31 @@ class AccountInvoiceLine(models.Model):
         string="Tipo de documento Liquidación"
     )
 
-    @api.depends('quantity', 'discount', 'price_unit', 'tax_ids', 'currency_id')
+    @api.depends('balance', 'display_type')
     def _compute_totals(self):
-        for line in self:
-            if line.display_type != 'product':
-                line.price_total = line.price_subtotal = False
-            # Compute 'price_subtotal'.
-            line_discount_price_unit = line.price_unit
-            if line.display_type in ['C', 'D', 'R']:
-                line_discount_price_unit = line.balance
-                if line.display_type in ['D', 'C']:
-                    line_discount_price_unit *= -1
-            subtotal = line.quantity * line_discount_price_unit
-            subtotal -= line.currency_id.round(subtotal *  (line.discount / 100.0))
-            # Compute 'price_total'.
+        # Odoo 20 solo calcula price_subtotal/price_total en las líneas 'product'; las líneas de
+        # descuento/recargo global ('D'/'R') y comisiones ('C') de este módulo los toman del saldo.
+        super()._compute_totals()
+        for line in self.filtered(lambda l: l.display_type in ('C', 'D', 'R')):
+            price_unit = line.balance
+            if line.display_type in ('D', 'C'):
+                price_unit *= -1
+            currency = line.currency_id or line.company_currency_id
+            subtotal = line.quantity * price_unit
+            subtotal -= currency.round(subtotal * (line.discount / 100.0))
             if line.tax_ids:
                 taxes_res = line.tax_ids.compute_all(
-                    line_discount_price_unit,
+                    subtotal / line.quantity if line.quantity else 0.0,
                     quantity=line.quantity,
-                    currency=line.currency_id,
+                    currency=currency,
                     product=line.product_id,
                     partner=line.partner_id,
                     is_refund=line.is_refund,
-                    discount=line.discount,
-                    uom_id=line.product_uom_id
                 )
                 line.price_subtotal = taxes_res['total_excluded']
                 line.price_total = taxes_res['total_included']
             else:
                 line.price_total = line.price_subtotal = subtotal
-
-    @api.depends('tax_ids', 'currency_id', 'partner_id', 'analytic_distribution', 'balance', 'partner_id', 'move_id.partner_id', 'price_unit', 'quantity')
-    def _compute_all_tax(self):
-        for line in self:
-            sign = line.move_id.direction_sign
-            if line.display_type == 'tax':
-                line.compute_all_tax = {}
-                line.compute_all_tax_dirty = False
-                continue
-            if line.display_type == 'product' and line.move_id.is_invoice(True):
-                amount_currency = sign * line.price_unit
-                handle_price_include = True
-                quantity = line.quantity
-            else:
-                amount_currency = line.amount_currency
-                handle_price_include = False
-                quantity = 1
-            compute_all_currency = line.tax_ids.compute_all(
-                amount_currency,
-                currency=line.currency_id,
-                quantity=quantity,
-                product=line.product_id,
-                partner=line.move_id.partner_id or line.partner_id,
-                is_refund=line.is_refund,
-                discount=line.discount,
-                handle_price_include=handle_price_include,
-                include_caba_tags=line.move_id.always_tax_exigible,
-                fixed_multiplicator=sign,
-            )
-            rate = line.amount_currency / line.balance if line.balance else 1
-            line.compute_all_tax_dirty = True
-            line.compute_all_tax = {
-                frozendict({
-                    'tax_repartition_line_id': tax['tax_repartition_line_id'],
-                    'group_tax_id': tax['group'] and tax['group'].id or False,
-                    'account_id': tax['account_id'] or line.account_id.id,
-                    'currency_id': line.currency_id.id,
-                    'analytic_distribution': (tax['analytic'] or not tax['use_in_tax_closing']) and line.analytic_distribution,
-                    'tax_ids': [(6, 0, tax['tax_ids'])],
-                    'tax_tag_ids': [(6, 0, tax['tag_ids'])],
-                    'partner_id': line.move_id.partner_id.id or line.partner_id.id,
-                    'move_id': line.move_id.id,
-                    'display_type': line.display_type,
-                }): {
-                    'name': tax['name'] + (' ' + _('(Discount)') if line.display_type == 'epd' else ''),
-                    'balance': tax['amount'] / rate,
-                    'amount_currency': tax['amount'],
-                    'tax_base_amount': tax['base'] / rate * (-1 if line.tax_tag_invert else 1),
-                }
-                for tax in compute_all_currency['taxes']
-                if tax['amount']
-            }
-            if not line.tax_repartition_line_id:
-                line.compute_all_tax[frozendict({'id': line.id})] = {
-                    'tax_tag_ids': [(6, 0, compute_all_currency['base_tags'])],
-                }
 
     @api.depends('debit', 'credit', 'amount_currency', 'account_id', 'currency_id', 'company_id',
                  'matched_debit_ids', 'matched_credit_ids')
@@ -160,40 +99,25 @@ class AccountInvoiceLine(models.Model):
 
     @api.model
     def _get_price_total_and_subtotal_model(self, price_unit, quantity, discount, currency, product, partner, taxes, move_type, uom_id=False):
-        ''' This method is used to compute 'price_total' & 'price_subtotal'.
+        """Calcula 'price_subtotal' y 'price_total' de una línea (usado al armar el XML del DTE).
 
-        :param price_unit:  The current price unit.
-        :param quantity:    The current quantity.
-        :param discount:    The current discount.
-        :param currency:    The line's currency.
-        :param product:     The line's product.
-        :param partner:     The line's partner.
-        :param taxes:       The applied taxes.
-        :param move_type:   The type of the move.
-        :return:            A dictionary containing 'price_subtotal' & 'price_total'.
-        '''
+        Con impuestos del SII el descuento se redondea a pesos sobre el total bruto de la línea,
+        como lo exige el SII; el resto lo calcula el motor de impuestos de Odoo.
+        """
         res = {}
-
-        # Compute 'price_subtotal'.
         if taxes and any(bool(t.sii_code) for t in taxes):
-            line_discount_price_unit = price_unit
             total = currency.round(quantity * price_unit)
             discount_amount = float_round_custom(total * ((discount or 0.0) / 100.0), precision_digits=0)
-            subtotal = quantity * line_discount_price_unit - discount_amount
+            subtotal = quantity * price_unit - discount_amount
         else:
-            line_discount_price_unit = price_unit * (1 - (discount / 100.0))
-            subtotal = quantity * line_discount_price_unit
-
-        # Compute 'price_total'.
+            subtotal = quantity * price_unit * (1 - ((discount or 0.0) / 100.0))
         if taxes:
-            force_sign = -1 if move_type in ('out_invoice', 'in_refund', 'out_receipt') else 1
-            taxes_res = taxes._origin.with_context(force_sign=force_sign).compute_all(
-                line_discount_price_unit,
+            taxes_res = taxes._origin.compute_all(
+                subtotal / quantity if quantity else 0.0,
                 quantity=quantity, currency=currency, product=product,
                 partner=partner,
                 is_refund=move_type in ('out_refund', 'in_refund'),
-                discount=discount,
-                uom_id=uom_id)
+            )
             res['price_subtotal'] = taxes_res['total_excluded']
             res['price_total'] = taxes_res['total_included']
         else:

@@ -111,15 +111,11 @@ class AccountChartTemplate(models.AbstractModel):
 
     @template('cl')
     def _get_cl_template_data(self):
+        # Odoo 18+: las cuentas por defecto (antes property_* en template_data, que ahora se descartan)
+        # van en res.company: receivable/payable/income/expense_account_id y account_stock_valuation_id.
+        # Las cuentas de entrada/salida de stock (110605/110606) ya no existen en Odoo 20.
         return {
             'code_digits': '6',
-            'property_account_receivable_id': 'account_110301',
-            'property_account_payable_id': 'account_210201',
-            'property_account_expense_categ_id': 'account_530201',
-            'property_account_income_categ_id': 'account_410201',
-            'property_stock_account_input_categ_id': 'account_110605',
-            'property_stock_account_output_categ_id': 'account_110606',
-            'property_stock_valuation_account_id': 'account_110607',
         }
 
     @template('cl', 'res.company')
@@ -137,5 +133,10 @@ class AccountChartTemplate(models.AbstractModel):
                 'tax_calculation_rounding_method': 'round_globally',
                 'account_sale_tax_id': 'IVAV_19',
                 'account_purchase_tax_id': 'IVAC_19',
+                'receivable_account_id': 'account_110301',
+                'payable_account_id': 'account_210201',
+                'expense_account_id': 'account_530201',
+                'income_account_id': 'account_410201',
+                'account_stock_valuation_id': 'account_110607',
             },
         }

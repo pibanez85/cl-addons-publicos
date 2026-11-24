@@ -148,7 +148,8 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   `IVAV_17` tenía en 17.0 `+` en las líneas de nota de crédito (sumaban al débito); sin signo, la
   nota de crédito resta, que es lo correcto.
 - CAF: `caf_string`/`caf_file` con `groups=GRUPOS_SECRETOS`; el timbraje los lee con sudo
-  (`dte.caf._contenido_caf_b64`, `decode_caf`, `load_caf`, `ir.sequence.get_caf_file`) y apicaf
+  (`dte.caf._contenido_caf_b64`, `load_caf`, `_caf_file` de la boleta voucher; `decode_caf` e
+  `ir.sequence.get_caf_file` son públicos y no usan sudo) y apicaf
   crea el CAF con sudo tras validar la firma.
 - `firma_id` del contexto: `sii.firma._firma_autorizada(company)` (mismas reglas que
   `res.users.get_digital_signature`, o modo sudo) en `dte.envio.mixin`, el asistente de XML,

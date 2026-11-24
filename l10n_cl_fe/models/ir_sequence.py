@@ -310,7 +310,7 @@ obtener folios en la secuencia (usando apicaf.cl)."""
                         continue
                 if decoded:
                     return caffile.decode_caf()
-                return base64.b64encode(caffile.sudo().caf_string.encode("ISO-8859-1"))
+                return base64.b64encode(caffile.caf_string.encode("ISO-8859-1"))
         raise UserError(_(msg))
 
     def get_caf_files(self, folio=None):

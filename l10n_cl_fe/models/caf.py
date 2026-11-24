@@ -265,7 +265,8 @@ class CAF(models.Model):
     name = fields.Char(string="Nombre", readonly=True, related="filename",)
     filename = fields.Char(string="File Name", required=True,)
     # El CAF trae la llave privada RSA (RSASK) con la que se timbra el TED: solo contadores y
-    # administradores lo leen; el timbraje lo lee con sudo (dte.mixin._caf_file, decode_caf).
+    # administradores lo leen; el timbraje lo lee con sudo (dte.mixin._caf_file, load_caf y el
+    # _caf_file de la boleta voucher). decode_caf/ir.sequence.get_caf_file son públicos: sin sudo.
     caf_file = fields.Binary(string="CAF XML File", help="Upload the CAF XML File in this holder",
                              groups=GRUPOS_SECRETOS)
     caf_string = fields.Text(string="Archivo CAF", groups=GRUPOS_SECRETOS)
@@ -391,7 +392,7 @@ has been exhausted.""",
             secreto.caf_file = BinaryBytes(secreto.caf_string.encode('ISO-8859-1'))
         if not secreto.caf_string:
             secreto.caf_string = secreto.caf_file.content.decode("ISO-8859-1")
-        result = self.decode_caf().find("CAF/DA")
+        result = secreto.decode_caf().find("CAF/DA")
         self.start_nm = result.find("RNG/D").text
         self.final_nm = result.find("RNG/H").text
         dc = self.env["sii.document_class"].search([("sii_code", "=", result.find("TD").text)])
@@ -436,7 +437,8 @@ to work properly!"""
                 r.use_level = float(100 * r.cantidad_usados) / r.cantidad_folios
 
     def decode_caf(self):
-        return etree.fromstring(self.sudo().caf_string)
+        # Sin sudo: es público (RPC). Quien timbra lo llama sobre el CAF con sudo.
+        return etree.fromstring(self.caf_string)
 
     def _contenido_caf_b64(self):
         """Archivo CAF en base64 (lo que espera facturacion_electronica), leído con sudo."""

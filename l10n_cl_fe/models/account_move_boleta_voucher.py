@@ -258,7 +258,8 @@ class SIIResumenBoletaVoucher(models.Model):
         return self.sequence_id
 
     def _caf_file(self, caf, folio):
-        return caf.get_caf_file(folio, decoded=False).decode()
+        # Con sudo: el CAF trae la llave privada (dte.caf.caf_string solo para contadores).
+        return caf.sudo().get_caf_file(folio, decoded=False).decode()
 
     def _validaciones_caf(self, caf):
         return

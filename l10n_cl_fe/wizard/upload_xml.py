@@ -170,7 +170,12 @@ class UploadXMLWizard(models.TransientModel):
     def _resolve_firma(self, company_id):
         firma_id = self.env.context.get('firma_id')
         if firma_id:
-            return self.env['sii.firma'].sudo().browse(firma_id)
+            firma = self.env['sii.firma'].browse(firma_id)._firma_autorizada(company_id)
+            if not firma:
+                raise UserError(_(
+                    "El usuario '%s' no está autorizado a usar la firma electrónica indicada para %s."
+                ) % (self.env.user.name, company_id.name))
+            return firma
         firma = self.env.user.get_digital_signature(company_id)
         if not firma:
             raise UserError(_(

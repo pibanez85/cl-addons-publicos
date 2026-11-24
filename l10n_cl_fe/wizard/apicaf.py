@@ -55,9 +55,9 @@ class APICAF(models.TransientModel):
     def conectar_api(self):
         motivo = False
         # sii.firma solo es legible por contadores/administradores: la llave se lee con sudo,
-        # pero solo si el usuario está autorizado en la firma.
-        firma = self.firma.sudo()
-        if not firma or not (self.env.su or self.env.user in firma.user_ids):
+        # pero solo si el usuario está autorizado en la firma para la compañía (vigente y activa).
+        firma = self.firma._firma_autorizada(self.company_id)
+        if not firma:
             motivo = "el usuario %s no tiene firma electrónica autorizada para %s" % (
                 self.env.user.name, self.company_id.name)
         elif not self.company_id.url_apicaf or not self.company_id.token_apicaf:

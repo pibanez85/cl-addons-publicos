@@ -3,7 +3,7 @@ from datetime import datetime
 
 import dateutil.relativedelta as relativedelta
 
-from odoo import api, fields, models
+from odoo import SUPERUSER_ID, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.translate import _
 
@@ -148,6 +148,29 @@ class SignatureCert(models.Model):
                     "No se pudo crear alerta de vencimiento para firma %s: %s",
                     firma.display_name, e,
                 )
+
+    def _firma_autorizada(self, company):
+        """La firma (con sudo) si el usuario actual puede usarla en ``company``; si no, vacío.
+
+        Mismas reglas que ``res.users.get_digital_signature``: el usuario (o el admin, si es el
+        superusuario o un usuario portal) está en ``user_ids``, la compañía en ``company_ids``,
+        la firma vigente y activa. En modo sudo (procesos internos) se acepta la firma indicada.
+        Sirve para no confiar en un ``firma_id`` que viene en el contexto de una llamada RPC.
+        """
+        firma = self.sudo().exists()[:1]
+        if not firma or not company:
+            return self.env["sii.firma"]
+        if self.env.su:
+            return firma
+        user = self.env.user
+        if user.id == SUPERUSER_ID or user.has_group("base.group_portal"):
+            user = self.env.ref("base.user_admin")
+        if user not in firma.user_ids or company not in firma.company_ids:
+            return self.env["sii.firma"]
+        firma.check_signature()
+        if firma.state != "valid" or not firma.active:
+            return self.env["sii.firma"]
+        return firma
 
     def check_signature(self):
         for s in self.sudo():

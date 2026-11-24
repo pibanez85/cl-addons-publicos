@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 
 from odoo import _, SUPERUSER_ID, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -106,9 +106,28 @@ class ColaEnvio(models.Model):
         self.intento = 0
         return True
 
+    @api.constrains("firma_id", "company_id")
+    def _check_firma_autorizada(self):
+        """La firma de la cola se usa con sudo al procesarla (cron): solo se puede asignar una firma
+        que el usuario puede usar en la compañía, o la del admin (respaldo de _resolve_cola_firma)."""
+        if self.env.su:
+            return
+        admin = self.env.ref("base.user_admin", raise_if_not_found=False)
+        for cola in self.filtered("firma_id"):
+            if cola.firma_id._firma_autorizada(cola.company_id):
+                continue
+            if admin and cola.firma_id.with_user(admin)._firma_autorizada(cola.company_id):
+                continue
+            raise ValidationError(_(
+                "El usuario '%s' no está autorizado a usar la firma electrónica indicada para %s."
+            ) % (self.env.user.name, cola.company_id.name))
+
     def action_procesar(self):
-        """Procesa manualmente el registro actual."""
-        self._procesar_tipo_trabajo()
+        """Procesa manualmente el registro actual.
+
+        Con sudo, como el cron: la firma de la cola (firma_id, validada al asignarla) se pasa en
+        el contexto y _resolve_firma solo la acepta de un usuario autorizado o en modo sudo."""
+        self.sudo()._procesar_tipo_trabajo()
         return True
 
     def action_asignar_firma_actual(self):
@@ -757,6 +776,8 @@ class ColaEnvio(models.Model):
 
     @api.model
     def _cron_procesar_cola(self):
+        # Proceso interno: usa la firma guardada en cada cola (ver _check_firma_autorizada).
+        self = self.sudo()
         self.reset_intentos()
         self._autopack()
         query = [

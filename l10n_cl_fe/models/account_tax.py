@@ -148,8 +148,8 @@ class SIITax(models.Model):
     def compute_factor(self, uom_id):
         amount_tax = self.amount or 0.0
         if self.uom_id and self.uom_id != uom_id:
-            if self._context.get("date"):
-                mepco = self._target_mepco(self._context.get("date"))
+            if self.env.context.get("date"):
+                mepco = self._target_mepco(self.env.context.get("date"))
                 amount_tax = mepco.amount
             amount_tax = self.uom_id._compute_price(amount_tax, uom_id)
         return amount_tax
@@ -203,7 +203,7 @@ class SIITax(models.Model):
                 return math.copysign(quantity, base_amount) * amount_tax * abs(fixed_multiplicator)
             else:
                 return quantity * amount_tax
-        price_include = self._context.get('force_price_include', self.price_include)
+        price_include = self.env.context.get('force_price_include', self.price_include)
 
         # base * (1 + tax_amount) = new_base
         if self.amount_type == 'percent' and not price_include:
@@ -403,7 +403,7 @@ class SIITax(models.Model):
                     base = recompute_base(base, incl_tax_amounts)
                     incl_fixed_amount = incl_percent_amount = incl_division_amount = 0
                     store_included_tax_total = True
-                if tax.price_include or self._context.get('force_price_include'):
+                if tax.price_include or self.env.context.get('force_price_include'):
                     if tax.amount_type == 'percent':
                         incl_tax_amounts['percent_taxes'].append((i, tax.amount * sum_repartition_factor))
                     elif tax.amount_type == 'division':
@@ -426,7 +426,7 @@ class SIITax(models.Model):
                         store_included_tax_total = False
                 i -= 1
         total_excluded = recompute_base(base, incl_tax_amounts)
-        if self._context.get('round_base', True):
+        if self.env.context.get('round_base', True):
             total_excluded = currency.round(total_excluded)
 
         # 4) Iterate the taxes in the sequence order to compute missing tax amounts.
@@ -446,7 +446,7 @@ class SIITax(models.Model):
         i = 0
         cumulated_tax_included_amount = 0
         for tax in taxes:
-            price_include = self._context.get('force_price_include', tax.price_include)
+            price_include = self.env.context.get('force_price_include', tax.price_include)
 
             if price_include or tax.is_base_affected:
                 tax_base_amount = base
@@ -1003,7 +1003,7 @@ class SIITax(models.Model):
             currency_id = self.env["res.currency"].sudo().search([("name", "=", self.env.get("currency", "CLP"))])
         tz = pytz.timezone("America/Santiago")
         if date_target:
-            user_zone = pytz.timezone(self._context.get("tz") or "UTC")
+            user_zone = pytz.timezone(self.env.context.get("tz") or "UTC")
             date = date_target
             if not hasattr(date, "tzinfo"):
                 date = datetime.combine(date, time.min)

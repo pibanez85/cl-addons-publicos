@@ -18,7 +18,7 @@ class MasiveDTEProcessWizard(models.TransientModel):
 
     
     def confirm(self):
-        dtes = self.env["mail.message.dte"].browse(self._context.get("active_ids", []))
+        dtes = self.env["mail.message.dte"].browse(self.env.context.get("active_ids", []))
         if self.action == "create":
             dtes.pre_process()
         else:

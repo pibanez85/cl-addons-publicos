@@ -365,9 +365,9 @@ class ColaEnvio(models.Model):
         if len(doc_ids) == 1:
             self._consulta_doc_en_thread(doc_ids[0], model, ctx)
             return
-        max_workers = int(self.env['ir.config_parameter'].sudo().get_param(
-            'l10n_cl_fe.consulta_doc_paralelo_workers', '5'
-        ))
+        max_workers = self.env['ir.config_parameter'].sudo().get_int(
+            'l10n_cl_fe.consulta_doc_paralelo_workers', 5
+        )
         max_workers = min(max(1, max_workers), len(doc_ids))
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
             list(ex.map(
@@ -416,7 +416,7 @@ class ColaEnvio(models.Model):
         if not remaining_docs:
             self.unlink()
         else:
-            persistente = self.env["ir.config_parameter"].sudo().get_param(
+            persistente = self.env["ir.config_parameter"].sudo().get_int(
                 "account.auto_send_persistencia", default=24
             )
             self.date_time = datetime.now() + timedelta(hours=int(persistente))
@@ -443,7 +443,7 @@ class ColaEnvio(models.Model):
                 self.unlink()
                 return
             self.tipo_trabajo = "persistencia"
-            persistente = self.env["ir.config_parameter"].sudo().get_param(
+            persistente = self.env["ir.config_parameter"].sudo().get_int(
                 "account.auto_send_persistencia", default=24
             )
             self.date_time = datetime.now() + timedelta(hours=int(persistente))

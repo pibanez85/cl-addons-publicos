@@ -62,11 +62,11 @@ class ResCurrency(models.Model):
         """
         self.ensure_one()
         icp = self.env["ir.config_parameter"].sudo()
-        apikey = icp.get_param("sbif.financial.indicators.apikey")
+        apikey = icp.get_str("sbif.financial.indicators.apikey")
         if not apikey or self.name not in CMF_INDICADORES:
             return []
         recurso, clave = CMF_INDICADORES[self.name]
-        ruta = [(icp.get_param("sbif.financial.indicators.baseurl") or CMF_URL).rstrip("/"), recurso]
+        ruta = [(icp.get_str("sbif.financial.indicators.baseurl") or CMF_URL).rstrip("/"), recurso]
         hoy = fields.Date.context_today(self)
         if fecha and fecha > hoy:
             if recurso != "uf":
@@ -123,13 +123,13 @@ class ResCurrency(models.Model):
     @api.model
     def currency_schedule_update(self):
         """Cron diario (mismo nombre que en l10n_cl_currency_rate_sbif, cuyo cron se conserva)."""
-        if not self.env["ir.config_parameter"].sudo().get_param("sbif.financial.indicators.apikey"):
+        if not self.env["ir.config_parameter"].sudo().get_str("sbif.financial.indicators.apikey"):
             _logger.info("CMF: sin clave de API configurada; no se actualizan las monedas")
             return self.browse()
         return self.search([("name", "in", list(CMF_INDICADORES))])._cmf_actualizar()
 
     def action_update_currency(self):
-        if not self.env["ir.config_parameter"].sudo().get_param("sbif.financial.indicators.apikey"):
+        if not self.env["ir.config_parameter"].sudo().get_str("sbif.financial.indicators.apikey"):
             raise UserError("Configure la clave de la API de la CMF en Ajustes > Facturación Electrónica.")
         if not self._cmf_actualizar():
             raise UserError(

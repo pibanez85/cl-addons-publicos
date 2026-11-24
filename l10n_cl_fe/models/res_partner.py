@@ -352,7 +352,7 @@ class ResPartner(models.Model):
                 _logger.info(resp.data, exc_info=True)
                 """
                 self.env["bus.bus"].sendone(
-                    (self._cr.dbname, "res.partner", self.env.user.partner_id.id),
+                    (self.env.cr.dbname, "res.partner", self.env.user.partner_id.id),
                     {
                         "title": title,
                         "message": message,
@@ -409,7 +409,7 @@ class ResPartner(models.Model):
             to_sync.setdefault((url, token, i), {
                 "token": token,
                 "version": 2.0,
-                "origen": self.env['ir.config_parameter'].sudo().get_param('web.base.url'),
+                "origen": self.env['ir.config_parameter'].sudo().get_str('web.base.url'),
             })
             if company.sync_remote_partners:
                 data = r.get_data_to_put()
@@ -478,7 +478,7 @@ class ResPartner(models.Model):
                     _logger.info(message, exc_info=True)
                     """
                     self.env["bus.bus"].sendone(
-                        (self._cr.dbname, "res.partner", self.env.user.partner_id.id),
+                        (self.env.cr.dbname, "res.partner", self.env.user.partner_id.id),
                         {
                             "title": title,
                             "message": message,

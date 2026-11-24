@@ -140,7 +140,7 @@ class CAF(models.Model):
         return folio
 
     def _param_dias(self, clave, defecto):
-        valor = self.env["ir.config_parameter"].sudo().get_param(clave, defecto)
+        valor = self.env["ir.config_parameter"].sudo().get_str(clave, defecto)
         try:
             return max(0, int(valor))
         except (TypeError, ValueError):
@@ -156,12 +156,12 @@ class CAF(models.Model):
         clave = "l10n_cl_fe.caf_notif.%s.%s" % (self.id, self.env.uid)
         hoy = fields.Date.to_string(fields.Date.context_today(self))
         try:
-            if Param.get_param(clave) == hoy:
+            if Param.get_str(clave) == hoy:
                 return False
         except Exception as e:
             _logger.debug("No se pudo leer %s: %s", clave, e)
         try:
-            Param.set_param(clave, hoy)
+            Param.set_str(clave, hoy)
         except Exception as e:
             _logger.debug("No se pudo registrar %s: %s", clave, e)
         return True
@@ -362,13 +362,13 @@ has been exhausted.""",
     def inspeccionar_folios_sin_usar(self):
         joins = self._join_inspeccionar()
         wheres = self._where_inspeccionar()
-        self._cr.execute("SELECT s FROM generate_series({0},{1},1) s {2} WHERE {3}".format(
+        self.env.cr.execute("SELECT s FROM generate_series({0},{1},1) s {2} WHERE {3}".format(
             self.start_nm,
             self.folio_actual,
             joins,
             wheres,
         ))
-        folios = sorted([x[0] for x in self._cr.fetchall()])
+        folios = sorted([x[0] for x in self.env.cr.fetchall()])
         if self.folio_actual in folios:
             folios.remove(self.folio_actual)
         self.write({
@@ -380,7 +380,7 @@ has been exhausted.""",
         if not self.caf_file and not self.caf_string:
             return
         if not self.sequence_id:
-            context = dict(self._context or {})
+            context = dict(self.env.context or {})
             self.sequence_id = context.get("default_sequence_id", False)
         if not self.caf_file:
             self.caf_file = base64.b64encode(self.caf_string.encode('ISO-8859-1'))

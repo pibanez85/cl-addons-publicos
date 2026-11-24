@@ -11,7 +11,7 @@ class masive_send_dte_wizard(models.TransientModel):
 
     @api.model
     def _getIDs(self):
-        context = dict(self._context or {})
+        context = dict(self.env.context or {})
         active_ids = context.get("active_ids", []) or []
         return [(6, 0, active_ids)]
 

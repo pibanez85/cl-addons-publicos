@@ -181,7 +181,7 @@ class AccountMoveConvertDTE(models.TransientModel):
             inv.journal_document_class_id = self.jdc_id
             inv.document_class_id = self.jdc_id.sii_document_class_id
             inv.use_documents = True
-            restaurando = inv.journal_id.restore_mode or self._context.get("restore_mode", False)
+            restaurando = inv.journal_id.restore_mode or self.env.context.get("restore_mode", False)
             if not restaurando:
                 inv._validaciones_uso_dte()
             inv._set_next_sequence()

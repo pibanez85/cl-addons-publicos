@@ -1311,7 +1311,7 @@ class UploadXMLWizard(models.TransientModel):
                 _logger.warning(etree.tostring(dte))
                 if self.document_id:
                     self.document_id.message_post(body=msg)
-        if created and self.option not in [False, "upload"] and self.type == "compras"  and not self._context.get('create_only', False):
+        if created and self.option not in [False, "upload"] and self.type == "compras"  and not self.env.context.get('create_only', False):
             datos = {
                 "move_ids": [(6, 0, created)],
                 "action": "ambas",

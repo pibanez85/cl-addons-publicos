@@ -15,7 +15,7 @@ class sii_ws_currency_rate_wizard(models.TransientModel):
 
     def confirm(self):
         self.ensure_one()
-        point_of_sale_id = self._context.get("active_id", False)
+        point_of_sale_id = self.env.context.get("active_id", False)
         if not point_of_sale_id:
             raise UserError(_("No Point Of sale as active_id on context"))
         point_of_sale = self.env["sii.point_of_sale"].browse(point_of_sale_id)

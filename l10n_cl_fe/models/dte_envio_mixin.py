@@ -164,7 +164,7 @@ class DteEnvioMixin(models.AbstractModel):
 
     def _fill_envio_defaults(self, vals):
         ISCP = self.env['ir.config_parameter'].sudo()
-        metodo = ISCP.get_param('account.send_dte_method', default='diferido')
+        metodo = ISCP.get_str('account.send_dte_method', default='diferido')
         if metodo == 'manual' and 'tipo_trabajo' not in vals:
             return False
         if 'company_id' not in vals:
@@ -175,12 +175,12 @@ class DteEnvioMixin(models.AbstractModel):
             tiempo = fields.Datetime.now()
             if vals['tipo_trabajo'] == 'pasivo':
                 tiempo += timedelta(
-                    hours=int(ISCP.get_param('account.auto_send_dte', default=1))
+                    hours=ISCP.get_int('account.auto_send_dte', default=1)
                 )
             vals['date_time'] = tiempo
         if 'send_email' not in vals:
             company = self.env['res.company'].browse(vals['company_id'])
-            auto_send = ISCP.get_param('account.auto_send_email', default=True)
+            auto_send = ISCP.get_bool('account.auto_send_email', default=True)
             vals['send_email'] = bool(
                 company.dte_service_provider != 'SIICERT' and auto_send
             )
@@ -300,7 +300,7 @@ class DteEnvioMixin(models.AbstractModel):
                 ))
             if r.sii_xml_request.state not in ["Aceptado", "Rechazado"]:
                 r.sii_xml_request.with_context(
-                    set_pruebas=self._context.get("set_pruebas", False)
+                    set_pruebas=self.env.context.get("set_pruebas", False)
                 ).get_send_status()
         try:
             self._get_dte_status()
@@ -322,7 +322,7 @@ class DteEnvioMixin(models.AbstractModel):
         if not docs:
             _logger.warning("En get_dte_status, no docs")
             return
-        if self._context.get("set_pruebas", False):
+        if self.env.context.get("set_pruebas", False):
             api = False
         datos['api'] = api
         for k, v in docs.items():

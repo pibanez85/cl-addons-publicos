@@ -115,7 +115,7 @@ class ProcessMailsDocument(models.Model):
 
     @api.onchange('purchase_to_done')
     def auto_map_po_lines(self):
-        if self._context.get('no_map_po_lines'):
+        if self.env.context.get('no_map_po_lines'):
             return
         if not self.purchase_to_done:
             for line in self.invoice_line_ids:
@@ -247,7 +247,7 @@ class ProcessMailsDocument(models.Model):
 
     @api.model
     def auto_accept_documents(self, limit=50):
-        dte_receipt_method = self.env["ir.config_parameter"].sudo().get_param(
+        dte_receipt_method = self.env["ir.config_parameter"].sudo().get_str(
             "account.dte_receipt_method", default='manual'
         )
         self.env.cr.execute(

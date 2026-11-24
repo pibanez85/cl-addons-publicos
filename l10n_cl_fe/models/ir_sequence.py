@@ -21,8 +21,8 @@ def update_next_by_caf(self, folio, caf):
     if self.implementation == "no_gap":
         self.flush_recordset(['number_next'])
         number_next = self.number_next
-        self._cr.execute("SELECT number_next FROM %s WHERE id=%%s FOR UPDATE NOWAIT" % self._table, [self.id])
-        self._cr.execute("UPDATE %s SET number_next=%%s WHERE id=%%s " % self._table, (folio, self.id))
+        self.env.cr.execute("SELECT number_next FROM %s WHERE id=%%s FOR UPDATE NOWAIT" % self._table, [self.id])
+        self.env.cr.execute("UPDATE %s SET number_next=%%s WHERE id=%%s " % self._table, (folio, self.id))
         self.invalidate_recordset(['number_next'])
     else:
         self.sudo().write({"number_next": folio})
@@ -74,8 +74,8 @@ class IRSequence(models.Model):
 
     @api.model
     def check_cafs(self):
-        self._cr.execute("SELECT id FROM dte_caf WHERE expiration_date <= NOW() and cantidad_folios_sin_usar > 0")
-        for r in self.env["dte.caf"].sudo().browse([x[0] for x in self._cr.fetchall()]):
+        self.env.cr.execute("SELECT id FROM dte_caf WHERE expiration_date <= NOW() and cantidad_folios_sin_usar > 0")
+        for r in self.env["dte.caf"].sudo().browse([x[0] for x in self.env.cr.fetchall()]):
             try:
                 r.expirar_folios()
             except:
@@ -84,17 +84,17 @@ class IRSequence(models.Model):
                 r.auto_anular()
             except:
                 _logger.warning("no se pudo auto anular")
-        self._cr.commit()
-        self._cr.execute("SELECT id FROM ir_sequence WHERE is_dte")
-        for r in self.env["ir.sequence"].sudo().browse([x[0] for x in self._cr.fetchall()]):
+        self.env.cr.commit()
+        self.env.cr.execute("SELECT id FROM ir_sequence WHERE is_dte")
+        for r in self.env["ir.sequence"].sudo().browse([x[0] for x in self.env.cr.fetchall()]):
             for caf in r.dte_caf_ids.filtered(lambda c: c.state == 'in_use'):
                 self._refrescar_caf_cron(caf)
             if r.autoreponer_caf and r.qty_available < r.nivel_minimo:
                 try:
                     r.solicitar_caf()
-                    self._cr.commit()
+                    self.env.cr.commit()
                 except Exception as e:
-                    self._cr.rollback()
+                    self.env.cr.rollback()
                     _logger.warning(
                         "Error al solictar folios a secuencia {}: {}".format(
                             r.sii_document_class_id.name, str(e)),
@@ -103,12 +103,12 @@ class IRSequence(models.Model):
 
     def _refrescar_caf_cron(self, caf):
         try:
-            with self._cr.savepoint():
-                self._cr.execute(
+            with self.env.cr.savepoint():
+                self.env.cr.execute(
                     "SELECT id FROM dte_caf WHERE id = %s FOR UPDATE SKIP LOCKED",
                     [caf.id],
                 )
-                if not self._cr.fetchone():
+                if not self.env.cr.fetchone():
                     return
                 caf.invalidate_recordset()
                 caf.compute_folio_actual()
@@ -123,7 +123,7 @@ class IRSequence(models.Model):
                 caf.id, str(e), exc_info=True,
             )
             return
-        self._cr.commit()
+        self.env.cr.commit()
 
     @api.onchange('sii_document_class_id')
     def _auto_set_is_dte(self):
@@ -223,7 +223,7 @@ class IRSequence(models.Model):
 
     def get_folio(self, number_next=False, readonly=False):
         requested = int(number_next or self.number_next)
-        force = self._context.get('force_number_next')
+        force = self.env.context.get('force_number_next')
         caf = self.dte_caf_ids.filtered(
             lambda c: c.start_nm <= requested <= c.final_nm and c.state != 'spent'
         ).sorted(key=lambda c: c.start_nm)[:1]
@@ -255,7 +255,7 @@ class IRSequence(models.Model):
                 return self.get_folio(folio_actual + 1, readonly=True)
             return folio_actual
         caf.flush_recordset(['folio_actual'])
-        self._cr.execute(
+        self.env.cr.execute(
             "SELECT id FROM dte_caf WHERE id = %s FOR UPDATE NOWAIT",
             [caf.id],
         )

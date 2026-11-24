@@ -13,7 +13,7 @@ class AccountJournalDocumentConfig(models.TransientModel):
     _description = "Wizard configuración secuencias para diarios DTE"
 
     def _es_compra(self):
-        context = dict(self._context or {})
+        context = dict(self.env.context or {})
         journal_ids = context.get("active_ids", False)
         journal = self.env["account.journal"].browse(journal_ids)
         if journal.type == "purchase":
@@ -60,7 +60,7 @@ Include unusual taxes documents, as transfer invoice, and reissue
 
 
     def confirm(self):
-        context = dict(self._context or {})
+        context = dict(self.env.context or {})
         journal_ids = context.get("active_ids", False)
         if self.purchase:
             self.non_dte_register = True

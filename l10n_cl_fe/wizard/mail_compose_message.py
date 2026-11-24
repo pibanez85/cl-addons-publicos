@@ -10,7 +10,7 @@ class MailComposer(models.TransientModel):
 
     def _compute_attachment_ids(self):
         super()._compute_attachment_ids()
-        atts = self._context.get("default_attachment_ids", [])
+        atts = self.env.context.get("default_attachment_ids", [])
         if not atts:
             return
         att_ids = [a for a in atts if isinstance(a, int)]

@@ -9,7 +9,7 @@ class SO(models.Model):
     def _search_default_journal(self):
         company_id = (self.company_id or self.env.company).id
         domain = [('company_id', '=', company_id), ('type', '=', 'sale')]
-        currency_id = self.currency_id.id or self._context.get('default_currency_id')
+        currency_id = self.currency_id.id or self.env.context.get('default_currency_id')
         if currency_id and currency_id != self.company_id.currency_id.id:
             domain += [('currency_id', '=', currency_id)]
         return self.env['account.journal'].sudo().search(domain, limit=1)

@@ -59,7 +59,7 @@ class AccountJournalSiiDocumentClass(models.Model):
 
     @api.depends_context("mostrar_folio")
     def _compute_display_name(self):
-        if not self._context.get("mostrar_folio"):
+        if not self.env.context.get("mostrar_folio"):
             return super()._compute_display_name()
         for r in self:
             if not r.sequence_id:

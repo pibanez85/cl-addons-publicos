@@ -443,7 +443,7 @@ class AccountMove(models.Model):
             return "WHERE FALSE", {}
         where_string = "WHERE journal_id = %(journal_id)s AND name != '/'"
         param = {'journal_id': self.journal_id.id}
-        is_payment = self.payment_id or self._context.get('is_payment')
+        is_payment = self.payment_id or self.env.context.get('is_payment')
 
         if not relaxed:
             domain = [('journal_id', '=', self.journal_id.id), ('id', '!=', self.id or self._origin.id), ('name', 'not in', ('/', '', False)), ('use_documents', '=', self.use_documents)]
@@ -493,7 +493,7 @@ class AccountMove(models.Model):
     def _set_next_sequence(self):
         self.ensure_one()
         if self.use_documents and self.journal_document_class_id.sequence_id and not self.document_class_id.es_voucher():
-            if not (self.journal_id.restore_mode or self._context.get("restore_mode", False)):
+            if not (self.journal_id.restore_mode or self.env.context.get("restore_mode", False)):
                 sequence = self.journal_document_class_id.sequence_id
                 if not self._get_last_sequence():
                     sequence = sequence.with_context(force_number_next=True)
@@ -654,14 +654,14 @@ class AccountMove(models.Model):
             if not inv.sii_document_number:
                 inv._set_next_sequence()
             inv.sii_result = "NoEnviado"
-            if inv.journal_id.restore_mode or self._context.get("restore_mode", False):
+            if inv.journal_id.restore_mode or self.env.context.get("restore_mode", False):
                 inv.sii_result = "Proceso"
             else:
                 inv._validaciones_uso_dte()
                 inv._timbrar()
                 invoices_to_queue |= inv
             po = self.env['purchase.order'].browse(
-                inv._context.get('purchase_to_done', False))
+                inv.env.context.get('purchase_to_done', False))
             if po:
                 po.write({"state": "done"})
         invoices_to_queue.queue()
@@ -1428,7 +1428,7 @@ class AccountMove(models.Model):
 
     def _lineas_para_dte(self):
         lineas = []
-        desglose = self._context.get('force_desglose', False)
+        desglose = self.env.context.get('force_desglose', False)
         for line in self._get_lineas():
             if not line.tpo_doc_liq and (not line.account_id or not line.product_id):
                 continue
@@ -1534,10 +1534,10 @@ class AccountMove(models.Model):
         return ref_line
 
     def _dte_set_pruebas_ref(self, lin_ref):
-        if not self._context.get("set_pruebas", False):
+        if not self.env.context.get("set_pruebas", False):
             return None
         razon = "CASO"
-        n_atencion = self._context.get('n_atencion')
+        n_atencion = self.env.context.get('n_atencion')
         if not self.es_boleta() and n_atencion:
             razon += " " + n_atencion
         razon += "-" + str(self.sii_batch_number)
@@ -1562,11 +1562,11 @@ class AccountMove(models.Model):
     def _prepare_dte_data(self):
         self.ensure_one()
 
-        if self._context.get("set_pruebas", False) or self.sii_result == "Rechazado" or not self.sii_xml_dte:
+        if self.env.context.get("set_pruebas", False) or self.sii_result == "Rechazado" or not self.sii_xml_dte:
             self._timbrar()
 
         if self.sii_result in ["Rechazado"] or (
-            self._context.get("set_pruebas", False) and
+            self.env.context.get("set_pruebas", False) and
             self.sii_xml_request and
             self.sii_xml_request.state in ["", "draft", "NoEnviado"]
         ):
@@ -1801,7 +1801,7 @@ class AccountMove(models.Model):
 
 
     def currency_format(self, val, application='Product Price'):
-        code = self._context.get('lang') or self.partner_id.lang
+        code = self.env.context.get('lang') or self.partner_id.lang
         lang = self.env['res.lang'].search([('code', '=', code)])
         precision = self.env['decimal.precision'].precision_get(application)
         string_digits = '%.{}f'.format(precision)

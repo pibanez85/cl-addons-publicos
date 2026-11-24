@@ -10,14 +10,14 @@ class ValidarDTEWizard(models.TransientModel):
     _description = "SII XML from Provider"
 
     def _get_docs(self):
-        context = dict(self._context or {})
+        context = dict(self.env.context or {})
         if self.tipo != "mail.message.dte.document" != context.get("active_model"):
             return self.env["mail.message.dte.document"]
         active_ids = context.get("active_ids", []) or []
         return [(6, 0, active_ids)]
 
     def _get_invs(self):
-        context = dict(self._context or {})
+        context = dict(self.env.context or {})
         if self.tipo != "account.move" != context.get("active_model"):
             return self.env["account.move"]
         active_ids = context.get("active_ids", []) or []

@@ -77,11 +77,11 @@ class ResConfigSettings(models.TransientModel):
     def get_values(self):
         res = super(ResConfigSettings, self).get_values()
         ICPSudo = self.env["ir.config_parameter"].sudo()
-        account_send_dte_method = ICPSudo.get_param("account.send_dte_method", default='diferido')
-        account_auto_send_dte = int(ICPSudo.get_param("account.auto_send_dte", default=1))
-        account_auto_send_email = ICPSudo.get_param("account.auto_send_email", default=True)
-        account_auto_send_persistencia = int(ICPSudo.get_param("account.auto_send_persistencia", default=24))
-        dte_receipt_method = ICPSudo.get_param("account.dte_receipt_method", default='manual')
+        account_send_dte_method = ICPSudo.get_str("account.send_dte_method", default='diferido')
+        account_auto_send_dte = ICPSudo.get_int("account.auto_send_dte", default=1)
+        account_auto_send_email = ICPSudo.get_bool("account.auto_send_email", default=True)
+        account_auto_send_persistencia = ICPSudo.get_int("account.auto_send_persistencia", default=24)
+        dte_receipt_method = ICPSudo.get_str("account.dte_receipt_method", default='manual')
         res.update(
             send_dte_method=account_send_dte_method,
             auto_send_email=account_auto_send_email,
@@ -97,11 +97,11 @@ class ResConfigSettings(models.TransientModel):
         ICPSudo = self.env["ir.config_parameter"].sudo()
         if self.dte_email_id and not self.external_email_server_default:
             raise UserError("Debe Cofigurar Servidor de Correo Externo en la pestaña Opciones Generales")
-        ICPSudo.set_param("account.send_dte_method", self.send_dte_method)
-        ICPSudo.set_param("account.auto_send_dte", self.auto_send_dte)
-        ICPSudo.set_param("account.auto_send_email", self.auto_send_email)
-        ICPSudo.set_param("account.auto_send_peresistencia", self.auto_send_persistencia)
-        ICPSudo.set_param("account.dte_receipt_method", self.dte_receipt_method)
+        ICPSudo.set_str("account.send_dte_method", self.send_dte_method)
+        ICPSudo.set_int("account.auto_send_dte", self.auto_send_dte)
+        ICPSudo.set_bool("account.auto_send_email", self.auto_send_email)
+        ICPSudo.set_int("account.auto_send_persistencia", self.auto_send_persistencia)
+        ICPSudo.set_str("account.dte_receipt_method", self.dte_receipt_method)
 
     # Actualización de UF, UTM, dólar y euro desde la API de la CMF (ex SBIF). No se
     # guardan en la tabla de ajustes: leen y escriben el parámetro, así el código se
@@ -112,21 +112,21 @@ class ResConfigSettings(models.TransientModel):
     def _compute_cmf(self):
         icp = self.env["ir.config_parameter"].sudo()
         for rec in self:
-            rec.sbif_token = icp.get_param("sbif.financial.indicators.apikey")
-            rec.sbif_url = icp.get_param("sbif.financial.indicators.baseurl") or CMF_URL
+            rec.sbif_token = icp.get_str("sbif.financial.indicators.apikey")
+            rec.sbif_url = icp.get_str("sbif.financial.indicators.baseurl") or CMF_URL
 
     def _inverse_cmf(self):
         icp = self.env["ir.config_parameter"].sudo()
         for rec in self:
-            icp.set_param("sbif.financial.indicators.apikey", rec.sbif_token or False)
-            icp.set_param("sbif.financial.indicators.baseurl", rec.sbif_url or CMF_URL)
+            icp.set_str("sbif.financial.indicators.apikey", rec.sbif_token or False)
+            icp.set_str("sbif.financial.indicators.baseurl", rec.sbif_url or CMF_URL)
 
     def action_update_currencies(self):
         icp = self.env["ir.config_parameter"].sudo()
         actualizadas = self.env["res.currency"].currency_schedule_update()
         if actualizadas:
             mensaje, tipo = "Actualizadas: %s." % ", ".join(actualizadas.mapped("name")), "success"
-        elif not icp.get_param("sbif.financial.indicators.apikey"):
+        elif not icp.get_str("sbif.financial.indicators.apikey"):
             mensaje, tipo = "Ingrese la clave de la API de la CMF.", "warning"
         else:
             mensaje, tipo = "La CMF no devolvió valores; revise la clave y el registro del servidor.", "warning"

@@ -11,5 +11,5 @@ class MasiveDTEAcceptWizard(models.TransientModel):
 
     
     def confirm(self):
-        dtes = self.env["mail.message.dte.document"].browse(self._context.get("active_ids", []))
+        dtes = self.env["mail.message.dte.document"].browse(self.env.context.get("active_ids", []))
         return dtes.accept_document()

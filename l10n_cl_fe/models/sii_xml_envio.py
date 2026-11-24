@@ -300,7 +300,7 @@ class SIIXMLEnvio(models.Model):
         pendientes = self.env[docs_list[0]._name]
         for doc in docs_list:
             if (
-                self._context.get("set_pruebas", False)
+                self.env.context.get("set_pruebas", False)
                 or doc.sii_result == "Rechazado"
                 or not doc.sii_xml_dte
             ):
@@ -349,7 +349,7 @@ class SIIXMLEnvio(models.Model):
             datos = envio_tmp._build_envio_dte_data(docs_list, RUTRecep=RUTRecep)
             if not datos.get("Documento"):
                 return b""
-            set_pruebas = self._context.get("set_pruebas", False)
+            set_pruebas = self.env.context.get("set_pruebas", False)
             codigos_boleta = [39, 41]
             es_boleta = any(d["TipoDTE"] in codigos_boleta for d in datos["Documento"])
             datos["api"] = es_boleta and not set_pruebas
@@ -395,7 +395,7 @@ class SIIXMLEnvio(models.Model):
             return envio_id
 
         company = docs_list[0].company_id
-        set_pruebas = self._context.get("set_pruebas", False)
+        set_pruebas = self.env.context.get("set_pruebas", False)
         firma = docs_list[0]._resolve_firma()
 
         if not envio_id:

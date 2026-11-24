@@ -4,6 +4,7 @@ from odoo import api, fields, models
 class PartnerActivities(models.Model):
     _name = "partner.activities"
     _description = "SII Economical Activities"
+    _rec_names_search = ["name", "code"]
 
 
     @api.depends('code', 'name')
@@ -11,15 +12,6 @@ class PartnerActivities(models.Model):
         for r in self:
             r.display_name = r.code and "[" + r.code + "] " + r.name or ""
 
-    @api.model
-    def _name_search(self, name, domain=None, operator="ilike", limit=100, order=None):
-        domain = domain or []
-        recs = self.browse()
-        if name:
-            recs = self.search(["|", ("name", "=", name), ("code", "=", name)] + domain, limit=limit)
-        if not recs:
-            recs = self.search(["|", ("name", operator, name), ("code", operator, name)] + domain, limit=limit)
-        return recs.ids
 
     code = fields.Char(string="Activity Code", required=True,)
     parent_id = fields.Many2one("partner.activities", string="Parent Activity", ondelete="cascade",)

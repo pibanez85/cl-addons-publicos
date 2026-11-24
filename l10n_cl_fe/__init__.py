@@ -30,6 +30,10 @@ def _set_default_configs(env):
     ICPSudo.set_bool("account.auto_send_email", True)
     ICPSudo.set_int("account.auto_send_persistencia", 24)
 
+    # El XML de los DTE y los libros se arman con lang='es_CL' (dte_mixin exige el idioma activo)
+    # y Odoo 20 rechaza un idioma inactivo en el contexto.
+    env["res.lang"]._activate_lang("es_CL")
+
     for company in env["res.company"].sudo().search([]):
         env["account.chart.template"]._cl_asignar_cuentas_redondeo(company)
 

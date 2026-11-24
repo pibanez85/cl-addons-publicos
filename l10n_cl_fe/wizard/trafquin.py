@@ -261,7 +261,7 @@ class TrafquinXmlWizard(models.TransientModel):
                 "type": "ir.actions.act_window",
                 "name": _("Facturas obtenidas del SII"),
                 "res_model": "account.move",
-                "view_mode": "tree,form",
+                "view_mode": "list,form",
                 "domain": [("id", "in", self.linea_ids.move_id.ids)],
                 "target": "current",
             }
@@ -269,7 +269,7 @@ class TrafquinXmlWizard(models.TransientModel):
             "type": "ir.actions.act_window",
             "name": _("Documentos obtenidos del SII"),
             "res_model": "mail.message.dte.document",
-            "view_mode": "tree,form",
+            "view_mode": "list,form",
             "domain": [("id", "in", self.linea_ids.document_id.ids)],
             "target": "current",
         }

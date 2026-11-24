@@ -339,7 +339,7 @@ class ProcessMailsDocument(models.Model):
             'name': _('Accepted Moves'),
             'type': 'ir.actions.act_window',
             'res_model': 'account.move',
-            'view_mode': 'tree,form',
+            'view_mode': 'list,form',
         }
         if created:
             action['domain'] = [('id', 'in', created)]

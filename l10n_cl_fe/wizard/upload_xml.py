@@ -78,7 +78,7 @@ class UploadXMLWizard(models.TransientModel):
             return {
                 "type": "ir.actions.act_window",
                 "name": _("List of Results"),
-                "view_mode": "tree,form",
+                "view_mode": "list,form",
                 "res_model": "account.move",
                 "domain": str([("id", "in", created)]),
                 "target": "current",
@@ -131,10 +131,10 @@ class UploadXMLWizard(models.TransientModel):
         return {
             "type": "ir.actions.act_window",
             "name": _("List of Results"),
-            "view_mode": "tree",
+            "view_mode": "list",
             "res_model": target_model,
             "domain": str([("id", "in", created)]),
-            "views": [(self.env.ref("%s" % xml_id).id, "tree")],
+            "views": [(self.env.ref("%s" % xml_id).id, "list")],
             "target": "current",
         }
 
@@ -367,7 +367,7 @@ class UploadXMLWizard(models.TransientModel):
             if not cuenta or cuenta in carga['account.account'] or CT.ref(cuenta, raise_if_not_found=False):
                 continue
             existente = self.env['account.account'].sudo().with_company(company_id).search(
-                [('company_id', '=', company_id.id), ('code', '=', data['account.account'][cuenta]['code'])], limit=1)
+                [('company_ids', 'parent_of', company_id.id), ('code', '=', data['account.account'][cuenta]['code'])], limit=1)
             if existente:
                 self.env['ir.model.data'].sudo()._update_xmlids([{
                     'xml_id': 'account.%s_%s' % (company_id.id, cuenta), 'record': existente, 'noupdate': True}])
@@ -1088,7 +1088,7 @@ class UploadXMLWizard(models.TransientModel):
         ], order="id", limit=1)
         if impuesto:
             return impuesto
-        cuenta = self.env["account.account"].search([("company_id", "=", company.id), ("code", "=", "210704")], limit=1)
+        cuenta = self.env["account.account"].search([("company_ids", "parent_of", company.id), ("code", "=", "210704")], limit=1)
         if not cuenta:
             raise UserError(_("No existe la cuenta 210704 de retención de segunda categoría en %s") % company.name)
         reparto = [(0, 0, {"repartition_type": "base"}), (0, 0, {"repartition_type": "tax", "account_id": cuenta.id})]

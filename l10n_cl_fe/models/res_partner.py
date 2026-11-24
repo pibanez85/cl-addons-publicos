@@ -22,6 +22,8 @@ except ImportError:
 
 class ResPartner(models.Model):
     _inherit = "res.partner"
+    # Odoo 20: la búsqueda por nombre usa _rec_names_search (ya no existe _name_search).
+    _rec_names_search = ["complete_name", "email", "ref", "vat", "document_number"]
 
     def _get_default_tp_type(self):
         return self.env.ref("l10n_cl_fe.res_IVARI", raise_if_not_found=False) or self.env["sii.responsability"]
@@ -69,6 +71,23 @@ class ResPartner(models.Model):
     sync = fields.Boolean(string="syncred", default=False,)
     last_sync_update = fields.Datetime(string="Fecha Actualizado",)
     es_mipyme = fields.Boolean(string="Es MiPyme", help="Usa el sistema gratuito del SII")
+    # Odoo 20 eliminó res.partner.company_type (is_company pasó a ser calculado desde el RUT/VAT).
+    # Se conserva como alias de is_company para el código y las pruebas que lo usan.
+    company_type = fields.Selection(
+        [("person", "Individual"), ("company", "Company")],
+        string="Company Type",
+        compute="_compute_company_type",
+        inverse="_inverse_company_type",
+    )
+
+    @api.depends("is_company")
+    def _compute_company_type(self):
+        for partner in self:
+            partner.company_type = "company" if partner.is_company else "person"
+
+    def _inverse_company_type(self):
+        for partner in self:
+            partner.is_company = partner.company_type == "company"
 
     def rut(self):
         rut = "66666666-6"
@@ -77,13 +96,6 @@ class ResPartner(models.Model):
             if len(d) > 1:
                 rut = str(int(d[:-1])) + "-" + d[-1]
         return rut
-
-    @api.model
-    def _name_search(self, name, domain=None, operator='ilike', limit=100, order=None):
-        domain = list(domain or [])
-        if name:
-            domain = ['|', ('document_number', operator, name)] + domain
-        return super()._name_search(name, domain, operator, limit, order)
 
     def _address_fields(self):
         vals = super()._address_fields()
@@ -233,10 +245,18 @@ class ResPartner(models.Model):
                 raise UserError(_("El rut: %s debe ser único") % r.vat)
                 return False
 
+    def format_vat_cl(self, vat):
+        """Odoo 20 normaliza el VAT al guardarlo (res.partner._inverse_vat) y para Chile lo deja como
+        ``12345678-5``. Este módulo guarda y busca el RUT como ``CL`` + 9 dígitos (``CL123456785``)."""
+        clave = re.sub(r"[^0-9K]", "", re.sub(r"^\s*CL", "", (vat or "").upper()))
+        return "CL%s" % clave.zfill(9) if clave else vat
+
     def check_vat_cl(self, vat):
         if not vat:
             return False
         vat = vat.replace('.', '').replace('-', '').upper()
+        if vat.startswith('CL'):
+            vat = vat[2:]
         if len(vat) < 8 or len(vat) > 9:
             return False
         vat = vat.zfill(9)

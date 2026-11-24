@@ -214,7 +214,7 @@ class SiiRevisionPeriodoBoletasDiarias(models.Model):
             "type": "ir.actions.act_window",
             "name": _("Pagos electrónicos sin comprobante 48"),
             "res_model": "account.payment",
-            "view_mode": "tree,form",
+            "view_mode": "list,form",
             "domain": [("id", "in", self._pagos_sin_boleta_48().ids)],
         }
 

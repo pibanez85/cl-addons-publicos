@@ -197,7 +197,7 @@ class Balance8ColumnasWizard(models.TransientModel):
 
     def _build_line_values(self):
         accounts = self.env["account.account"].search(
-            [("company_id", "=", self.company_id.id),
+            [("company_ids", "parent_of", self.company_id.id),
              ("account_type", "!=", "off_balance")],
             order="code",
         )

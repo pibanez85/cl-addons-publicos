@@ -10,6 +10,7 @@ class AccountJournalSiiDocumentClass(models.Model):
     _name = "account.journal.sii_document_class"
     _description = "Journal SII Documents"
     _order = "sequence"
+    _rec_names_search = ["sequence_id.name", "sii_document_class_id.name"]
 
     @api.depends("sii_document_class_id", "sequence_id")
     def get_secuence_name(self):
@@ -69,17 +70,3 @@ class AccountJournalSiiDocumentClass(models.Model):
             detalle = "folio {}, {} disponibles".format(folio, r.qty_available) if folio else "sin folios"
             r.display_name = "{} ({})".format(r.sequence_id.name, detalle)
 
-    @api.model
-    def _name_search(self, name, domain=None, operator="ilike", limit=100, order=None):
-        domain = domain or []
-        recs = self.browse()
-        if name:
-            recs = self.search(
-                ["|", ("sequence_id.name", "=", name), ("sii_document_class_id.name", "=", name)] + domain, limit=limit
-            )
-        if not recs:
-            recs = self.search(
-                ["|", ("sequence_id.name", operator, name), ("sii_document_class_id.name", operator, name)] + domain,
-                limit=limit,
-            )
-        return recs.ids

@@ -1676,7 +1676,7 @@ class SiiRevisionBoletaLinea(models.Model):
                 "type": "ir.actions.act_window",
                 "name": _("Comprobantes de pago electrónico"),
                 "res_model": "account.move.boleta_voucher",
-                "view_mode": "tree,form",
+                "view_mode": "list,form",
                 "domain": [("company_id", "=", revision.company_id.id),
                            ("periodo", "=", revision._periodo_libro())],
             }
@@ -1684,7 +1684,7 @@ class SiiRevisionBoletaLinea(models.Model):
             "type": "ir.actions.act_window",
             "name": _("Consumo de folios del %s") % self.fecha,
             "res_model": "account.move.consumo_folios",
-            "view_mode": "tree,form",
+            "view_mode": "list,form",
             "domain": [("id", "in", revision._consumos_folios().filtered(
                 lambda cf: cf.fecha_inicio == self.fecha).ids)],
         }

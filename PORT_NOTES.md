@@ -68,6 +68,31 @@ sigue pendiente. Aquí se anota lo hecho y lo visto.
      otra vez en `True` (comprobado); por eso lo que manda son 1 y 2. La plantilla `cl` ya apunta a `l10n_cl_fe` gracias al override de
   `_get_chart_template_mapping` en `template_cl.py`, así que `try_loading('cl')` no instala `l10n_cl`.
 
+## Task 3 — Paso 1: fallas al empezar (`scripts/test.sh l10n_cl_fe`, commit 1f5299d)
+
+Resumen: `1 failed, 16 error(s) of 75 tests` (107 pruebas en las estadísticas del módulo); además
+`setUpClass` roto en 2 clases cuyas pruebas no se ejecutan.
+
+| Prueba | Causa |
+|---|---|
+| `test_recepcion.TestRecepcionBhe` (setUpClass) | `account.account.company_id` no existe (dominio en la prueba) |
+| `test_recepcion.TestBoletaSoloIva.test_boleta_consolida_todo_impuesto_en_el_iva` | `KeyError: 'compute_all_tax'` (`_sync_dynamic_lines`) |
+| `test_recepcion.TestBoletaSoloIva.test_factura_mantiene_los_dos_impuestos` | `KeyError: 'compute_all_tax'` |
+| `test_trafquin.TestTrafquin.test_emitidos_se_publican_sin_reenviar_al_sii` | `XMLSyntaxError`: `b64decode` de un `BinaryValue` (`upload_xml._get_xml`) |
+| `test_trafquin.TestTrafquin.test_listar_sin_fechas_por_folios_y_restaurar_seleccion` | ídem |
+| `test_trafquin.TestTrafquin.test_registra_el_xml_una_sola_vez` | ídem |
+| `test_trafquin.TestRevisionSii.test_rcv_crea_recepcion_sii_la_completa_el_xml_y_no_duplica` | ídem |
+| `test_trafquin.TestDeclaracionF29Impuestos.test_retencion_de_boletas_de_honorarios_en_el_151` | `KeyError: 'compute_all_tax'` |
+| `test_trafquin.TestXmlPorDocumento.test_descarga_un_documento_y_no_duplica` | `XMLSyntaxError` (binario) |
+| `test_trafquin.TestXmlPorDocumento.test_pedir_xml_al_proveedor` | `res.partner.company_type` no existe |
+| `test_trafquin.TestXmlPorDocumento.test_si_timbra_documentos_es_software_propio` | `KeyError: 'compute_all_tax'` |
+| `test_trafquin.TestXmlPorDocumento.test_software_propio_registra_sin_xml_y_el_xml_completa_la_factura` | `res.partner.company_type` |
+| `test_trafquin.TestAsientoF29` (setUpClass) | `account.account.company_id` en la prueba |
+| `test_trafquin.TestRevisionMultiCompania.test_calculo_odoo_solo_con_documentos_de_la_compania` | `KeyError: 'compute_all_tax'` |
+| `test_trafquin.TestReglasMultiCompania.test_recepcion_de_xml_de_otra_compania_del_usuario` (FAIL) | `ir.attachment.datas` eliminado (`_check_contents should handle that`) |
+| `test_trafquin.TestBoletasDiariasSii.test_concilia_pagos_con_el_48_y_verifica_la_rebaja` | `KeyError: 'compute_all_tax'` |
+| `test_trafquin.TestBoletasConVoucher.test_boleta_39_pagada_con_voucher_pide_nc` | `KeyError: 'compute_all_tax'` |
+
 ## Pendiente — Task 3 (Python)
 
 Línea base de pruebas upstream al terminar la Task 2 (`--test-tags /l10n_cl_fe`): 72 pruebas

@@ -351,9 +351,12 @@ La firma y el FRMA del CAF no son del SII: el XML valida contra el XSD, no ante 
   `unverified` hasta volver a pulsar el botón y `get_digital_signature` no la encontraba.
 - `account.move._get_last_sequence_domain`: Odoo 18+ espera una condición `SQL` (no la tupla
   `(where_string, param)`); con un diario con documentos **ninguna factura se podía crear**
-  (`_compute_name`). Ahora es la condición de Odoo más `use_documents`/`document_class_id`.
-  Diferencia con 17.0: el nombre de referencia con que Odoo deduce el reinicio (anual/mensual)
-  se busca en todo el diario, no solo en el mismo tipo de documento.
+  (`_compute_name`). Ahora es la condición de Odoo (sin período, `relaxed=True`) más
+  `use_documents`/`document_class_id`, y el reinicio (anual/mensual/nunca) se deduce, como en
+  17.0, del último movimiento del mismo grupo (mismo tipo de documento, o sin documento). Si se
+  dedujera de todo el diario, un movimiento sin documento después de un DTE ("FAC 12") deduciría
+  "nunca" y la numeración `INV/2026/…` volvería a empezar (fix round 1;
+  `test_numeracion_sin_documento_en_diario_con_documentos`).
 - Requisitos de emisión, con `UserError` claro antes de armar y firmar el XML:
   `account.move._validar_requisitos_emisor` (RUT, giro, número y fecha de resolución; sin fecha,
   `_emisor` fallaba con `AttributeError`), certificado digital vigente (mensaje con
@@ -363,15 +366,24 @@ La firma y el FRMA del CAF no son del SII: el XML valida contra el XSD, no ante 
 - `CorreoEmisor` solo si la compañía tiene correo DTE (`False` rompía la biblioteca).
 - Descuentos en pesos (revisión del plan, foco 2): el `DescuentoMonto` del XML es
   `round(PrcItem × QtyItem) − MontoItem` del asiento. Así `MontoItem = PrcItem × QtyItem −
-  DescuentoMonto`, `MntNeto + IVA + MntExe = MntTotal = amount_total` peso por peso. El SII
-  redondea el descuento (283,5 → 284) y Odoo el subtotal (3.766,5 → 3.767): cuando el descuento
-  termina en ,5 el XML informa 283 con `DescuentoPct` 7. Otras monedas siguen con el cálculo
-  anterior (`discount_amount`).
+  DescuentoMonto`, `MntNeto + IVA + MntExe = MntTotal = amount_total` peso por peso. Otras
+  monedas siguen con el cálculo anterior (`discount_amount`).
+- Neto e IVA del SII en el asiento (fix round 1): `account.move._base_line_neto_sii` (desde
+  `_prepare_product_base_line_for_taxes_computation`) usa como base de cada línea de una factura
+  en CLP con impuestos del SII sin precio incluido el neto del SII: bruto redondeado menos el
+  descuento redondeado a pesos (mitad hacia arriba, como `discount_amount`). Solo ajusta el
+  descuento (o, sin descuento, el precio) de la línea de cálculo, no el registro. Con redondeo
+  global el IVA queda en `round(MntNeto × 19%)`, la fórmula con que el SII valida (antes:
+  205 − 50% daba neto 103 con IVA 19 sobre 102,5; ahora neto 102 e IVA 19; 102,5 sin descuento
+  da neto 103 e IVA 20). Con varias líneas con medio peso el XML tampoco cuadraba con el asiento
+  (MntTotal 1.997 vs `amount_total` 1.996). Pruebas: `test_iva_consistente_con_neto*`.
 
 ## Pendiente tras la Task 6
 
-- Un `DescuentoMonto` que termina en ,5 queda redondeado hacia abajo respecto del porcentaje
-  (ver arriba); si el SII lo rechazara habría que llevar el redondeo del SII al motor de Odoo.
+- El neto del SII solo se aplica a `account.move`: pedidos de venta/compra (y el cálculo en el
+  navegador, `account_tax.js`) siguen con el subtotal de Odoo, así que pueden diferir en un peso
+  de la factura que generan cuando hay descuentos o precios con decimales. Las líneas con
+  impuesto incluido (boletas) siguen con el cálculo de Odoo.
 - Facturas 34 con `MntNeto` 0 en el XML (el XSD lo acepta).
 - Impuestos especiales ('A' anticipados, específicos/MEPCO, retenciones) en la emisión: sin
   pruebas (deuda documentada).

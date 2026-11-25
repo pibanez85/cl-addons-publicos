@@ -74,9 +74,28 @@ Después de cada pull:
    `ReportAction` con ref del iframe, plantillas Owl sin `this.`; ver `PORT_NOTES.md`).
 2. Mantener la versión del manifiesto en `20.0.x.y.z`.
 3. Actualizar el commit importado en esta tabla (`git -C /tmp/afr log -1 --format=%H origin/19.0`).
-4. Correr las pruebas desde el repositorio privado:
-   `scripts/test.sh account_financial_report,account_asset_management` y
+4. Correr las pruebas desde el repositorio privado, junto con `l10n_cl_fe` (en la misma base
+   aparecen interacciones que por separado no se ven):
+   `scripts/test.sh l10n_cl_fe,account_financial_report,account_asset_management,marca_propia` y
    `scripts/test.sh l10n_cl_fe_informes_test`.
 
 Cuando OCA publique estos módulos en `20.0`, conviene cambiar a su versión (comparar con el port
 de aquí, en especial `account.group`).
+
+## Imagen base de Odoo
+
+`.github/ci/Dockerfile` y `docker/Dockerfile` (repo privado) usan la imagen oficial fijada por
+digest: `FROM odoo:20.0@sha256:6709a38456a588273462c83400a0b6dbe09038deefc05846a8d3d25231dbb82e`
+(Odoo `20.0-20261123`). La etiqueta `odoo:20.0` se republica casi a diario con el código nuevo
+de Odoo; sin digest, CI y cada máquina construyen sobre imágenes distintas.
+
+Para actualizarla a propósito:
+
+1. `docker pull odoo:20.0` y anotar el digest nuevo
+   (`docker image inspect odoo:20.0 --format '{{index .RepoDigests 0}}'`).
+2. Cambiar el `FROM` en los **dos** Dockerfiles a la vez (este repo y el privado) y
+   reconstruir: `docker compose -f docker/compose.yml build odoo` en el privado.
+3. Correr todas las suites desde el privado:
+   `scripts/test.sh l10n_cl_fe,account_financial_report,account_asset_management,marca_propia` y
+   `scripts/test.sh l10n_cl_fe_informes_test` (0 failed, 0 errors).
+4. Commit de los dos Dockerfiles (y del submódulo en el privado) juntos.

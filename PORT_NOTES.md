@@ -480,7 +480,8 @@ prueba (válido contra `EnvioDTE_v10.xsd`). `envio_malformado.xml`: el mismo arc
 ## Task 9: `account_financial_report` y `account_asset_management` (OCA 19.0 → 20)
 
 Origen y forma de importar: `UPSTREAM.md`. Las pruebas propias de OCA pasan sin cambiar sus
-aserciones (único cambio: el import de `test_reports`).
+aserciones (cambios: el import de `test_reports` y, desde la Task 11, el redondeo de la moneda
+de prueba de los activos; ver abajo).
 
 Hecho en los dos módulos:
 
@@ -527,3 +528,26 @@ Pendiente / a revisar:
   Features"); el grupo Administrador de contabilidad no lo implica (igual que en Odoo 17-19).
 - Grupos de cuentas vs. cuentas padre de Odoo 20: decidir si el balance debe usar la jerarquía
   nativa cuando OCA publique su port 20.0.
+
+## Task 11: CI (GitHub Actions)
+
+- **Imagen base fijada por digest**: `.github/ci/Dockerfile` (y `docker/Dockerfile` del repo
+  privado) usan `FROM odoo:20.0@sha256:6709a384…` (Odoo `20.0-20261123`). La etiqueta
+  `odoo:20.0` se mueve a diario; sin digest CI y local probaban imágenes distintas. Cómo
+  actualizarla: `UPSTREAM.md`, "Imagen base de Odoo".
+- **Primera corrida de CI** (10 fallas, en los dos repos): no venían del cambio de imagen (la
+  imagen anterior falla igual) sino de probar por primera vez `l10n_cl_fe` junto con los
+  módulos OCA en la misma base:
+  - `l10n_cl_fe` traía una copia antigua de `report_xlsx` con `_render_xlsx(docids, data)`. Se
+    carga después de `report_xlsx` y su método (sin `super`) reemplazaba al de OCA: los XLSX de
+    `account_financial_report` fallaban con `TypeError: ... takes 3 positional arguments but 4
+    were given`. Ahora tiene la firma de `report_xlsx` 20.0 (`report_ref, docids, data`), delega
+    en `report_xlsx` si está instalado y el controlador pasa el nombre del informe. Prueba:
+    `l10n_cl_fe/tests/test_informes_xlsx.py`.
+  - `l10n_cl_fe` deja el USD con redondeo 0.0001 (`data/res.currency.csv`, 4 decimales como
+    admite el SII). La compañía de prueba de `account_asset_management` usa USD y el cuadro de
+    depreciación salía con 4 decimales (`166.6663 != 166.63`). La prueba fija el redondeo de su
+    moneda en 0.01 en `setUpClass`; las aserciones de OCA no cambian. En producción la compañía
+    lleva CLP (redondeo 1).
+- Las suites deben correr juntas (`l10n_cl_fe,account_financial_report,account_asset_management`):
+  por separado no aparecen estas interacciones.

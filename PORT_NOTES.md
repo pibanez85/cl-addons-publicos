@@ -189,7 +189,8 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
     caso de uso.
   - Redondeo del descuento a pesos (SII) dentro del motor: solo queda en
     `_get_price_total_and_subtotal_model` (XML del DTE). Puede haber 1 peso de diferencia entre
-    el asiento y el XML en líneas con descuento.
+    el asiento y el XML en líneas con descuento. **Resuelto en la Task 6** para documentos en pesos
+    (el XML sigue al asiento, ver abajo).
   - El cálculo en el navegador (`account_tax.js`) no conoce `compute_factor` (impuesto fijo por
     unidad): la vista previa puede diferir hasta guardar.
   - `tax_totals` es el estándar de Odoo 20 (sin `amount_retencion` ni grupos de retención);
@@ -334,6 +335,47 @@ Pruebas nuevas: `tests/test_privacidad.py` y `tests/test_rut.py`.
   10 millones ya no queda como `01.234.567-4` (onchange y `_rut_formateado`). La validación del
   dígito verificador (`_check_document_number_cl` con `check_vat_cl`) ya existía. El `vat`
   (`CL` + 9 dígitos) no se completa desde `document_number` al crear por ORM (solo el onchange).
+
+## Hecho en la Task 6 (emisión de 33, 34, 56 y 61)
+
+Pruebas nuevas: `tests/common_dte.py` (`DteCase`: compañía 76.086.428-5 lista para emitir,
+`.p12` autofirmado generado con `cryptography` y cargado con `sii.firma.action_process`,
+`cls.caf(codigo, desde, hasta, vencido=False)` con un CAF de llave RSA propia y
+`cls.xsd(nombre)` con los XSD de `facturacion_electronica/xsd/`) y `tests/test_emision.py`
+(XML de 33/34/56/61 válido contra `DTE_v10.xsd`, totales, referencias y errores de emisión).
+La firma y el FRMA del CAF no son del SII: el XML valida contra el XSD, no ante el SII.
+
+- `sii.firma.action_process` no podía cargar ningún `.p12`: el modelo se llama `SignatureCert`
+  y tapaba la clase de la biblioteca (instanciaba el modelo de Odoo). Se importa como
+  `FeSignatureCert`. Al cargar la firma queda vigente (`check_signature`); antes quedaba
+  `unverified` hasta volver a pulsar el botón y `get_digital_signature` no la encontraba.
+- `account.move._get_last_sequence_domain`: Odoo 18+ espera una condición `SQL` (no la tupla
+  `(where_string, param)`); con un diario con documentos **ninguna factura se podía crear**
+  (`_compute_name`). Ahora es la condición de Odoo más `use_documents`/`document_class_id`.
+  Diferencia con 17.0: el nombre de referencia con que Odoo deduce el reinicio (anual/mensual)
+  se busca en todo el diario, no solo en el mismo tipo de documento.
+- Requisitos de emisión, con `UserError` claro antes de armar y firmar el XML:
+  `account.move._validar_requisitos_emisor` (RUT, giro, número y fecha de resolución; sin fecha,
+  `_emisor` fallaba con `AttributeError`), certificado digital vigente (mensaje con
+  "certificado") y CAF para el folio (`_timbrar_batch`; antes `TypeError` comparando con
+  `False`). CAF agotado: el error de `ir.sequence._next_do` ("No hay más folios"); CAF vencido:
+  el de `_validaciones_caf`.
+- `CorreoEmisor` solo si la compañía tiene correo DTE (`False` rompía la biblioteca).
+- Descuentos en pesos (revisión del plan, foco 2): el `DescuentoMonto` del XML es
+  `round(PrcItem × QtyItem) − MontoItem` del asiento. Así `MontoItem = PrcItem × QtyItem −
+  DescuentoMonto`, `MntNeto + IVA + MntExe = MntTotal = amount_total` peso por peso. El SII
+  redondea el descuento (283,5 → 284) y Odoo el subtotal (3.766,5 → 3.767): cuando el descuento
+  termina en ,5 el XML informa 283 con `DescuentoPct` 7. Otras monedas siguen con el cálculo
+  anterior (`discount_amount`).
+
+## Pendiente tras la Task 6
+
+- Un `DescuentoMonto` que termina en ,5 queda redondeado hacia abajo respecto del porcentaje
+  (ver arriba); si el SII lo rechazara habría que llevar el redondeo del SII al motor de Odoo.
+- Facturas 34 con `MntNeto` 0 en el XML (el XSD lo acepta).
+- Impuestos especiales ('A' anticipados, específicos/MEPCO, retenciones) en la emisión: sin
+  pruebas (deuda documentada).
+- El envío al SII (sobre `EnvioDTE`, cola) no se probó: las pruebas solo timbran y firman.
 
 ## Repositorio privado (`erp-chile`)
 

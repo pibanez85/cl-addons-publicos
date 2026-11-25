@@ -1,5 +1,10 @@
+from contextlib import contextmanager
+from unittest.mock import patch
+
 from odoo.exceptions import UserError
 from odoo.tests.common import tagged
+
+from odoo.addons.l10n_cl_fe.models import dte_mixin
 
 from .common_dte import NS, DteCase
 
@@ -32,6 +37,21 @@ class TestEmision(DteCase):
         self.assertEqual(nota.document_class_id, self.clases[tipo])
         return nota
 
+    @contextmanager
+    def espias(self):
+        """Espía la firma (fe.timbrar), el encolado y la creación de envíos sin cambiar su efecto.
+
+        Los asserts de base de datos tras un assertRaises no prueban nada (Odoo 20 revierte el
+        savepoint); las llamadas registradas por los espías, sí."""
+        Move = type(self.env["account.move"])
+        Cola = type(self.env["sii.cola_envio"])
+        Envio = type(self.env["sii.xml.envio"])
+        with patch.object(dte_mixin.fe, "timbrar", wraps=dte_mixin.fe.timbrar) as timbrar, \
+                patch.object(Move, "queue", autospec=True, side_effect=Move.queue) as queue, \
+                patch.object(Cola, "create", autospec=True, side_effect=Cola.create) as cola, \
+                patch.object(Envio, "create", autospec=True, side_effect=Envio.create) as envio:
+            yield {"firma": timbrar, "encolado": queue, "cola": cola, "envio": envio}
+
     def _referencia(self, xml):
         ref = xml.find(".//sii:Documento/sii:Referencia", NS)
         self.assertIsNotNone(ref, "el DTE no trae Referencia")
@@ -48,7 +68,12 @@ class TestEmision(DteCase):
 
     def test_factura_33_xml_valido(self):
         self.caf(33, 1, 10)
-        factura = self._publicar(self.factura([(self.producto, 3, 1000), (self.producto, 1, 2990)]))
+        with self.espias() as espias:
+            factura = self._publicar(self.factura([(self.producto, 3, 1000), (self.producto, 1, 2990)]))
+        # Control positivo de los espías que usa _assert_no_emite.
+        self.assertEqual(espias["firma"].call_count, 1)
+        self.assertEqual(espias["encolado"].call_count, 1)
+        self.assertEqual(espias["cola"].call_count, 1)
         xml = self.assertXsd(factura)
         totales = self.totales(xml)
         self.assertEqual(totales["MntNeto"], 5990)
@@ -101,6 +126,35 @@ class TestEmision(DteCase):
         self.assertEqual(sorted(int(m.text) for m in xml.iterfind(".//sii:Detalle/sii:MontoItem", NS)),
                          sorted(int(l.price_subtotal) for l in lineas))
 
+    def test_numeracion_sin_documento_en_diario_con_documentos(self):
+        """Un movimiento sin documento del SII en el diario de ventas sigue la numeración de Odoo:
+        el reinicio (anual) se deduce de los movimientos sin documento, no de un DTE ("FAC 1")."""
+        self.caf(33, 1, 10)
+
+        def sin_documento(fecha):
+            return self.env["account.move"].create({
+                "move_type": "out_invoice", "partner_id": self.cliente.id,
+                "company_id": self.company.id, "journal_id": self.diario.id,
+                "invoice_date": fecha, "use_documents": False,
+                "invoice_line_ids": [(0, 0, {"product_id": self.producto.id, "quantity": 1,
+                                             "price_unit": 1000, "tax_ids": [(6, 0, self.iva.ids)]})],
+            })
+
+        primero = sin_documento("2026-06-10")
+        primero.action_post()
+        self.assertFalse(primero.sii_document_number)
+        # El DTE es el movimiento más reciente del diario antes del siguiente.
+        dte = self._publicar(self.factura([(self.producto, 1, 1000)], invoice_date="2026-06-11"))
+        self.assertNotEqual(dte.name.split("/")[0], primero.name.split("/")[0])
+        segundo = sin_documento("2026-06-12")
+        self.assertEqual(segundo._get_last_sequence(), primero.name)
+        segundo.action_post()
+        prefijo, numero = primero.name.rsplit("/", 1)
+        self.assertEqual(segundo.name, "%s/%s" % (prefijo, str(int(numero) + 1).zfill(len(numero))))
+        # Y el DTE sigue su propia numeración (folio del CAF).
+        otro = self._publicar(self.factura([(self.producto, 1, 1000)], invoice_date="2026-06-12"))
+        self.assertEqual(otro.sii_document_number, dte.sii_document_number + 1)
+
     def test_factura_exenta_34(self):
         self.caf(34, 1, 10)
         factura = self._publicar(self.factura([(self.producto_exento, 2, 1500)], codigo=34))
@@ -136,15 +190,14 @@ class TestEmision(DteCase):
         self.assertEqual(int(ref["CodRef"]), 3)
 
     def _assert_no_emite(self, factura, *palabras):
-        antes = self.envios()
-        with self.assertRaises(UserError) as error:
+        with self.espias() as espias, self.assertRaises(UserError) as error:
             factura.action_post()
         mensaje = str(error.exception).lower()
         self.assertTrue(any(p.lower() in mensaje for p in palabras),
                         "%r no menciona %s" % (str(error.exception), " ni ".join(palabras)))
-        self.assertEqual(self.envios(), antes, "se creó un envío")
-        self.assertEqual(factura.state, "draft")
-        self.assertFalse(factura.sii_xml_dte)
+        # El error llega antes de firmar y de encolar o crear un envío.
+        for nombre, espia in espias.items():
+            self.assertFalse(espia.called, "se llamó a %s antes del error" % nombre)
         return mensaje
 
     def test_sin_certificado(self):

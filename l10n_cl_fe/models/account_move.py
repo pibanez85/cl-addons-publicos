@@ -372,15 +372,53 @@ class AccountMove(models.Model):
             invoice.needed_terms = list(needed_terms.items())
 
     def _get_last_sequence_domain(self, relaxed=False):
-        # Odoo 18+ devuelve una condición SQL (antes una tupla (where_string, param)). La de Odoo
-        # (diario, período, rectificativas, pagos) más el tipo de documento del SII: cada tipo
-        # (33, 34, 56, 61...) lleva su propia numeración en el mismo diario.
-        condition = super()._get_last_sequence_domain(relaxed)
+        # Odoo 18+ devuelve una condición SQL (antes una tupla (where_string, param)). En un diario
+        # con documentos, cada tipo del SII (33, 34, 56, 61...) y los movimientos sin documento
+        # llevan su propia numeración; como en 17.0, el reinicio (anual, mensual, nunca) se deduce
+        # del último movimiento del mismo grupo y no del último del diario: si no, un movimiento
+        # sin documento tomaría un DTE ("FAC 12") como referencia, Odoo deduciría "nunca", su
+        # anti-regex excluiría "INV/2026/" y la numeración volvería a empezar.
         if not self.journal_id.use_documents:
-            return condition
+            return super()._get_last_sequence_domain(relaxed)
+        self.ensure_one()
+        if not self.date:
+            return SQL("FALSE")
+        # relaxed=True: los filtros de Odoo sin período (diario, nombre, rectificativas, pagos).
+        condition = super()._get_last_sequence_domain(relaxed=True)
         if self.use_documents and self.document_class_id.dte:
-            return SQL("%s AND use_documents AND document_class_id = %s", condition, self.document_class_id.id)
-        return SQL("%s AND (use_documents = FALSE OR use_documents IS NULL)", condition)
+            condition = SQL("%s AND use_documents AND document_class_id = %s", condition, self.document_class_id.id)
+            domain = [('use_documents', '=', True), ('document_class_id', '=', self.document_class_id.id)]
+        else:
+            condition = SQL("%s AND (use_documents = FALSE OR use_documents IS NULL)", condition)
+            domain = [('use_documents', '=', False)]
+        if relaxed:
+            return condition
+        # Igual que account.move._get_last_sequence_domain de Odoo 20, con el dominio del grupo.
+        is_payment = self.origin_payment_id or self.env.context.get('is_payment')
+        domain += [('journal_id', '=', self.journal_id.id), ('id', '!=', self.id or self._origin.id),
+                   ('name', 'not in', ('/', '', False))]
+        if self.journal_id.refund_sequence:
+            refund_types = ('out_refund', 'in_refund')
+            domain += [('move_type', 'in' if self.move_type in refund_types else 'not in', refund_types)]
+        if self.journal_id.payment_sequence:
+            domain += [('origin_payment_id', '!=' if is_payment else '=', False)]
+        if self.journal_id.is_self_billing and self.partner_id:
+            domain += [('commercial_partner_id', '=', self.partner_id.commercial_partner_id.id)]
+        reference_move_name = self.sudo().search(domain + [('date', '<=', self.date)], order='date desc', limit=1).name
+        if not reference_move_name:
+            reference_move_name = self.sudo().search(domain, order='date asc', limit=1).name
+        sequence_number_reset = self._deduce_sequence_number_reset(reference_move_name)
+        date_start, date_end, *_ = self._get_sequence_date_range(sequence_number_reset)
+        condition = SQL("%s AND date BETWEEN %s AND %s", condition, date_start, date_end)
+        if sequence_number_reset in ('year', 'year_range'):
+            anti_regex = self._make_regex_non_capturing(self._sequence_monthly_regex.split('(?P<seq>')[0]) + '$'
+        elif sequence_number_reset == 'never':
+            anti_regex = self._make_regex_non_capturing(self._sequence_yearly_regex.split('(?P<seq>')[0]) + '$'
+        else:
+            anti_regex = None
+        if anti_regex and not self.journal_id.sequence_override_regex and not self.env.context.get('no_anti_regex'):
+            condition = SQL("%s AND sequence_prefix !~ %s", condition, anti_regex)
+        return condition
 
     def _set_next_sequence(self):
         self.ensure_one()

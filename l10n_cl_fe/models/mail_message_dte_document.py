@@ -346,16 +346,14 @@ class ProcessMailsDocument(models.Model):
         return action
 
     def reject_document(self):
+        """Botón "Rechazar": rechazo comercial del DTE (respuesta al proveedor con EstadoDTE 2 y
+        reclamo RCD al SII), el mismo que la opción "Rechazar" del asistente de carga. Antes solo
+        actuaba si el documento traía ``xml`` (los recibidos por XML no lo traen: está en el envío)."""
         for r in self:
-            if r.xml:
-                vals = {
-                    "document_ids": [(6, 0, r.ids)],
-                    "estado_dte": "2",
-                    "action": "validate",
-                    "claim": "RCD",
-                }
-                val = self.env["sii.dte.validar.wizard"].sudo().create(vals)
-                val.confirm()
+            if r.xml or r.dte_xml:
+                self.env["sii.dte.upload_xml.wizard"].sudo().create({
+                    "document_id": r.id, "type": "compras", "option": "reject",
+                }).confirm(ret=True)
             if r.claim in ["RCD"]:
                 r.state = "rejected"
 

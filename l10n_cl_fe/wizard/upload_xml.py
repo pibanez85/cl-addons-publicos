@@ -104,8 +104,23 @@ class UploadXMLWizard(models.TransientModel):
             target_model = "account.move"
         else:
             if self.option == "reject":
-                self.do_reject()
-                return
+                # Rechazo comercial: el documento recibido (se registra si aún no existe), sin
+                # factura, con el reclamo RCD y la respuesta comercial (EstadoDTE 2) al proveedor.
+                docs = self.document_id
+                if not docs:
+                    self.pre_process = True
+                    self.crear_po = False
+                    docs = self.env["mail.message.dte.document"].browse(self.do_create_pre())
+                self.do_reject(docs)
+                return docs.ids if ret else {
+                    "type": "ir.actions.act_window",
+                    "name": _("List of Results"),
+                    "view_mode": "list",
+                    "res_model": "mail.message.dte.document",
+                    "domain": str([("id", "in", docs.ids)]),
+                    "views": [(self.env.ref("l10n_cl_fe.dte_document_view_tree").id, "list")],
+                    "target": "current",
+                }
             recepcion_borrador = not self.document_id and self.action == "create_move" and self.option == "upload"
             if not self.document_id:
                 self.pre_process = True
@@ -1220,8 +1235,7 @@ class UploadXMLWizard(models.TransientModel):
                     self.dte_id.message_post(body=msg)
         return created
 
-    def do_reject(self):
-        docs = self.document_id or self.dte_id.document_ids
+    def do_reject(self, docs):
         for doc in docs:
             datos = {
                 "claim": "RCD",
@@ -1229,10 +1243,12 @@ class UploadXMLWizard(models.TransientModel):
                 "user_id": self.env.uid,
                 "sequence": 1,
                 "estado_dte": "2",
+                "claim_description": "DTE Rechazado",
                 "document_id": doc.id,
             }
             claim = self.env["sii.dte.claim"].sudo().create(datos)
             claim.do_reject()
+            doc.state = "rejected"
 
     def _registrar_error(self, msg):
         """Deja el error a la vista del usuario: en el chatter del documento recibido o del envío."""

@@ -1,11 +1,15 @@
 import base64
 import logging
+import re
 
-from odoo import fields, models
+from lxml import etree
+
+from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 try:
+    from facturacion_electronica import clase_util as fe_util
     from facturacion_electronica import facturacion_electronica as fe
 except ImportError:
     _logger.warning("No se ha podido cargar fe")
@@ -90,38 +94,58 @@ class DTEClaim(models.Model):
         return att
 
     def do_reject(self):
+        """Rechazo comercial (RespuestaDTE/ResultadoDTE con EstadoDTE 2) del DTE recibido, armado
+        desde su XML, enviado al proveedor; luego el reclamo al SII."""
         id_seq = self.env.ref("l10n_cl_fe.response_sequence")
         IdRespuesta = id_seq.next_by_id()
         NroDetalles = 1
         doc = self.move_id or self.document_id
+        tipo = "account.move" if self.move_id else "mail.message.dte.document"
+        if self.move_id:
+            xml = doc.sii_xml_dte
+        else:
+            xml = doc.xml or doc._get_xml()
+        if not xml:
+            raise UserError(_("El documento %s no tiene el XML del DTE: no se puede rechazar.") % doc.display_name)
+        # El DTE tal como lo emitió el proveedor. El estado va en cada DTE: la biblioteca arma el
+        # ResultadoDTE con el EstadoDTE del documento, no con el de la respuesta (con "xml_dte"
+        # quedaba EstadoDTE 0, es decir "Recibido Ok").
+        xml = re.sub(r"^\s*<\?xml[^>]*\?>\s*", "", xml)
+        xml = re.sub(r' xmlns(:\w+)?="[^"]*"', "", xml).replace("<ds:", "<").replace("</ds:", "</")
+        documento = etree.fromstring(xml.encode("ISO-8859-1"), etree.XMLParser(encoding="ISO-8859-1"))
+        documento = documento if documento.tag == "Documento" else documento.find("Documento")
+        dte = fe_util.recursive_xml(documento)
+        glosa = self.claim_description or "DTE Rechazado"
+        dte.update({"CodEnvio": IdRespuesta, "EstadoDTE": 2, "EstadoDTEGlosa": glosa, "CodRchDsc": -1})
         datos = doc._get_datos_empresa()
-        """ @TODO separar estos dos"""
-        dte = {
-            "xml": doc.xml,
-            "CodEnvio": IdRespuesta,
-        }
         datos["filename"] = "rechazo_comercial_%s.xml" % str(IdRespuesta)
         datos["ValidacionCom"] = {
             "IdRespuesta": IdRespuesta,
             "NroDetalles": NroDetalles,
-            "RutResponde": doc.company_id.document_number,
+            "RutResponde": doc.company_id.partner_id.rut(),
+            "RutRecibe": dte["Encabezado"]["Emisor"]["RUTEmisor"],
+            "Receptor": {"RUTRecep": dte["Encabezado"]["Emisor"]["RUTEmisor"]},
             "NmbContacto": self.env.user.partner_id.name,
             "FonoContacto": self.env.user.partner_id.phone,
             "MailContacto": self.env.user.partner_id.email,
-            "xml_dte": dte,
             "EstadoDTE": 2,
-            "EstadoDTEGlosa": self.claim_description,
-            "CodRchDsc": -1,
+            "EstadoDTEGlosa": glosa,
+            "DTEs": [dte],
         }
         resp = fe.validacion_comercial(datos)
+        if resp.get("error"):
+            raise UserError(resp["error"])
         att = self._create_attachment(resp["respuesta_xml"], resp["nombre_xml"], doc.id, tipo)
         dte_email_id = doc.company_id.dte_email_id or self.env.company.dte_email_id
+        email_to = doc.partner_id.commercial_partner_id.dte_email
+        if not email_to and not self.move_id:
+            email_to = doc.dte_id.sudo().mail_id.email_from
         values = {
             "res_id": doc.id,
             "email_from": dte_email_id.display_name,
-            "email_to": doc.dte_id.sudo().mail_id.email_from,
+            "email_to": email_to,
             "auto_delete": False,
-            "model": "mail.message.dte.document",
+            "model": tipo,
             "body": "XML de Respuesta DTE, Estado: {} , Glosa: {} ".format(resp["EstadoDTE"], resp["EstadoDTEGlosa"]),
             "subject": "XML de Respuesta DTE",
             "attachment_ids": [[6, 0, att.ids]],

@@ -97,25 +97,6 @@ class ValidarDTEWizard(models.TransientModel):
                     if resp:
                         r.move_id = resp[0]
 
-    def do_reject(self, document_ids):
-        docs = self.move_ids or self.document_ids
-        for doc in docs:
-            claims = 1
-            datos = {
-                "claim": self.claim,
-                "date": fields.Datetime.now(),
-                "user_id": self.env.uid,
-                "claim_description": self.claim_description,
-                "sequence": claims,
-                "estado_dte": self.estado_dte,
-            }
-            if self.tipo == "account.move":
-                datos["move_id"] = doc.id
-            else:
-                datos["document_id"] = doc.id
-            claim = self.env["sii.dte.claim"].sudo().create(datos)
-            claim.do_reject(doc)
-
     def do_validar_comercial(self):
         docs = self.move_ids or self.document_ids
         for doc in docs:

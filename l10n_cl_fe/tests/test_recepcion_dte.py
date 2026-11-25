@@ -323,6 +323,73 @@ class TestRecepcionDte(DteCase):
         self._assert_xsd(recibo.raw, "EnvioRecibos_v10")
         self._assert_xsd(comercial.raw, "RespuestaEnvioDTE_v10")
 
+    def _rechazar(self, **valores):
+        """Opción "Rechazar" del asistente de carga (sin consultar al SII: el reclamo se simula)."""
+        wizard = self.env["sii.dte.upload_xml.wizard"].create(dict({
+            "type": "compras", "action": "create_move", "option": "reject"}, **valores))
+        respuesta = {"respuesta": {"codResp": 0}}
+        with patch.object(fe, "ingreso_reclamo_documento", side_effect=lambda datos: {
+                "RUT%(RUTEmisor)sT%(TipoDTE)sF%(Folio)s" % d: respuesta for d in datos["DTEClaim"]}) as reclamo:
+            wizard.confirm(ret=True)
+        return reclamo
+
+    def _assert_rechazo(self, documento, folio):
+        self.assertEqual(documento.state, "rejected")
+        self.assertFalse(documento.move_id, "un DTE rechazado no se registra como factura")
+        self.assertEqual(documento.claim_ids.mapped("claim"), ["RCD"])
+        rechazo = self.env["ir.attachment"].search([
+            ("res_model", "=", "mail.message.dte.document"), ("res_id", "=", documento.id),
+            ("name", "=like", "rechazo_comercial_%"),
+        ])
+        self.assertEqual(len(rechazo), 1, "el rechazo genera la respuesta comercial (RespuestaDTE)")
+        self._assert_xsd(rechazo.raw, "RespuestaEnvioDTE_v10")
+        xml = etree.fromstring(getattr(rechazo.raw, "content", rechazo.raw))
+        caratula = {etree.QName(n).localname: n.text for n in xml.find(".//{*}Caratula")}
+        self.assertEqual((caratula["RutResponde"], caratula["RutRecibe"]), ("76086428-5", "96806980-2"))
+        resultado = {etree.QName(n).localname: n.text for n in xml.find(".//{*}ResultadoDTE")}
+        self.assertEqual(
+            {k: resultado[k] for k in ("TipoDTE", "Folio", "RUTEmisor", "RUTRecep", "MntTotal", "EstadoDTE", "CodRchDsc")},
+            {"TipoDTE": "33", "Folio": str(folio), "RUTEmisor": "96806980-2", "RUTRecep": "76086428-5",
+             "MntTotal": str(TOTAL), "EstadoDTE": "2", "CodRchDsc": "-1"},
+        )
+
+    def test_rechazar_dte_recibido(self):
+        """"Rechazar" en el asistente de carga: al subir el XML y sobre un documento ya recibido.
+        Queda el documento recibido rechazado (sin factura), el reclamo RCD ingresado al SII y la
+        respuesta comercial con EstadoDTE 2 para el proveedor, válida contra el XSD."""
+        import facturacion_electronica
+
+        if not os.path.exists(os.path.join(
+                os.path.dirname(facturacion_electronica.__file__), "xsd", "RespuestaEnvioDTE_v10.xsd")):
+            self.skipTest("Falta el XSD RespuestaEnvioDTE_v10.xsd en facturacion_electronica/xsd/")
+        Documento = self.env["mail.message.dte.document"]
+        # Al subir el XML con la opción "Rechazar".
+        reclamo = self._rechazar(xml_file=base64.b64encode(self.dte_33).decode(), filename="envio_dte_33.xml")
+        documento = Documento.search([("number", "=", str(FOLIO))])
+        self.assertEqual(len(documento), 1)
+        self._assert_rechazo(documento, FOLIO)
+        self.assertEqual(reclamo.call_args.args[0]["DTEClaim"][0]["Claim"], "RCD")
+        self.assertFalse(self._facturas())
+        # Sobre un documento ya recibido (recepción manual: solo el documento, sin factura).
+        self.env["sii.dte.upload_xml.wizard"].create({
+            "xml_file": base64.b64encode(self._variante(4522)).decode(), "filename": "envio_4522.xml",
+            "type": "compras", "action": "manual", "option": "upload",
+        }).confirm(ret=True)
+        recibido = Documento.search([("number", "=", "4522")])
+        self.assertEqual((len(recibido), recibido.state), (1, "draft"))
+        self._rechazar(document_id=recibido.id)
+        self._assert_rechazo(recibido, 4522)
+        # Botón "Rechazar" del documento recibido.
+        self.env["sii.dte.upload_xml.wizard"].create({
+            "xml_file": base64.b64encode(self._variante(4523)).decode(), "filename": "envio_4523.xml",
+            "type": "compras", "action": "manual", "option": "upload",
+        }).confirm(ret=True)
+        boton = Documento.search([("number", "=", "4523")])
+        with patch.object(fe, "ingreso_reclamo_documento", return_value={
+                "RUT96806980-2T33F4523": {"respuesta": {"codResp": 0}}}):
+            boton.reject_document()
+        self._assert_rechazo(boton, 4523)
+
     def _assert_xsd(self, contenido, nombre):
         contenido = getattr(contenido, "content", contenido)  # raw de ir.attachment: BinaryValue
         xml = etree.fromstring(contenido)

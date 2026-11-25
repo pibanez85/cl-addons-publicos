@@ -450,8 +450,7 @@ prueba (válido contra `EnvioDTE_v10.xsd`). `envio_malformado.xml`: el mismo arc
   OK"). Un XML adulterado se registra como bueno. Tampoco se valida el TED/CAF del emisor ni el XSD
   del envío recibido (`_validar_caratula` pone `EstadoRecepEnv = 0` al final aunque falle). Las
   pruebas modifican el XML del fixture (folio, IVA) sin volver a firmarlo.
-- `sii.dte.claim.do_reject` usa `tipo` sin definir (rechazo comercial de un documento recibido falla
-  con `NameError`); no se tocó.
+- ~~`sii.dte.claim.do_reject` usa `tipo` sin definir~~: resuelto en la revisión final (abajo).
 - `_inv_exist` no filtra por compañía.
 - La biblioteca emite `<CorreoEmisor/>` vacío en los DTE (no boletas) cuando la compañía no tiene
   correo DTE: `dte.py` asigna `CorreoEmisor` siempre; el arreglo de la Task 6 solo evita que el
@@ -581,3 +580,20 @@ Pendiente / a revisar (Task 11):
   dejaba la 56 como `out_invoice`. Ahora solo `es_nc()` es rectificativa. Prueba:
   `test_recepcion_dte.test_notas_de_debito_y_credito_del_proveedor` (33 + 56 - 61: libro y saldos
   de IVA crédito y proveedor).
+- **"Rechazar" un DTE recibido** (`sii.dte.claim.do_reject`, asistente de carga, botón del documento):
+  fallaba siempre (`tipo` sin definir; antes de eso `validacion_comercial` fallaba porque el
+  documento recibido no trae `xml`: el DTE está en el envío, `_get_xml()`). Con la opción "Rechazar"
+  al subir un XML no hacía nada (rechazaba los documentos del envío antes de registrarlos). Ahora: el
+  asistente registra el documento si no existe, crea el reclamo RCD, genera la respuesta comercial
+  (`RespuestaDTE`/`ResultadoDTE`, `rechazo_comercial_N.xml`) desde el XML del proveedor con
+  `EstadoDTE` 2 y `CodRchDsc` -1, la envía al proveedor, ingresa el reclamo al SII y deja el
+  documento `rejected` sin factura. El estado va en cada DTE (la biblioteca arma el `ResultadoDTE`
+  con el `EstadoDTE` del documento; con `xml_dte` salía 0, "Recibido Ok"). El botón "Rechazar" del
+  documento usa el mismo camino (antes solo actuaba si el documento traía `xml`). Se quitó
+  `sii.dte.validar.wizard.do_reject` (código muerto, llamaba `claim.do_reject(doc)` con un argumento
+  de más). Prueba: `test_recepcion_dte.test_rechazar_dte_recibido` (XSD, carátula y resultado).
+- Pendiente (no se tocó): `sii.dte.claim.do_validar_comercial` con `estado_dte` 1 o 2 (asistente
+  "Aceptar o Rechazar" sobre facturas) tiene el mismo problema del estado por DTE: el
+  `ResultadoDTE` sale con `EstadoDTE` 0. Y `mail.message.dte.document.set_dte_claim` busca la clave
+  dos veces en la respuesta del SII (`[key]` y luego `.get(key)`), así que nunca marca `claim` en el
+  documento recibido tras ingresar el reclamo.

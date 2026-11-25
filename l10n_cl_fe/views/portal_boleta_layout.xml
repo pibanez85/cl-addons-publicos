@@ -18,7 +18,6 @@
             <a class="btn btn-primary btn-lg fa fa-search" href="/boleta">Buscar
 				nuevamente
 			</a>
-            <t t-set="report_url" t-value="'/download/boleta?model_id=%s&amp;access_token=%s' % (docs[0].id, docs[0]._portal_ensure_token())" />
             <a class="btn btn-primary btn-lg fa fa-download" t-att-href="report_url">Descargar
 				PDF
 			</a>
@@ -80,6 +79,35 @@
                                 name="date"
                                 required=""
                                 placeholder="yyyy-mm-dd"
+                            />
+                        </div>
+                    </div>
+                    <div class="row col-12">
+                        <div class="col-5">
+                            <strong class="pull-left">Monto total:</strong>
+                        </div>
+                        <div class="col-7">
+                            <input
+                                class="form-control pull-right"
+                                style="display: inline-block; width: 100%;"
+                                type="number"
+                                name="amount_total"
+                                required=""
+                            />
+                        </div>
+                    </div>
+                    <div class="row col-12">
+                        <div class="col-5">
+                            <strong class="pull-left">RUT emisor:</strong>
+                        </div>
+                        <div class="col-7">
+                            <input
+                                class="form-control pull-right"
+                                style="display: inline-block; width: 100%;"
+                                type="text"
+                                name="rut_emisor"
+                                required=""
+                                placeholder="76.123.456-0"
                             />
                         </div>
                     </div>

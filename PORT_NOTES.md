@@ -389,6 +389,73 @@ La firma y el FRMA del CAF no son del SII: el XML valida contra el XSD, no ante 
   pruebas (deuda documentada).
 - El envío al SII (sobre `EnvioDTE`, cola) no se probó: las pruebas solo timbran y firman.
 
+## Hecho en la Task 7 (recepción de DTE de proveedores)
+
+Pruebas nuevas: `tests/test_recepcion_dte.py` (sobre `DteCase`). Fixture `tests/data/envio_dte_33.xml`:
+EnvioDTE de intercambio generado con este módulo (un `DteCase` con el RUT del emisor cambiado a
+96.806.980-2, `action_post` y `sii.xml.envio.crear_intercambio(factura, "76086428-5")`): una 33,
+folio 4521, neto 55.901, IVA 10.621, total 66.522, firmado con un certificado autofirmado y un CAF de
+prueba (válido contra `EnvioDTE_v10.xsd`). `envio_malformado.xml`: el mismo archivo truncado.
+
+- Contrato para la etapa 1: con el método de recepción "Crear Factura Solamente"
+  (`account.dte_receipt_method = create_move`, o acción `create_move` + "Solo subir" en el asistente
+  de carga) cada DTE recibido queda como `in_invoice` **en borrador** con `document_class_id`,
+  `sii_document_number`, el proveedor por RUT (se crea si no existe) y enlazado a su
+  `mail.message.dte.document` (`move_id`). Se genera el acuse de recibo del envío (`RespuestaDTE`),
+  no la aceptación comercial. Antes esa combinación solo creaba el documento recibido; la factura
+  se creaba (publicada) recién al aceptar. Con `manual` (valor por defecto) sigue igual: solo el
+  documento recibido. Aceptar después un documento que ya tiene la factura en borrador envía la
+  aceptación pero no la publica (el cron de aceptación automática tampoco).
+- Montos: la factura en borrador trae el neto, IVA y total del DTE peso por peso (incluida una línea
+  con descuento). Si el IVA del proveedor difiere por redondeo, se ajusta la línea de IVA del
+  borrador al del DTE (`_ajustar_iva_xml`, mismo patrón que la retención de la BHE); si aun así el
+  total no cuadra, no se crea la factura y el error queda en el chatter del documento recibido.
+  Reemplaza la "línea de redondeo" heredada (una línea creada con `check_move_validity=False`).
+- `do_create_inv` hacía `cr.commit()` a mitad del proceso (en pruebas lanzaba `AssertionError`, que
+  el `except` se tragaba). Ahora cada DTE va en un savepoint: el que falla se deshace solo y el error
+  queda en el chatter del documento recibido o del envío (`_registrar_error`). En un envío con varios
+  DTE cada documento recibido enlaza su propia factura (antes quedaba el `document_id` de la vuelta
+  anterior).
+- Duplicados: un DTE ya registrado (RUT emisor, tipo y folio, `_inv_exist`/`_dte_exist`) no crea otra
+  factura ni otro documento, aunque llegue con otro nombre de archivo o por correo.
+- Correo (`mail.message.process_mess`): cada XML adjunto en su propio savepoint; uno malformado deja
+  "No se pudo procesar el XML <nombre>: <error>" en el chatter del registro al que llegó el correo
+  (el `mail.message.dte`) y no impide procesar los demás (antes la excepción cortaba el lote y solo
+  quedaba en el log). Un segundo EnvioDTE en el mismo correo (o en una respuesta al mismo hilo) va a
+  su propio `mail.message.dte`: antes reemplazaba el `xml_id` y los documentos del primero perdían su
+  XML. `mail.message.dte.process_message` (asistente "Procesar DTE" sobre varios envíos) también
+  procesa cada envío por separado y deja el error en su chatter.
+- La compañía receptora y el proveedor se buscan por `vat` o por `document_number`
+  (`res.company._buscar_por_rut`, `res.partner._buscar_por_rut`): una compañía creada por ORM no tiene
+  `vat` (ver Task 5) y la recepción no la encontraba ("No existe compañia para 76086428-5").
+- `<CorreoEmisor/>` vacío (válido contra el XSD; la biblioteca lo emite así cuando la compañía no
+  tiene correo DTE) rompía la creación del proveedor. Declaración XML con comillas simples o
+  `iso-8859-1` en minúsculas: antes `ValueError` de lxml. XML mal formado en el asistente de carga:
+  `UserError` con el nombre del archivo.
+- Configuración que la recepción necesita (las pruebas la dejan como el asistente de diarios): el
+  diario de compras con los tipos de documento recibidos (`document_class_ids`; si no, "No existe
+  Diario para el tipo de documento") y con actividades (`journal_activities_ids`): el recibo de
+  mercaderías y la respuesta comercial sobre la factura arman los datos del "emisor" desde el diario
+  de la factura.
+- XSD: el acuse de recibo (`RespuestaDTE`/`RecepcionEnvio`) y la respuesta comercial
+  (`RespuestaDTE`/`ResultadoDTE`) validan contra `RespuestaEnvioDTE_v10.xsd`; el recibo de mercaderías
+  (`EnvioRecibos`) contra `EnvioRecibos_v10.xsd` (la consulta y el reclamo al SII se simulan).
+
+## Pendiente tras la Task 7
+
+- **Firma de los DTE recibidos: no se verifica.** Ni el módulo ni `facturacion_electronica`
+  comprueban la firma del EnvioDTE ni la de cada DTE (en `respuesta.py`, `_check_digest_caratula` y
+  `_check_digest_dte` tienen la verificación comentada y responden siempre "Envío Ok"/"DTE Recibido
+  OK"). Un XML adulterado se registra como bueno. Tampoco se valida el TED/CAF del emisor ni el XSD
+  del envío recibido (`_validar_caratula` pone `EstadoRecepEnv = 0` al final aunque falle). Las
+  pruebas modifican el XML del fixture (folio, IVA) sin volver a firmarlo.
+- `sii.dte.claim.do_reject` usa `tipo` sin definir (rechazo comercial de un documento recibido falla
+  con `NameError`); no se tocó.
+- `_inv_exist` no filtra por compañía.
+- La biblioteca emite `<CorreoEmisor/>` vacío en los DTE (no boletas) cuando la compañía no tiene
+  correo DTE: `dte.py` asigna `CorreoEmisor` siempre; el arreglo de la Task 6 solo evita que el
+  módulo le pase `False`. Es válido contra el XSD (el fixture de la Task 7 lo trae).
+
 ## Repositorio privado (`erp-chile`)
 
 - `scripts/test.sh` usa `--without-demo=all`; Odoo 20 avisa "since 19.0, invalid boolean value:

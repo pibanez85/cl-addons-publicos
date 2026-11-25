@@ -16,7 +16,7 @@
     "category": "Accounting & Finance",
     "data": [
         "security/account_asset_security.xml",
-        "security/ir.model.access.csv",
+        "security/ir.access.csv",
         "wizard/account_asset_compute.xml",
         "wizard/account_asset_remove.xml",
         "views/account_account.xml",

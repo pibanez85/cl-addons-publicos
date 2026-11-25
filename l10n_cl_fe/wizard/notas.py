@@ -100,10 +100,11 @@ class AccountMoveReversal(models.TransientModel):
         return vals
 
 
-    def reverse_moves(self):
+    def reverse_moves(self, is_modify=False):
+        # Odoo 20: refund_moves() y modify_moves() llaman a reverse_moves(is_modify=...).
         self.ensure_one()
         if self.refund_method != 'cl_refund':
-            return super(AccountMoveReversal, self).reverse_moves()
+            return super(AccountMoveReversal, self).reverse_moves(is_modify=is_modify)
         moves = self.move_ids
         mode = self.cl_refund
         # Create default values.
@@ -116,8 +117,9 @@ class AccountMoveReversal(models.TransientModel):
             [self.env['account.move'], [], False],  # Others.
         ]
         for move, default_vals in zip(moves, default_values_list):
-            is_auto_post = bool(default_vals.get('auto_post'))
-            is_cancel_needed = not is_auto_post and self.refund_method in ('cancel', 'modify')
+            # Odoo 20: auto_post es 'no' / 'at_date' (un texto, siempre verdadero con bool()).
+            is_auto_post = default_vals.get('auto_post', 'no') != 'no'
+            is_cancel_needed = not is_auto_post and is_modify
             batch_index = 0 if is_cancel_needed else 1
             batches[batch_index][0] |= move
             batches[batch_index][1].append(default_vals)
@@ -127,7 +129,7 @@ class AccountMoveReversal(models.TransientModel):
         for moves, default_values_list, is_cancel_needed in batches:
             new_moves = moves._reverse_moves(default_values_list, cancel=is_cancel_needed)
 
-            if self.refund_method == 'modify':
+            if is_modify:
                 moves_vals_list = []
                 for move in moves.with_context(include_business_fields=True):
                     moves_vals_list.append(move.copy_data({'date': self.date or move.date})[0])

@@ -658,3 +658,20 @@ llamada es la copia de los valores del llamador en ese punto más los atributos
 - Pruebas nuevas en `tests/test_web.py`: `test_informe_cedible`,
   `test_factura_normal_sin_bloque_cedible`, `test_informe_copia_y_cedible` (dos ejemplares, el
   bloque cedible solo en el segundo) y `test_ticket_cedible`.
+
+## Asistente de reversión: `reverse_moves(is_modify=...)` (Odoo 20)
+
+- En Odoo 20 los botones del asistente `account.move.reversal` llaman a
+  `refund_moves()` → `reverse_moves(is_modify=False)` y a `modify_moves()` →
+  `reverse_moves(is_modify=True)` ("Revertir y crear borrador"). El override de
+  `wizard/notas.py` tenía la firma de Odoo 17 (`reverse_moves(self)`), así que los dos botones
+  fallaban con `TypeError: ... unexpected keyword argument 'is_modify'`.
+- Ahora acepta `is_modify` y lo pasa a `super()` en el modo normal. En el modo chileno
+  (`refund_method == 'cl_refund'`), `is_modify` reemplaza a los valores `'cancel'`/`'modify'` de
+  `refund_method`, que ya no existen en la selección: con `is_modify` la nota de crédito se
+  contabiliza conciliada con la factura y se crea un borrador nuevo copiado de ella.
+- `auto_post` es `'no'`/`'at_date'` en Odoo 20; `bool(default_vals.get('auto_post'))` era
+  siempre verdadero y nunca dejaba anular. Se compara con `'no'`, como hace Odoo.
+- Pruebas en `tests/test_reversion.py`: `test_modificar_modo_normal` (factura sin documento SII),
+  `test_modificar_modo_chileno` (nota 61 contabilizada que anula la factura + borrador nuevo) y
+  `test_reembolso_modo_chileno` (nota 61 en borrador, factura sin conciliar).

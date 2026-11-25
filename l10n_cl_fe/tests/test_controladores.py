@@ -1,9 +1,11 @@
+import html
+import re
 from unittest.mock import patch
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
+
+import pymupdf
 
 from odoo.tests.common import HttpCase, new_test_user, tagged
-
-from odoo.addons.l10n_cl_fe.controllers.boleta import Boleta
 
 
 @tagged("post_install", "-at_install")
@@ -80,10 +82,20 @@ class TestConsultaBoleta(HttpCase):
 
     def setUp(self):
         super().setUp()
-        # El PDF de un documento publicado falla hoy en el informe (groups_by_subtotal, vistas de
-        # la Task 4): se reemplaza solo el render para probar la validación de la consulta.
-        self.startPatcher(patch.object(
-            Boleta, "_get_report", lambda controlador, doc: b"%PDF-1.4 consulta " + str(doc.id).encode()))
+        # En modo de pruebas Odoo entrega el HTML del informe en vez del PDF salvo con
+        # force_report_rendering: se fuerza el PDF real (wkhtmltopdf) del controlador.
+        Report = type(self.env["ir.actions.report"])
+        original = Report._pre_render_qweb_pdf
+
+        def pdf_real(report, *args, **kwargs):
+            return original(report.with_context(force_report_rendering=True), *args, **kwargs)
+
+        self.startPatcher(patch.object(Report, "_pre_render_qweb_pdf", pdf_real))
+
+    def _texto_pdf(self, contenido):
+        self.assertTrue(contenido.startswith(b"%PDF"), contenido[:200])
+        with pymupdf.open(stream=contenido, filetype="pdf") as documento:
+            return "".join(pagina.get_text() for pagina in documento)
 
     def _params(self, move, **extra):
         return dict({
@@ -104,7 +116,8 @@ class TestConsultaBoleta(HttpCase):
     def test_folio_fecha_monto_y_rut_encuentra(self):
         respuesta = self._pdf(555001, self._params(self.boleta))
         self.assertEqual(respuesta.status_code, 200)
-        self.assertEqual(respuesta.content, b"%PDF-1.4 consulta " + str(self.boleta.id).encode())
+        self.assertEqual(respuesta.headers["Content-Type"], "application/pdf")
+        self.assertIn("555001", self._texto_pdf(respuesta.content))
         # El RUT se compara sin puntos, guion ni ceros a la izquierda.
         self.assertEqual(self._pdf(555001, self._params(self.boleta, rut_emisor="76.123.456-0")).status_code, 200)
         # Sin sii_codigo se busca una boleta afecta (39), como el formulario.
@@ -125,17 +138,31 @@ class TestConsultaBoleta(HttpCase):
         self.assertEqual(respuesta.status_code, 404)
         respuesta = self.url_open("/boleta/555002?%s" % urlencode(self._params(self.factura)))
         self.assertIn("Boleta no encontrada", respuesta.text)
+        # Control positivo: el mismo documento como boleta 39 sí se encuentra.
+        self.factura.document_class_id = self.env["sii.document_class"].search([("sii_code", "=", 39)], limit=1)
+        params = self._params(self.factura)
+        self.assertEqual(params["sii_codigo"], 39)
+        respuesta = self.url_open("/boleta/555002?%s" % urlencode(params))
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn("Boleta encontrada", respuesta.text)
+        self.assertEqual(self._pdf(555002, params).status_code, 200)
 
     def test_rut_emisor_distinto_no_encuentra(self):
         self.assertEqual(self._pdf(555001, self._params(self.boleta, rut_emisor="77777777-7")).status_code, 404)
         self.assertEqual(self._pdf(555001, self._params(self.boleta, rut_emisor="")).status_code, 404)
 
-    def test_enlace_de_descarga_sin_token(self):
-        # La página completa con una boleta encontrada falla hoy en el informe (vistas, Task 4):
-        # se prueba el bloque que arma el enlace.
-        html = str(self.env["ir.qweb"]._render("l10n_cl_fe.boleta_found_layout", {
-            "docs": self.boleta.sudo(), "report_url": "/boleta/555001/pdf?x=1",
-        }))
-        self.assertIn('href="/boleta/555001/pdf?x=1"', html)
-        self.assertNotIn("access_token", html)
+    def test_pagina_encontrada_con_enlace_sin_token(self):
+        params = self._params(self.boleta)
+        respuesta = self.url_open("/boleta/555001?%s" % urlencode(params))
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertIn("Boleta encontrada", respuesta.text)
+        self.assertNotIn("Boleta no encontrada", respuesta.text)
+        # El documento se muestra en la página (informe de la factura/boleta con sus totales).
+        self.assertIn("555001", respuesta.text)
+        self.assertIn("Cliente Consulta", respuesta.text)
+        enlaces = re.findall(r'href="/boleta/555001/pdf\?([^"]*)"', respuesta.text)
+        self.assertEqual(len(enlaces), 1, respuesta.text)
+        consulta = parse_qs(html.unescape(enlaces[0]))
+        self.assertEqual(consulta, {clave: [str(valor)] for clave, valor in params.items()})
+        self.assertNotIn("access_token", respuesta.text)
         self.assertFalse(self.boleta.access_token)

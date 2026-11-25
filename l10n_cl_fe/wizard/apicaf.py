@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 
-from odoo import api, fields, models
+from odoo import SUPERUSER_ID, api, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -51,7 +51,37 @@ class APICAF(models.TransientModel):
     _name = "dte.caf.apicaf"
     _description = "Asistente para la administración de CAF en el SII"
 
-    @api.onchange("firma", "operacion")
+    @api.model
+    def _selection_firmas(self):
+        """Firmas que el usuario actual puede usar (mismas reglas que
+        ``sii.firma._firma_autorizada``) en sus compañías permitidas.
+
+        ``sii.firma`` no es legible para quien no es contador (clave, llave privada): el
+        asistente no muestra un many2one al modelo, sino esta lista con solo el nombre de las
+        firmas propias del usuario. La firma se vuelve a validar en ``conectar_api``.
+        """
+        user = self.env.user
+        if user.id == SUPERUSER_ID or user.has_group("base.group_portal"):
+            user = self.env.ref("base.user_admin")
+        firmas = self.env["sii.firma"].sudo().search([
+            ("user_ids", "=", user.id),
+            ("company_ids", "in", self.env.companies.ids),
+            ("state", "=", "valid"),
+        ], order="priority ASC, id")
+        return [(str(firma.id), firma.name) for firma in firmas]
+
+    @api.depends("firma_opcion")
+    def _compute_firma(self):
+        # Odoo no valida los valores de una selección dinámica al escribir por RPC: solo se
+        # acepta una de las firmas que la propia selección ofrece al usuario.
+        permitidas = dict(self._selection_firmas())
+        for wizard in self:
+            firma = self.env["sii.firma"]
+            if wizard.firma_opcion and wizard.firma_opcion in permitidas:
+                firma = firma.browse(int(wizard.firma_opcion))
+            wizard.firma = firma
+
+    @api.onchange("firma_opcion", "firma", "operacion")
     def conectar_api(self):
         motivo = False
         # sii.firma solo es legible por contadores/administradores: la llave se lee con sudo,
@@ -187,7 +217,9 @@ class APICAF(models.TransientModel):
         string="Compañía",
         default=lambda self: self.env.company,
     )
-    firma = fields.Many2one("sii.firma", string="Firma Electrónica")
+    firma_opcion = fields.Selection(selection="_selection_firmas", string="Firma Electrónica")
+    firma = fields.Many2one("sii.firma", string="Firma Electrónica (registro)",
+                            compute="_compute_firma", store=True, readonly=False)
     id_peticion = fields.Integer(string="ID Petición", default=0,)
     lineas_disponibles = fields.One2many("dte.caf.apicaf.docs", "apicaf_id", string="CAF disponibles",)
     form_name = fields.Char(string="Form Name",)

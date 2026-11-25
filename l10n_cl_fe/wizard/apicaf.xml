@@ -27,14 +27,15 @@
                       <group>
                           <field name="operacion" widget="radio" />
                           <field name="company_id" />
+                          <!-- sii.firma no es legible para facturadores: se elige entre las
+                               firmas propias del usuario (selección calculada en el servidor). -->
                           <field
-                              name="firma"
+                              name="firma_opcion"
                               invisible="not company_id"
-                              domain="[('user_ids', '=', uid), ('company_ids', '=', company_id)]"
                           />
                           <field
                               name="documentos"
-                              invisible="not firma or not documentos"
+                              invisible="not firma_opcion or not documentos"
                               readonly="True"
                               widget="many2many_tags"
                           />
@@ -78,7 +79,6 @@
                       >
                           <field
                               name="lineas_disponibles"
-                              widget="one2many_list"
                               mode="list"
                               context="{'default_apicaf_id': id}"
                           >

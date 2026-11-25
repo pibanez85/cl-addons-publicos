@@ -5,6 +5,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import fields
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tests import Form
 from odoo.tests.common import TransactionCase, new_test_user, tagged
 
 
@@ -124,6 +125,30 @@ class TestAccesos(TransactionCase):
         })
         wizard.conectar_api()
         self.assertIn("no tiene firma electrónica autorizada", wizard.message or "")
+
+    def test_apicaf_facturador_elige_solo_sus_firmas(self):
+        # Un facturador (sin lectura en sii.firma) puede abrir el asistente y elegir su firma:
+        # la lista solo trae las firmas en que está autorizado, sin leer el modelo sii.firma.
+        propia = self._firma([self.facturador])
+        ajena = self._firma([self.contador])
+        self.env.company.url_apicaf = False  # sin red: el asistente se detiene antes de llamar
+        Wizard = self.env["dte.caf.apicaf"].with_user(self.facturador)
+        opciones = dict(Wizard.fields_get(["firma_opcion"])["firma_opcion"]["selection"])
+        self.assertEqual(opciones, {str(propia.id): propia.name})
+        self.assertFalse(Wizard.with_user(self.facturador_sin_firma).fields_get(
+            ["firma_opcion"])["firma_opcion"]["selection"])
+        with Form(Wizard, view="l10n_cl_fe.view_dte_caf_apicaf") as asistente:
+            asistente.firma_opcion = str(propia.id)
+            # Validó la firma con sudo y siguió hasta la configuración de apicaf.cl.
+            self.assertIn("falta la URL o el token", asistente.message)
+        wizard = asistente.record
+        self.assertEqual(wizard.firma, propia)
+        self.assertEqual(wizard.read(["firma_opcion"])[0]["firma_opcion"], str(propia.id))
+        # Una firma ajena enviada por RPC no queda como firma del asistente.
+        intruso = Wizard.create({"firma_opcion": str(ajena.id), "company_id": self.env.company.id})
+        self.assertFalse(intruso.firma)
+        intruso.conectar_api()
+        self.assertIn("no tiene firma electrónica autorizada", intruso.message)
 
     # Cola de envío: se procesa con sudo (cron y botón) usando su firma_id, así que un usuario
     # sin sudo solo puede dejar en una cola documentos que se firmarán con una firma que él mismo

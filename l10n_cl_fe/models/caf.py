@@ -522,6 +522,9 @@ to work properly!"""
 
     def auto_anular(self):
         for record in self:
+            if not (record.company_id or record.sequence_id.company_id).use_apicaf:
+                # La anulación automática usa apicaf.cl: solo si la compañía lo habilitó.
+                continue
             if record.folios_vencidos in [False, '[]']:
                 _logger.info(f"No hay folios vencidos para el CAF {record.id}.")
                 continue

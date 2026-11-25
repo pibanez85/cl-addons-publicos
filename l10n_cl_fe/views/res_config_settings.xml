@@ -273,42 +273,35 @@
                         </setting>
                     </block>
 
-                    <!-- External Services Integration -->
+                    <!-- External Services Integration: apagados por defecto (privacidad) -->
                     <block title="Integración con Servicios Externos" name="fe_external_services_block">
-                        <setting string="URL Remote Partners" help="URL de consulta de partners (autollenado)">
-                            <div class="content-group">
+                        <setting string="Consultar y sincronizar contactos con sre.cl"
+                                 help="Envía a sre.cl el RUT y los datos de los contactos para autocompletarlos. Desactivado por defecto: no se envía nada.">
+                            <field name="sync_remote_partners"/>
+                            <div class="content-group" invisible="not sync_remote_partners">
                                 <div class="row mt16">
                                     <label for="url_remote_partners" class="col-lg-4 o_light_label"/>
                                     <field name="url_remote_partners"/>
                                 </div>
-                            </div>
-                        </setting>
-                        <setting string="Token Remote Partners" help="Token de consulta de partners">
-                            <div class="content-group">
-                                <div class="row mt16">
+                                <div class="row">
                                     <label for="token_remote_partners" class="col-lg-4 o_light_label"/>
                                     <field name="token_remote_partners" password="True"/>
                                 </div>
                             </div>
                         </setting>
-                        <setting string="Sincronizar Partners" help="Sincronizar datos con base de datos maestra">
-                            <field name="sync_remote_partners"/>
-                        </setting>
                     </block>
 
                     <!-- API CAF -->
                     <block title="API Emisión de Folios" name="fe_api_caf_block">
-                        <setting string="URL API Emisión Folios" help="URL API para emisión de folios">
-                            <div class="content-group">
+                        <setting string="Solicitar folios (CAF) con apicaf.cl"
+                                 help="apicaf.cl recibe la firma electrónica y el RUT de la compañía para pedir, reobtener y anular folios en el SII. Desactivado por defecto.">
+                            <field name="use_apicaf"/>
+                            <div class="content-group" invisible="not use_apicaf">
                                 <div class="row mt16">
                                     <label for="url_apicaf" class="col-lg-4 o_light_label"/>
                                     <field name="url_apicaf"/>
                                 </div>
-                            </div>
-                        </setting>
-                        <setting string="Token API Emisión Folios" help="Token API para emisión de folios">
-                            <div class="content-group">
-                                <div class="row mt16">
+                                <div class="row">
                                     <label for="token_apicaf" class="col-lg-4 o_light_label"/>
                                     <field name="token_apicaf" password="True"/>
                                 </div>

@@ -184,9 +184,7 @@ class ResPartner(models.Model):
                     }
                 }
             self.vat = vat
-            self.document_number = "{}.{}.{}-{}".format(
-                document_number[0:2], document_number[2:5], document_number[5:8], document_number[-1],
-            )
+            self.document_number = self._formatear_rut(document_number)
         elif self.document_number and self.document_type_id == self.env.ref("l10n_cl_fe.dt_Sigd"):
             self.document_number = ""
         else:
@@ -225,6 +223,49 @@ class ResPartner(models.Model):
             if socio:
                 return socio
         return self.browse()
+
+    @api.model
+    def _formatear_rut(self, valor):
+        """Forma canónica con que se guarda un RUT/RUN en ``document_number``: puntos de miles,
+        guion y dígito verificador en mayúscula, sin ceros a la izquierda (``76.086.428-5``,
+        ``10.000.013-K``, ``1.234.567-4``). Es la forma que ya dejaban el onchange y las pruebas de
+        upstream; el XML del DTE no la usa tal cual: ``rut()`` (y ``formatear_rut`` de
+        facturacion_electronica) la reducen a ``76086428-5``. ``False`` si no parece un RUT."""
+        rut = re.sub(r"[^0-9K]", "", str(valor or "").upper())
+        if len(rut) < 2 or not rut[:-1].isdigit() or not int(rut[:-1]):
+            return False
+        return "{:,}-{}".format(int(rut[:-1]), rut[-1]).replace(",", ".")
+
+    @api.model
+    def _tipos_documento_rut(self):
+        return (self.env.ref("l10n_cl_fe.dt_RUT", raise_if_not_found=False) or self.env["sii.document_type"]) | (
+            self.env.ref("l10n_cl_fe.dt_RUN", raise_if_not_found=False) or self.env["sii.document_type"])
+
+    @api.model
+    def _normalizar_document_number(self, valor, tipo_id):
+        if valor and tipo_id in self._tipos_documento_rut().ids:
+            return self._formatear_rut(valor) or valor
+        return valor
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get("document_number"):
+                tipo = vals["document_type_id"] if "document_type_id" in vals else \
+                    self.default_get(["document_type_id"]).get("document_type_id")
+                vals["document_number"] = self._normalizar_document_number(vals["document_number"], tipo)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if not vals.get("document_number"):
+            return super().write(vals)
+        if "document_type_id" in vals:
+            return super().write(dict(vals, document_number=self._normalizar_document_number(
+                vals["document_number"], vals["document_type_id"])))
+        for tipo, socios in self.grouped("document_type_id").items():
+            super(ResPartner, socios).write(dict(vals, document_number=self._normalizar_document_number(
+                vals["document_number"], tipo.id)))
+        return True
 
     @api.constrains("document_number", "document_type_id")
     def _check_document_number_cl(self):
@@ -326,6 +367,8 @@ class ResPartner(models.Model):
         }
 
     def _sre_post(self, company, body):
+        if not company.sync_remote_partners:
+            raise UserError(_("La consulta a sre.cl no está habilitada para %s") % company.name)
         clave = (company.url_remote_partners, company.token_remote_partners)
         body = dict(body, token=company.token_remote_partners)
         if SRE_SESIONES.get(clave):
@@ -348,7 +391,8 @@ class ResPartner(models.Model):
         company = self.company_id or self.env.company
         url = company.url_remote_partners
         token = company.token_remote_partners
-        if not url or not token:
+        # Privacidad: el RUT del contacto sale a sre.cl solo si la compañía lo habilitó.
+        if not company.sync_remote_partners or not url or not token:
             return
         if to_check in [False, 0, "0"]:
             return
@@ -399,10 +443,9 @@ class ResPartner(models.Model):
         rut = re.sub(r"[^0-9kK]", "", query or "").upper()
         if not 8 <= len(rut) <= 9:
             return False
-        rut = rut.zfill(9)
         if not self.check_vat_cl(rut):
             return False
-        return "{}.{}.{}-{}".format(rut[0:2], rut[2:5], rut[5:8], rut[-1])
+        return self._formatear_rut(rut)
 
     @api.onchange("name")
     def fill_partner(self):
@@ -424,7 +467,7 @@ class ResPartner(models.Model):
             company = r.company_id or self.env.company
             url = company.url_remote_partners
             token = company.token_remote_partners
-            if not url or not token:
+            if not company.sync_remote_partners or not url or not token:
                 continue
             to_sync.setdefault((url, token, i), {
                 "token": token,

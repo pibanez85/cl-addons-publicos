@@ -180,9 +180,20 @@ stamp to be legally valid.""",
         string="Token Remote Partners",
         default="token_publico",
     )
+    # Privacidad: los servicios externos que reciben datos de contactos o de la compañía
+    # (sre.cl, apicaf.cl) quedan apagados hasta que la compañía los habilite.
     sync_remote_partners = fields.Boolean(
-        string="Sync Remote Partners",
-        default=True,
+        string="Consultar y sincronizar contactos con sre.cl",
+        default=False,
+        help="Envía a sre.cl el RUT de los contactos para completar sus datos y sincroniza la "
+             "ficha de los contactos con su base. Desactivado: no se envía nada a sre.cl.",
+    )
+    use_apicaf = fields.Boolean(
+        string="Solicitar folios (CAF) con apicaf.cl",
+        default=False,
+        help="Permite pedir, reobtener y anular folios en el SII a través de apicaf.cl, que recibe "
+             "la firma electrónica y el RUT de la compañía. Desactivado: el asistente no se abre "
+             "y no se repone ni anula folios automáticamente.",
     )
     url_apicaf = fields.Char(
         string="URL APICAF",
@@ -255,9 +266,7 @@ stamp to be legally valid.""",
                     }
                 }
             self.vat = vat
-            self.document_number = "{}.{}.{}-{}".format(
-                document_number[0:2], document_number[2:5], document_number[5:8], document_number[-1],
-            )
+            self.document_number = self.env["res.partner"]._formatear_rut(document_number)
         elif self.document_number and self.document_type_id == self.env.ref("l10n_cl_fe.dt_Sigd"):
             self.document_number = ""
         else:

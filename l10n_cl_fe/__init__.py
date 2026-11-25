@@ -39,6 +39,8 @@ def _set_default_configs(env):
 
     # Odoo 20: que l10n_cl/l10n_latam* no se auto-instalen (ver ir_module_module.py)
     env["ir.module.module"]._cl_fe_desactivar_auto_install()
+    # Privacidad: partner_autocomplete (IAP de Odoo) se auto-instala con iap_mail.
+    env["ir.module.module"]._cl_fe_avisar_modulos_externos()
 
     #Eliminar incompatibilidad con l10n_cl
     modules = env["ir.module.module"].sudo().search([

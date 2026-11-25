@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -83,8 +83,31 @@ class APICAF(models.TransientModel):
                 firma = firma.browse(int(wizard.firma_opcion))
             wizard.firma = firma
 
+    @api.model
+    def _check_apicaf_habilitado(self, company):
+        """Privacidad: apicaf.cl recibe la firma electrónica (llave privada) y el RUT de la
+        compañía. Solo se usa si la compañía lo habilitó en Ajustes."""
+        if not company.use_apicaf:
+            raise UserError(_(
+                "La solicitud de folios con apicaf.cl no está habilitada para %s. "
+                "Actívela en Ajustes > Facturación Electrónica > API Emisión de Folios.",
+                company.name or self.env.company.name,
+            ))
+
+    @api.model
+    def default_get(self, fields):
+        res = super().default_get(fields)
+        company = self.env["res.company"].browse(res.get("company_id")) if res.get("company_id") else self.env.company
+        self._check_apicaf_habilitado(company)
+        return res
+
+    def _apicaf_post(self, url, datos):
+        self._check_apicaf_habilitado(self.company_id)
+        return pool.request("POST", url, body=json.dumps(datos))
+
     @api.onchange("firma_opcion", "firma", "operacion")
     def conectar_api(self):
+        self._check_apicaf_habilitado(self.company_id)
         motivo = False
         # sii.firma solo es legible por contadores/administradores: la llave se lee con sudo,
         # pero solo si el usuario está autorizado en la firma para la compañía (vigente y activa).
@@ -118,7 +141,7 @@ class APICAF(models.TransientModel):
             "etapa": etapa,
             "entorno": "produccion" if self.company_id.dte_service_provider == "SII" else "certificacion",
         }
-        resp = pool.request("POST", url, body=json.dumps(params))
+        resp = self._apicaf_post(url, params)
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
             self.message = ""
@@ -273,7 +296,7 @@ class APICAF(models.TransientModel):
             "id_peticion": self.id_peticion,
             "cod_docto": self.cod_docto.sii_code,
         }
-        resp = pool.request("POST", url, body=json.dumps(params))
+        resp = self._apicaf_post(url, params)
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
             self.message = ""
@@ -318,7 +341,7 @@ class APICAF(models.TransientModel):
         }
         if self.operacion in ["anular", "reobtener"]:
             params["pagina"] = self.reob_page_number
-        resp = pool.request("POST", url, body=json.dumps(params))
+        resp = self._apicaf_post(url, params)
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
             self.message = ""
@@ -410,7 +433,7 @@ class APICAF(models.TransientModel):
                 raise UserError("Debe seleccionar Uno")
             peticion.update(form_name=caf_line.form_name)
         peticion["etapa"] = etapa
-        resp = pool.request("POST", url, body=json.dumps(peticion))
+        resp = self._apicaf_post(url, peticion)
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
             self.message = ""
@@ -460,7 +483,7 @@ class APICAF(models.TransientModel):
             etapa = "an_motivo"
             peticion.update(folio_ini_a=self.folio_ini, folio_fin_a=self.folio_fin, motivo=self.motivo)
         peticion["etapa"] = etapa
-        resp = pool.request("POST", url, body=json.dumps(peticion))
+        resp = self._apicaf_post(url, peticion)
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
             self.message = ""
@@ -502,7 +525,7 @@ class APICAF(models.TransientModel):
                     self.folio_fin
                 )
             return
-        resp = pool.request("POST", url, body=json.dumps(peticion2))
+        resp = self._apicaf_post(url, peticion2)
         if resp.status != 200:
             _logger.warning("Error en conexión con api apicaf %s" % resp.data)
             self.message = ""
@@ -551,12 +574,13 @@ class APICAF(models.TransientModel):
         }
 
     def delist(self):
+        self._check_apicaf_habilitado(self.company_id)
         url = self.company_id.url_apicaf.rsplit("/", 1)[0] + "/delist"
         token = self.company_id.token_apicaf
         peticion = {
             "token": token,
         }
-        resp = pool.request("POST", url, body=json.dumps(peticion))
+        resp = self._apicaf_post(url, peticion)
         try:
             data = json.loads(resp.data.decode("ISO-8859-1"))
         except Exception:

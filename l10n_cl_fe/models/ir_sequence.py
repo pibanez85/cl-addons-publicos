@@ -89,7 +89,8 @@ class IRSequence(models.Model):
         for r in self.env["ir.sequence"].sudo().browse([x[0] for x in self.env.cr.fetchall()]):
             for caf in r.dte_caf_ids.filtered(lambda c: c.state == 'in_use'):
                 self._refrescar_caf_cron(caf)
-            if r.autoreponer_caf and r.qty_available < r.nivel_minimo:
+            # Sin apicaf.cl habilitado no se piden folios (privacidad: recibe la firma).
+            if r.autoreponer_caf and r.company_id.use_apicaf and r.qty_available < r.nivel_minimo:
                 try:
                     r.solicitar_caf()
                     self.env.cr.commit()
@@ -166,6 +167,7 @@ class IRSequence(models.Model):
                 seq.display_name = "%s (%s)" % (seq.display_name, seq._etiqueta_folios())
 
     def solicitar_caf(self, cantidad=0):
+        self.env["dte.caf.apicaf"]._check_apicaf_habilitado(self.company_id)
         if self.qty_available == self.nivel_minimo:
             self.inspeccionar_folios_sin_usar()
             if self.qty_available >= self.nivel_minimo:
@@ -329,7 +331,7 @@ obtener folios en la secuencia (usando apicaf.cl)."""
         if self.is_dte:
             folio = self.get_folio()
             if folio == 0:
-                if self.caf_bajo_pedido:
+                if self.caf_bajo_pedido and self.company_id.use_apicaf:
                     self.solicitar_caf(cantidad=1)
                     folio = self.get_folio()
                 if folio == 0:

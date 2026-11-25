@@ -119,6 +119,7 @@ class TestAccesos(TransactionCase):
 
     def test_apicaf_exige_firma_autorizada_para_la_compania(self):
         otra = self.env["res.company"].create({"name": "Otra compañía apicaf"})
+        self.env.company.use_apicaf = True  # apicaf.cl está apagado por defecto (privacidad)
         de_otra = self._firma([self.contador], companias=otra)
         wizard = self.env["dte.caf.apicaf"].with_user(self.contador).new({
             "firma": de_otra.id, "company_id": self.env.company.id, "operacion": "obtener",
@@ -131,7 +132,8 @@ class TestAccesos(TransactionCase):
         # la lista solo trae las firmas en que está autorizado, sin leer el modelo sii.firma.
         propia = self._firma([self.facturador])
         ajena = self._firma([self.contador])
-        self.env.company.url_apicaf = False  # sin red: el asistente se detiene antes de llamar
+        # apicaf.cl está apagado por defecto (privacidad); sin URL el asistente no llega a la red.
+        self.env.company.write({"use_apicaf": True, "url_apicaf": False})
         Wizard = self.env["dte.caf.apicaf"].with_user(self.facturador)
         opciones = dict(Wizard.fields_get(["firma_opcion"])["firma_opcion"]["selection"])
         self.assertEqual(opciones, {str(propia.id): propia.name})

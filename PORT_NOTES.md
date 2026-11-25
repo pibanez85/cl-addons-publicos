@@ -153,9 +153,21 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   crea el CAF con sudo tras validar la firma.
 - `firma_id` del contexto: `sii.firma._firma_autorizada(company)` (mismas reglas que
   `res.users.get_digital_signature`, o modo sudo) en `dte.envio.mixin`, el asistente de XML,
-  `sii.xml.envio` y apicaf. La cola de envío se procesa con sudo (cron y botón) y
-  `sii.cola_envio` valida al asignar `firma_id` que sea del usuario o del admin (el respaldo de
-  `_resolve_cola_firma`). Pruebas en `tests/test_accesos.py`.
+  `sii.xml.envio` y apicaf. La cola de envío se procesa con sudo (cron y botón) con su
+  `firma_id`, así que `sii.cola_envio.create`/`write` sin sudo exigen que el usuario pueda usar esa
+  firma (`_firma_autorizada`) al asignarla **y al agregar documentos** (`document_ids`, `book_ids`,
+  `consumo_folios_ids`, `boleta_voucher_ids`). Sin sudo no se puede asignar la firma del admin:
+  `_resolve_cola_firma` solo cae en la del admin en modo sudo. Un usuario sin firma propia deja la
+  cola sin firma y el proceso (cron o botón, con sudo) le asigna la del usuario o la del admin
+  (`_validar_firma`); si no hay ninguna firma, falla al encolar. Quitar documentos de una cola al
+  pasarlos a una cola manual (`_filter_for_manual_queue`) se hace con sudo. El chequeo no es un
+  `@api.constrains`: Odoo 20 corre las restricciones con sudo (`_validate_fields`), así que una
+  restricción no distingue al usuario del proceso interno (la de la Task 3 nunca se aplicaba).
+  Pruebas en `tests/test_accesos.py`.
+- `/download/boleta`: sigue `auth='public'` (lo usa la consulta pública `/boleta`), pero solo
+  acepta `account.move` y pasa por `CustomerPortal._document_check_access` (lectura del usuario o
+  `access_token`); el enlace de `boleta_found_layout` lleva el `access_token`. Pruebas HTTP en
+  `tests/test_controladores.py`.
 - Pruebas upstream: solo se adaptó el *setup* (ver el commit `test(l10n_cl_fe): adaptar el setup…`):
   `company_id` → `company_ids` en cuentas, `xml_file` como base64 `str`, y `TestBoletaSoloIva`
   pone la compañía en CLP (la base sin demo queda en USD con redondeo 0,0001).
@@ -189,8 +201,19 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   duplicadas, sin daño).
 - `views/export.xml`: `'data:image/png;base64,%s' % company.logo` → `image_data_uri(company.logo)`
   (Odoo 20 entrega el logo en bruto) — Task 4.
-- Seguridad (ya estaba en 17.0): `/download/boleta` (`auth='public'`) entrega el PDF de cualquier
-  registro por `model`/`model_id` con sudo. Revisar aparte.
+- Descuentos/recargos globales en un documento sin guardar: `_get_rounded_base_and_tax_lines`
+  solo agrega las líneas `C`/`D`/`R` si `self.id` (un `NewId` es falso), así que en el formulario,
+  antes de guardar, los totales e impuestos no incluyen los descuentos globales.
+- `sii.cola_envio.action_procesar` corre con sudo (como el cron): pasa por encima de las reglas
+  de registro multicompañía, así que un usuario puede procesar una cola (y sus documentos) de una
+  compañía a la que no tiene acceso si llega a ver la cola. Falta una regla de registro por
+  compañía en `sii.cola_envio` o un `check_access` antes del sudo.
+- Consulta pública `/boleta/<folio>` (ya estaba en 17.0): busca con sudo y fecha y monto son
+  opcionales, así que cualquiera ve una boleta (39/41/61) con solo el folio, y ahora también su
+  PDF (el enlace lleva el `access_token`). Exigir fecha y monto.
+- La página `/boleta/<folio>` con una boleta encontrada falla con 500 en
+  `report_invoice_document_with_payments` (`KeyError: 'groups_by_subtotal'`, `tax_totals` de
+  Odoo 20) — Task 4.
 - `sale.order._amount_all` es código muerto (Odoo usa `_compute_amounts`); `dte_envio_mixin` y
   otros conservan imports de `base64` sin uso.
 - Siguen pendientes de la lista anterior: `partner_autocomplete` se auto-instala; la consulta de RUT a

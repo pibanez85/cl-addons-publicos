@@ -156,15 +156,35 @@ class DteEnvioMixin(models.AbstractModel):
 
     @api.model
     def _resolve_cola_firma(self, company):
+        """Firma para una cola de envío: la del usuario; en modo sudo (cron), si no tiene, la del
+        admin. Sin sudo no hay respaldo: la cola se procesa con sudo y un usuario no puede
+        disponer de la firma del admin (ver sii.cola_envio._check_firma_autorizada)."""
         if not company:
             return self.env['sii.firma']
         user = self.env.user
         firma = user.sudo().get_digital_signature(company)
-        if not firma:
+        if not firma and self.env.su:
             admin = self.env.ref('base.user_admin', raise_if_not_found=False)
             if admin and admin.id != user.id:
                 firma = admin.sudo().get_digital_signature(company)
         return firma or self.env['sii.firma']
+
+    def _set_cola_firma(self, vals):
+        """Completa vals['firma_id'] de una cola nueva con _resolve_cola_firma.
+
+        Un usuario sin firma propia deja la cola sin firma: el proceso (sudo) le asigna la del
+        admin (sii.cola_envio._validar_firma). Si tampoco hay esa, falla al encolar."""
+        if 'firma_id' in vals or not vals.get('company_id'):
+            return
+        company = self.env['res.company'].browse(vals['company_id'])
+        firma = self._resolve_cola_firma(company)
+        if firma:
+            vals['firma_id'] = firma.id
+        elif self.env.su or not self.sudo()._resolve_cola_firma(company):
+            raise UserError(_(
+                "No hay firma electrónica disponible para la compañía '%s'. "
+                "Asigne una firma al usuario o al admin."
+            ) % company.name)
 
     def _dte_ampara_traslado(self):
         return False
@@ -211,15 +231,7 @@ class DteEnvioMixin(models.AbstractModel):
         if not self._fill_envio_defaults(vals):
             return self.env['sii.cola_envio']
         vals.pop('user_id', None)
-        if 'firma_id' not in vals and vals.get('company_id'):
-            company = self.env['res.company'].browse(vals['company_id'])
-            firma = self._resolve_cola_firma(company)
-            if not firma:
-                raise UserError(_(
-                    "No hay firma electrónica disponible para la compañía '%s'. "
-                    "Asigne una firma al usuario o al admin."
-                ) % company.name)
-            vals['firma_id'] = firma.id
+        self._set_cola_firma(vals)
         vals[self._dte_cola_field] = [(6, 0, self.ids)]
         cola = self.env['sii.cola_envio'].create(vals)
         cola._log_user_docs(self)

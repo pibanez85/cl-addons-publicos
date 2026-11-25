@@ -106,21 +106,39 @@ class ColaEnvio(models.Model):
         self.intento = 0
         return True
 
-    @api.constrains("firma_id", "company_id")
+    # Campos que deciden qué se firma con firma_id al procesar la cola.
+    _CAMPOS_FIRMA = frozenset({
+        "firma_id", "company_id", "document_ids", "book_ids", "consumo_folios_ids", "boleta_voucher_ids",
+    })
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        colas = super().create(vals_list)
+        if not self.env.su:
+            colas._check_firma_autorizada()
+        return colas
+
+    def write(self, vals):
+        res = super().write(vals)
+        if not self.env.su and self._CAMPOS_FIRMA.intersection(vals):
+            self._check_firma_autorizada()
+        return res
+
     def _check_firma_autorizada(self):
-        """La firma de la cola se usa con sudo al procesarla (cron): solo se puede asignar una firma
-        que el usuario puede usar en la compañía, o la del admin (respaldo de _resolve_cola_firma)."""
+        """La cola se procesa con sudo (cron y botón) con la firma de firma_id: sin sudo solo se
+        puede asignar una firma, o agregar documentos a una cola con firma, si el usuario puede
+        usar esa firma en la compañía. El respaldo de la firma del admin es solo del modo sudo
+        (ver _resolve_cola_firma y _validar_firma).
+
+        Se llama desde create/write y no con @api.constrains: Odoo 20 corre las restricciones
+        con sudo y ahí no se distingue al usuario del proceso interno."""
         if self.env.su:
             return
-        admin = self.env.ref("base.user_admin", raise_if_not_found=False)
         for cola in self.filtered("firma_id"):
-            if cola.firma_id._firma_autorizada(cola.company_id):
-                continue
-            if admin and cola.firma_id.with_user(admin)._firma_autorizada(cola.company_id):
-                continue
-            raise ValidationError(_(
-                "El usuario '%s' no está autorizado a usar la firma electrónica indicada para %s."
-            ) % (self.env.user.name, cola.company_id.name))
+            if not cola.firma_id._firma_autorizada(cola.company_id):
+                raise ValidationError(_(
+                    "El usuario '%s' no está autorizado a usar la firma electrónica indicada para %s."
+                ) % (self.env.user.name, cola.company_id.name))
 
     def action_procesar(self):
         """Procesa manualmente el registro actual.
@@ -470,7 +488,14 @@ class ColaEnvio(models.Model):
         self.unlink()
 
     def _validar_firma(self):
-        """Valida que la cola tenga firma electrónica asignada."""
+        """Valida que la cola tenga firma electrónica asignada.
+
+        En modo sudo (cron o botón Procesar) una cola sin firma (la dejó un usuario sin firma
+        propia) toma la del usuario o, como respaldo, la del admin."""
+        if not self.firma_id and self.env.su:
+            firma = self.env["account.move"]._resolve_cola_firma(self.company_id)
+            if firma:
+                self.firma_id = firma
         if not self.firma_id:
             _logger.warning(f"Cola {self.id} sin firma electrónica")
             return False

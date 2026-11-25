@@ -92,7 +92,9 @@ class DteMixin(models.AbstractModel):
             if blocked:
                 skip_ids.update(cola_docs.ids)
             else:
-                cola[doc_field] = [(3, doc_id) for doc_id in cola_docs.ids]
+                # Solo quita documentos (no firma nada): con sudo, aunque la cola tenga una firma
+                # que el usuario no puede usar (_check_firma_autorizada).
+                cola.sudo()[doc_field] = [(3, doc_id) for doc_id in cola_docs.ids]
                 if not cola.document_count:
                     cola.unlink()
         return self.filtered(lambda d: d.id not in skip_ids)
@@ -107,15 +109,7 @@ class DteMixin(models.AbstractModel):
             return cola_model
         vals.pop('user_id', None)
         manual = vals.get('manual', False)
-        if 'firma_id' not in vals and vals.get('company_id'):
-            company = self.env['res.company'].browse(vals['company_id'])
-            firma = self._resolve_cola_firma(company)
-            if not firma:
-                raise UserError(_(
-                    "No hay firma electrónica disponible para la compañía '%s'. "
-                    "Asigne una firma al usuario o al admin."
-                ) % company.name)
-            vals['firma_id'] = firma.id
+        self._set_cola_firma(vals)
         docs = self
         if manual:
             docs = self._filter_for_manual_queue(cola_model, doc_field)

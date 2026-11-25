@@ -3,7 +3,7 @@ import base64
 from dateutil.relativedelta import relativedelta
 
 from odoo import fields
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests.common import TransactionCase, new_test_user, tagged
 
 
@@ -17,6 +17,10 @@ class TestAccesos(TransactionCase):
         cls.portal = new_test_user(cls.env, login="cl_fe_portal", groups="base.group_portal")
         cls.contador = new_test_user(cls.env, login="cl_fe_contador",
                                      groups="base.group_user,account.group_account_manager")
+        cls.facturador = new_test_user(cls.env, login="cl_fe_facturador",
+                                       groups="base.group_user,account.group_account_invoice")
+        cls.facturador_sin_firma = new_test_user(cls.env, login="cl_fe_facturador_sin_firma",
+                                                 groups="base.group_user,account.group_account_invoice")
 
     def test_firma_solo_para_contadores(self):
         # El .p12, su clave y la llave privada no deben ser legibles por un usuario interno cualquiera.
@@ -119,3 +123,81 @@ class TestAccesos(TransactionCase):
         })
         wizard.conectar_api()
         self.assertIn("no tiene firma electrónica autorizada", wizard.message or "")
+
+    # Cola de envío: se procesa con sudo (cron y botón) usando su firma_id, así que un usuario
+    # sin sudo solo puede dejar en una cola documentos que se firmarán con una firma que él mismo
+    # puede usar. El respaldo de la firma del admin queda solo para el modo sudo (cron).
+
+    def _factura(self, nombre="Cliente cola"):
+        cliente = self.env["res.partner"].create({"name": nombre})
+        return self.env["account.move"].create({
+            "move_type": "out_invoice", "partner_id": cliente.id,
+            "invoice_line_ids": [(0, 0, {"name": "Servicio", "quantity": 1, "price_unit": 100})],
+        })
+
+    def _cola(self, firma, usuario=None, **extra):
+        Cola = self.env["sii.cola_envio"]
+        Cola = Cola.with_user(usuario) if usuario else Cola.sudo()
+        return Cola.create(dict({
+            "company_id": self.env.company.id, "firma_id": firma.id, "tipo_trabajo": "envio",
+        }, **extra))
+
+    def test_cola_no_acepta_documentos_si_la_firma_es_ajena(self):
+        ajena = self._firma([self.contador])
+        propia = self._firma([self.facturador])
+        factura = self._factura()
+        cola_ajena = self._cola(ajena)
+        with self.assertRaises(ValidationError):
+            cola_ajena.with_user(self.facturador).write({"document_ids": [(4, factura.id)]})
+        with self.assertRaises(ValidationError):
+            self._cola(ajena, usuario=self.facturador)
+        # Su propia cola sí.
+        cola_propia = self._cola(propia, usuario=self.facturador)
+        cola_propia.write({"document_ids": [(4, factura.id)]})
+        self.assertEqual(cola_propia.document_ids, factura)
+
+    def test_cola_no_acepta_la_firma_del_admin_sin_sudo(self):
+        del_admin = self._firma([self.env.ref("base.user_admin")])
+        propia = self._firma([self.facturador])
+        with self.assertRaises(ValidationError):
+            self._cola(del_admin, usuario=self.facturador)
+        cola_propia = self._cola(propia, usuario=self.facturador)
+        with self.assertRaises(ValidationError):
+            cola_propia.write({"firma_id": del_admin.id})
+        # En modo sudo (cron) sí.
+        self.assertEqual(self._cola(del_admin).firma_id, del_admin)
+
+    def test_respaldo_de_la_firma_del_admin_solo_con_sudo(self):
+        del_admin = self._firma([self.env.ref("base.user_admin")])
+        propia = self._firma([self.facturador])
+        company = self.env.company
+        Move = self.env["account.move"]
+        self.assertEqual(Move.with_user(self.facturador)._resolve_cola_firma(company), propia)
+        self.assertFalse(Move.with_user(self.facturador_sin_firma)._resolve_cola_firma(company))
+        self.assertEqual(Move.with_user(self.facturador_sin_firma).sudo()._resolve_cola_firma(company),
+                         del_admin)
+
+    def test_encolar_con_firma_propia_y_sin_firma(self):
+        del_admin = self._firma([self.env.ref("base.user_admin")])
+        propia = self._firma([self.facturador])
+        vals = {"company_id": self.env.company.id, "tipo_trabajo": "envio", "es_boleta": False}
+        # Con firma propia, la cola queda con esa firma.
+        cola = self._factura("Cliente propio").with_user(self.facturador)._enqueue_uniform(dict(vals))
+        self.assertEqual(cola.firma_id, propia)
+        # Un segundo documento del mismo usuario se agrega a su cola.
+        otra = self._factura("Cliente propio 2").with_user(self.facturador)._enqueue_uniform(dict(vals))
+        self.assertEqual(otra, cola)
+        self.assertEqual(len(cola.document_ids), 2)
+        # Sin firma propia, la cola queda sin firma y el proceso (sudo) usa la del admin.
+        factura = self._factura("Cliente sin firma")
+        cola_sin = factura.with_user(self.facturador_sin_firma)._enqueue_uniform(dict(vals))
+        self.assertNotEqual(cola_sin, cola)
+        self.assertFalse(cola_sin.firma_id)
+        self.assertEqual(cola_sin.document_ids, factura)
+        self.assertTrue(cola_sin.sudo()._validar_firma())
+        self.assertEqual(cola_sin.firma_id, del_admin)
+
+    def test_encolar_sin_ninguna_firma_disponible(self):
+        vals = {"company_id": self.env.company.id, "tipo_trabajo": "envio", "es_boleta": False}
+        with self.assertRaises(UserError):
+            self._factura().with_user(self.facturador_sin_firma)._enqueue_uniform(vals)

@@ -156,17 +156,24 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   `sii.xml.envio` y apicaf. La cola de envío se procesa con sudo (cron y botón) con su
   `firma_id`, así que `sii.cola_envio.create`/`write` sin sudo exigen que el usuario pueda usar esa
   firma (`_firma_autorizada`) al asignarla **y al agregar documentos** (`document_ids`, `book_ids`,
-  `consumo_folios_ids`, `boleta_voucher_ids`). Sin sudo no se puede asignar la firma del admin:
-  `_resolve_cola_firma` solo cae en la del admin en modo sudo. Un usuario sin firma propia deja la
-  cola sin firma y el proceso (cron o botón, con sudo) le asigna la del usuario o la del admin
-  (`_validar_firma`); si no hay ninguna firma, falla al encolar. Quitar documentos de una cola al
+  `consumo_folios_ids`, `boleta_voucher_ids`); `write` lo exige también para la firma que la
+  cola ya tiene (no se puede quitar ni cambiar la firma de una cola ajena). El respaldo de la
+  firma del admin es explícito (`_resolve_cola_firma(company, respaldo_admin=True)`) y solo lo
+  usa el cron: `_validar_firma` lo aplica con el contexto `cola_cron`, que pone únicamente
+  `_cron_procesar_cola`; no depende de `env.su`. Un usuario sin firma propia deja la cola sin
+  firma; el cron le asigna la del admin; si no hay ninguna firma, falla al encolar. El botón
+  Procesar (`action_procesar`) exige `check_access('write')` como el usuario antes del sudo y,
+  en una cola sin firma, asigna la firma propia del usuario o lanza `UserError` (nunca la del
+  admin; apaga `cola_cron` aunque llegue en el contexto). Quitar documentos de una cola al
   pasarlos a una cola manual (`_filter_for_manual_queue`) se hace con sudo. El chequeo no es un
   `@api.constrains`: Odoo 20 corre las restricciones con sudo (`_validate_fields`), así que una
   restricción no distingue al usuario del proceso interno (la de la Task 3 nunca se aplicaba).
   Pruebas en `tests/test_accesos.py`.
-- `/download/boleta`: sigue `auth='public'` (lo usa la consulta pública `/boleta`), pero solo
-  acepta `account.move` y pasa por `CustomerPortal._document_check_access` (lectura del usuario o
-  `access_token`); el enlace de `boleta_found_layout` lleva el `access_token`. Pruebas HTTP en
+- `/download/boleta`: sigue `auth='public'`, pero solo acepta `account.move` y pasa por
+  `CustomerPortal._document_check_access` (lectura del usuario o `access_token`).
+- Consulta pública `/boleta/<folio>`: exige folio, fecha, monto total exacto y RUT del emisor
+  (compañía), solo documentos publicados 39/41/61. El PDF se sirve en `/boleta/<folio>/pdf`, que
+  repite la validación en cada request; no se crea ni se guarda `access_token`. Pruebas HTTP en
   `tests/test_controladores.py`.
 - Pruebas upstream: solo se adaptó el *setup* (ver el commit `test(l10n_cl_fe): adaptar el setup…`):
   `company_id` → `company_ids` en cuentas, `xml_file` como base64 `str`, y `TestBoletaSoloIva`
@@ -204,16 +211,10 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
 - Descuentos/recargos globales en un documento sin guardar: `_get_rounded_base_and_tax_lines`
   solo agrega las líneas `C`/`D`/`R` si `self.id` (un `NewId` es falso), así que en el formulario,
   antes de guardar, los totales e impuestos no incluyen los descuentos globales.
-- `sii.cola_envio.action_procesar` corre con sudo (como el cron): pasa por encima de las reglas
-  de registro multicompañía, así que un usuario puede procesar una cola (y sus documentos) de una
-  compañía a la que no tiene acceso si llega a ver la cola. Falta una regla de registro por
-  compañía en `sii.cola_envio` o un `check_access` antes del sudo.
-- Consulta pública `/boleta/<folio>` (ya estaba en 17.0): busca con sudo y fecha y monto son
-  opcionales, así que cualquiera ve una boleta (39/41/61) con solo el folio, y ahora también su
-  PDF (el enlace lleva el `access_token`). Exigir fecha y monto.
-- La página `/boleta/<folio>` con una boleta encontrada falla con 500 en
-  `report_invoice_document_with_payments` (`KeyError: 'groups_by_subtotal'`, `tax_totals` de
-  Odoo 20) — Task 4.
+- La página `/boleta/<folio>` con una boleta encontrada, y el PDF de un documento publicado
+  (`/boleta/<folio>/pdf`), fallan con 500 en `report_invoice_document_with_payments`
+  (`KeyError: 'groups_by_subtotal'`, `tax_totals` de Odoo 20) — Task 4. Las pruebas de la
+  consulta reemplazan solo `Boleta._get_report`.
 - `sale.order._amount_all` es código muerto (Odoo usa `_compute_amounts`); `dte_envio_mixin` y
   otros conservan imports de `base64` sin uso.
 - Siguen pendientes de la lista anterior: `partner_autocomplete` se auto-instala; la consulta de RUT a

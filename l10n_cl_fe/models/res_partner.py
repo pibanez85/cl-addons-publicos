@@ -257,24 +257,59 @@ class ResPartner(models.Model):
             return self._formatear_rut(valor) or valor
         return valor
 
+    @api.model
+    def _vat_de_rut(self, rut):
+        """``vat`` de un RUT/RUN: ``CL`` + 9 caracteres (``CL760864285``, ``CL012345674``)."""
+        clave = re.sub(r"[^0-9K]", "", str(rut or "").upper())
+        return "CL%s" % clave.zfill(9) if clave else False
+
+    @api.model
+    def _rut_de_vat(self, vat):
+        """RUT canónico desde un ``vat`` chileno válido (``CL`` + RUT); ``False`` si no lo es."""
+        vat = str(vat or "").strip().upper()
+        if not vat.startswith("CL"):
+            return False
+        clave = re.sub(r"[^0-9K]", "", vat[2:])
+        return self._formatear_rut(clave) if self.check_vat_cl(clave) else False
+
+    @api.model
+    def _sincronizar_rut(self, vals, tipo_id):
+        """Deja ``document_number`` (canónico) y ``vat`` (``CL`` + 9) con el mismo RUT, se haya dado
+        uno u otro (contrato para la etapa 1: los contactos se identifican por ``vat``). Con
+        ``document_number`` de tipo RUT/RUN manda ese; con solo ``vat`` chileno se completa el
+        RUT. Otros tipos de documento no se tocan; un RUT inválido lo rechaza la restricción."""
+        tipos = self._tipos_documento_rut().ids
+        if vals.get("document_number"):
+            if tipo_id in tipos:
+                vals["document_number"] = self._normalizar_document_number(vals["document_number"], tipo_id)
+                rut = self._formatear_rut(vals["document_number"])
+                if rut and self.check_vat_cl(re.sub(r"[^0-9K]", "", rut).zfill(9)):
+                    vals["vat"] = self._vat_de_rut(rut)
+        elif vals.get("vat") and "document_number" not in vals and (not tipo_id or tipo_id in tipos):
+            rut = self._rut_de_vat(vals["vat"])
+            if rut:
+                vals["vat"] = self._vat_de_rut(rut)
+                vals["document_number"] = rut
+                if not tipo_id:
+                    vals["document_type_id"] = self.env.ref("l10n_cl_fe.dt_RUT").id
+        return vals
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get("document_number"):
+            if vals.get("document_number") or vals.get("vat"):
                 tipo = vals["document_type_id"] if "document_type_id" in vals else \
                     self.default_get(["document_type_id"]).get("document_type_id")
-                vals["document_number"] = self._normalizar_document_number(vals["document_number"], tipo)
+                self._sincronizar_rut(vals, tipo)
         return super().create(vals_list)
 
     def write(self, vals):
-        if not vals.get("document_number"):
+        if not vals.get("document_number") and not vals.get("vat"):
             return super().write(vals)
         if "document_type_id" in vals:
-            return super().write(dict(vals, document_number=self._normalizar_document_number(
-                vals["document_number"], vals["document_type_id"])))
+            return super().write(self._sincronizar_rut(dict(vals), vals["document_type_id"]))
         for tipo, socios in self.grouped("document_type_id").items():
-            super(ResPartner, socios).write(dict(vals, document_number=self._normalizar_document_number(
-                vals["document_number"], tipo.id)))
+            super(ResPartner, socios).write(self._sincronizar_rut(dict(vals), tipo.id))
         return True
 
     @api.constrains("document_number", "document_type_id")
@@ -294,17 +329,25 @@ class ResPartner(models.Model):
                     r.document_number,
                 ))
 
-    @api.constrains("vat", "commercial_partner_id")
+    # RUT genéricos del SII que comparten muchos contactos: 55.555.555-5 (extranjeros) y
+    # 66.666.666-6 (boletas sin receptor identificado).
+    RUT_GENERICOS = ("CL555555555", "CL666666666")
+
+    @api.constrains("vat", "document_number", "commercial_partner_id")
     def _rut_unique(self):
+        """Un RUT por empresa (sus contactos lo comparten), en toda la base. ``vat`` y
+        ``document_number`` van sincronizados (``_sincronizar_rut``), así que vale para el RUT
+        dado por cualquiera de los dos campos."""
         for r in self.sudo():
-            if not r.vat or r.parent_id:
+            if not r.vat or r.parent_id or r.vat in self.RUT_GENERICOS:
                 continue
             partner = self.env["res.partner"].sudo().search(
-                [("vat", "=", r.vat), ("id", "!=", r.id), ("commercial_partner_id", "!=", r.commercial_partner_id.id),]
+                [("vat", "=", r.vat), ("id", "!=", r.id), ("commercial_partner_id", "!=", r.commercial_partner_id.id),],
+                limit=1,
             )
-            if r.vat != "CL555555555" and partner:
-                raise UserError(_("El rut: %s debe ser único") % r.vat)
-                return False
+            if partner:
+                raise ValidationError(_("El RUT %(rut)s debe ser único: ya lo tiene %(otro)s.",
+                                        rut=r.document_number or r.vat, otro=partner.display_name))
 
     def format_vat_cl(self, vat):
         """Odoo 20 normaliza el VAT al guardarlo (res.partner._inverse_vat) y para Chile lo deja como

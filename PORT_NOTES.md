@@ -606,3 +606,22 @@ Pendiente / a revisar (Task 11):
   filtran con `sudo()` y siguen sin `sudo`. Se quitó la definición duplicada de
   `token_remote_partners`. Prueba: `test_accesos.test_tokens_de_servicios_solo_para_administradores`
   (interno, portal y contador: `AccessError` y el campo fuera de `fields_get`).
+- **RUT del contacto: `vat` y `document_number` sincronizados (contrato para la etapa 1).**
+  - **Etapa 1: identificar contactos por `vat` = `CL` + RUT (9 caracteres, `CL968069802`); los dos
+    campos se mantienen sincronizados.** Se puede crear/escribir por ORM o JSON-RPC con cualquiera
+    de los dos: `res.partner.create/write` (`_sincronizar_rut`) completa el otro. Con
+    `document_number` de tipo RUT/RUN manda ese (se normaliza a `96.806.980-2` y se fija `vat`);
+    con solo un `vat` chileno válido se completa `document_number` (y el tipo RUT si no tenía).
+    Otros tipos de documento (extranjeros, "Sin identificación") no tocan `vat`.
+  - Antes, por ORM con `document_number` el `vat` quedaba vacío (solo el onchange del formulario lo
+    llenaba) y `_rut_unique` solo miraba `vat`: se podían crear duplicados y las búsquedas por
+    `vat` no los veían. `_rut_unique` ahora es `ValidationError` (antes `UserError`), en toda la
+    base como antes (sin filtro por compañía), salvo los contactos de una misma empresa y los RUT
+    genéricos del SII 55.555.555-5 y 66.666.666-6. Pruebas: `test_rut.test_vat_y_document_number_
+    sincronizados`, `test_rut.test_rut_unico_por_cualquier_campo`,
+    `test_recepcion_dte.test_proveedor_existente_por_rut` (ahora el contacto creado con
+    `document_number` tiene `vat` y la recepción no lo duplica). `test_rut._guardado` borra el
+    contacto tras leerlo y `test_privacidad._crear_contacto_con_rut` usa otro RUT para el segundo
+    contacto: ambos creaban varios contactos con el mismo RUT.
+  - Bases existentes con contactos creados por ORM sin `vat`: no se migran (no hay datos en
+    producción); un `write` del RUT los completa.

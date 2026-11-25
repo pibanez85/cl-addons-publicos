@@ -162,14 +162,15 @@ class TestRecepcionDte(DteCase):
         self.assertEqual((documento.number, documento.amount), (str(FOLIO), TOTAL))
 
     def test_proveedor_existente_por_rut(self):
-        # Creado por ORM solo con el RUT (sin vat), como lo deja la API.
+        # Creado por ORM/JSON-RPC solo con el RUT (document_number): el vat se completa.
         existente = self.env["res.partner"].create({
             "name": "Proveedora Sur (ya registrada)", "is_company": True, "document_number": RUT_PROVEEDOR,
         })
-        self.assertFalse(existente.vat)
+        self.assertEqual(existente.vat, VAT_PROVEEDOR)
         self._subir(self.dte_33)
         self.assertEqual(self._facturas().partner_id, existente)
-        self.assertFalse(self._proveedores(), "no se crea otro contacto con el mismo RUT")
+        self.assertEqual(self._proveedores(), existente, "no se crea otro contacto con el mismo RUT")
+        self.assertEqual(self.env["res.partner"].search_count([("document_number", "=", RUT_PROVEEDOR)]), 1)
 
     def test_iva_del_proveedor_prevalece(self):
         # El proveedor calculó el IVA con 1 peso de diferencia: manda el DTE (documento legal).

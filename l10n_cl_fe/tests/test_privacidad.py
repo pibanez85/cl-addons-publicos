@@ -70,7 +70,8 @@ class TestPrivacidad(TransactionCase):
             contacto.dte_email = "dte@cliente-privado.cl"
         socio = contacto.record
         socio.write({"street": "Calle 1", "document_number": "76086428-5"})
-        self.env["res.partner"].create({"name": "76.086.428-5", "document_number": "76.086.428-5"})
+        # Otro contacto por ORM (nombre = RUT); otro RUT: el RUT es único.
+        self.env["res.partner"].create({"name": "96.806.980-2", "document_number": "96.806.980-2"})
         return socio
 
     def test_sin_llamadas_externas_al_crear_contacto(self):

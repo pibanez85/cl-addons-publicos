@@ -9,7 +9,11 @@ class TestRut(TransactionCase):
     dígito verificador en mayúscula (``76.086.428-5``), y se valida el dígito verificador."""
 
     def _guardado(self, rut, nombre="Contacto RUT"):
-        return self.env["res.partner"].create({"name": nombre, "document_number": rut}).document_number
+        # Se borra al leerlo: el RUT es único (test_rut_unico_por_cualquier_campo).
+        socio = self.env["res.partner"].create({"name": nombre, "document_number": rut})
+        guardado = socio.document_number
+        socio.unlink()
+        return guardado
 
     def test_rut_formatos(self):
         for rut in ("76.086.428-5", "760864285", "76086428-5", " 76086428-5 "):
@@ -59,3 +63,50 @@ class TestRut(TransactionCase):
             "name": "Extranjero", "document_type_id": sin_rut.id, "document_number": " AB-123 ",
         })
         self.assertEqual(socio.document_number, " AB-123 ")
+
+    def test_vat_y_document_number_sincronizados(self):
+        """Contrato para la etapa 1: el RUT queda en ``vat`` (``CL`` + 9) y en ``document_number``
+        (canónico), lo haya dado el ORM/JSON-RPC por uno u otro campo."""
+        Partner = self.env["res.partner"]
+        casos = (("76.086.428-5", "CL760864285"), ("12345674", "CL012345674"), ("10000013-k", "CL10000013K"))
+        for rut, vat in casos:
+            with self.subTest(rut=rut):
+                socio = Partner.create({"name": "Solo RUT %s" % rut, "document_number": rut})
+                self.assertEqual(socio.vat, vat)
+                self.assertEqual(Partner._buscar_por_vat(vat), socio)
+                socio.unlink()
+        # Solo vat: se completa document_number.
+        socio = Partner.create({"name": "Solo vat", "vat": "CL968069802"})
+        self.assertEqual((socio.document_number, socio.vat), ("96.806.980-2", "CL968069802"))
+        # Al cambiar el RUT por cualquiera de los dos campos, el otro lo sigue.
+        socio.document_number = "76.086.428-5"
+        self.assertEqual(socio.vat, "CL760864285")
+        socio.vat = "CL123456785"
+        self.assertEqual(socio.document_number, "12.345.678-5")
+        # Un documento que no es RUT/RUN no toca vat.
+        extranjero = Partner.create({
+            "name": "Extranjero", "document_type_id": self.env.ref("l10n_cl_fe.dt_Sigd").id,
+            "document_number": "AB-123",
+        })
+        self.assertFalse(extranjero.vat)
+
+    def test_rut_unico_por_cualquier_campo(self):
+        Partner = self.env["res.partner"]
+        Partner.create({"name": "Primero por RUT", "is_company": True, "document_number": "76.086.428-5"})
+        with self.assertRaises(ValidationError):
+            Partner.create({"name": "Segundo por RUT", "is_company": True, "document_number": "76086428-5"})
+        with self.assertRaises(ValidationError):
+            Partner.create({"name": "Segundo por vat", "is_company": True, "vat": "CL760864285"})
+        Partner.create({"name": "Primero por vat", "is_company": True, "vat": "CL968069802"})
+        with self.assertRaises(ValidationError):
+            Partner.create({"name": "Segundo por RUT", "is_company": True, "document_number": "96.806.980-2"})
+        otro = Partner.create({"name": "Otro", "is_company": True, "document_number": "12.345.678-5"})
+        with self.assertRaises(ValidationError):
+            otro.document_number = "96806980-2"
+        # Los contactos de una misma empresa comparten su RUT; los RUT genéricos del SII
+        # (66.666.666-6 boletas sin receptor, 55.555.555-5 extranjeros) se repiten.
+        empresa = Partner.search([("vat", "=", "CL123456785")])
+        Partner.create({"name": "Contacto", "parent_id": empresa.id, "document_number": "12.345.678-5"})
+        for rut in ("66.666.666-6", "55.555.555-5"):
+            Partner.create({"name": "Genérico 1", "document_number": rut})
+            Partner.create({"name": "Genérico 2", "document_number": rut})

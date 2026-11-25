@@ -8,3 +8,4 @@ from . import test_controladores
 from . import test_web
 from . import test_privacidad
 from . import test_rut
+from . import test_emision

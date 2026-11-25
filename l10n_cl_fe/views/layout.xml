@@ -364,7 +364,7 @@
                                         <p class="center-text" style="font-size:8px; color:red; text-align:center;">
                                           Timbre Electrónico SII
                                           <br />
-                                          Resolución <t t-out="o.company_id.dte_resolution_number"/> de <t t-out="o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl
+                                          Resolución <t t-out="o.company_id.dte_resolution_number"/> de <t t-out="o.company_id.dte_resolution_date and o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl
                                           <t t-if="o.es_boleta()">
                                             o en <t t-out="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/>
                                           </t>
@@ -427,10 +427,13 @@
                                             </td>
                                         </tr>
                                     </t>
-                                    <tr t-if="o.amount_tax_retencion">
+                                    <!-- Misma regla que totals_widget.js: tax_totals ya trae los impuestos 'R' (sus grupos
+                                         cuadran con amount_total); solo se imprime la diferencia con amount_total ('A'). -->
+                                    <t t-set="l10n_cl_retencion" t-value="o.currency_id.round(o.amount_total - tax_totals['total_amount_currency'])"/>
+                                    <tr t-if="not o.currency_id.is_zero(l10n_cl_retencion)">
                                         <td>Retención</td>
                                         <td class="text-end">
-                                            <span class="text-nowrap" t-out="o.amount_tax_retencion"
+                                            <span class="text-nowrap" t-out="l10n_cl_retencion"
                                                   t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                         </td>
                                     </tr>
@@ -769,10 +772,13 @@
                                     </td>
                                 </tr>
                             </t>
-                            <tr t-if="o.amount_tax_retencion">
+                            <!-- Misma regla que totals_widget.js: tax_totals ya trae los impuestos 'R' (sus grupos
+                                 cuadran con amount_total); solo se imprime la diferencia con amount_total ('A'). -->
+                            <t t-set="l10n_cl_retencion" t-value="o.currency_id.round(o.amount_total - tax_totals['total_amount_currency'])"/>
+                            <tr t-if="not o.currency_id.is_zero(l10n_cl_retencion)">
                                 <td>Retención</td>
                                 <td class="text-end">
-                                    <span class="text-nowrap" t-out="o.amount_tax_retencion"
+                                    <span class="text-nowrap" t-out="l10n_cl_retencion"
                                           t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
@@ -845,7 +851,7 @@
                         <p style="text-align:center;color:red; font-size:9px;!important">
                         Timbre Electrónico SII
                         <br/>
-                        Resolución <t t-out="o.company_id.dte_resolution_number"/> de <t t-out="o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl <t t-if="not o.es_boleta()">o en <t t-out="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/></t>
+                        Resolución <t t-out="o.company_id.dte_resolution_number"/> de <t t-out="o.company_id.dte_resolution_date and o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl <t t-if="not o.es_boleta()">o en <t t-out="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/></t>
                          </p>
                     </div>
                 </div>

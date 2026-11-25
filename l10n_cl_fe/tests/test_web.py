@@ -1,6 +1,8 @@
 import json
+import re
 
 import pymupdf
+from lxml import html as lxml_html
 
 from odoo.tests.common import HttpCase, tagged
 
@@ -42,6 +44,22 @@ class TestWeb(HttpCase):
         cls.factura.sii_document_number = 4242
         # restore_mode: publica sin timbrar (no hay CAF ni firma en las pruebas).
         cls.factura.with_context(restore_mode=True).action_post()
+
+    @classmethod
+    def _factura_con(cls, folio, *impuestos, sii_code=33, **extra):
+        """Documento publicado con una línea de 1.000 por cada impuesto (xml id de la plantilla)."""
+        plantilla = cls.env["account.chart.template"].with_company(cls.company)
+        move = cls.env["account.move"].create(dict({
+            "move_type": "out_invoice", "partner_id": cls.cliente.id, "company_id": cls.company.id,
+            "invoice_date": "2026-10-15",
+            "invoice_line_ids": [(0, 0, {"name": "Línea %s" % xmlid, "quantity": 1, "price_unit": 1000,
+                                         "tax_ids": [(6, 0, plantilla.ref(xmlid).ids)]})
+                                 for xmlid in impuestos],
+        }, **extra))
+        move.document_class_id = cls.env["sii.document_class"].search([("sii_code", "=", sii_code)], limit=1)
+        move.sii_document_number = folio
+        move.with_context(restore_mode=True).action_post()
+        return move
 
     def _browser(self, url, code="console.log('test successful')"):
         self.browser_js(url, code, ready="odoo.isReady", login="admin")
@@ -125,3 +143,52 @@ class TestWeb(HttpCase):
             texto = "".join(pagina.get_text() for pagina in documento)
         self.assertIn("4242", texto)
         self.assertIn("1.190", texto)  # total con IVA
+
+    @staticmethod
+    def _monto(texto):
+        texto = texto.replace("\xa0", " ")
+        numero = re.sub(r"[^\d,]", "", texto).replace(",", ".")
+        return (-1 if "-" in texto else 1) * float(numero)
+
+    def _filas_de_totales(self, move):
+        """Filas (etiqueta, monto) del cuadro de totales del informe, hasta "Total" inclusive."""
+        contenido, _tipo = self.env["ir.actions.report"]._render_qweb_html("account.account_invoices", move.ids)
+        documento = lxml_html.fromstring(contenido)
+        etiqueta = lambda fila: " ".join(fila.xpath("./td[1]")[0].text_content().split())
+        totales = [fila for fila in documento.iter("tr") if fila.xpath("./td") and etiqueta(fila) == "Total"]
+        self.assertEqual(len(totales), 1, contenido)
+        filas = []
+        for fila in totales[0].getparent().iterchildren("tr"):
+            filas.append((etiqueta(fila), self._monto(fila.xpath("./td")[-1].text_content())))
+            if fila is totales[0]:
+                break
+        return filas
+
+    def _assert_cuadra(self, move):
+        filas = self._filas_de_totales(move)
+        *detalle, (_total, total) = filas
+        self.assertEqual(total, move.amount_total, filas)
+        self.assertAlmostEqual(sum(monto for _etiqueta, monto in detalle), total, places=2,
+                               msg="las filas impresas no suman el total: %s" % filas)
+        return dict(detalle)
+
+    def test_totales_impresos_con_retencion_cuadran(self):
+        """Impuestos con repartición de retención ('R'): IVA carnes en una factura y en un ticket,
+        y retención total de IVA en una factura de compra (46). Odoo 20 ya incluye la retención en
+        los grupos de tax_totals, así que no se imprime una fila "Retención" aparte y las filas
+        impresas suman el total impreso. (Con un impuesto 'A' el documento no se puede crear:
+        ver PORT_NOTES.)"""
+        venta = self._factura_con(5001, "IVAV_17", "IVAV_19")
+        ticket = self._factura_con(5002, "IVAV_17", ticket=True)
+        compra = self._factura_con(5003, "retencion_iva", sii_code=46, move_type="in_invoice")
+        for move in (venta, ticket, compra):
+            with self.subTest(move=move.sii_document_number, ticket=move.ticket):
+                self.assertTrue(move.amount_tax_retencion)
+                filas = self._assert_cuadra(move)
+                self.assertNotIn("Retención", filas)
+        pdf, _tipo = self.env["ir.actions.report"].with_context(force_report_rendering=True)._render_qweb_pdf(
+            "account.account_invoices", compra.ids)
+        with pymupdf.open(stream=pdf, filetype="pdf") as documento:
+            texto = "".join(pagina.get_text() for pagina in documento)
+        self.assertIn("5003", texto)
+        self.assertNotIn("Retención", texto)

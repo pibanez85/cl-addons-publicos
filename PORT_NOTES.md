@@ -229,8 +229,13 @@ nuevo (junta las fallas); el PDF real (wkhtmltopdf) de una factura 33 trae el fo
 - Odoo 20 corre OWL 3 (`useProps`, `computed`, `this.totals()`), sin `t-esc` en QWeb (lo ignora
   con un aviso): todo `t-esc` → `t-out`.
 - Informe DTE (`views/layout.xml`, factura y ticket): `tax_totals` de Odoo 18+
-  (`subtotals[].tax_groups[]`, montos sin formato con el widget `monetary`), fila "Retención"
-  (`amount_tax_retencion`) y total desde `amount_total`. Arregla el 500 del PDF de un documento
+  (`subtotals[].tax_groups[]`, montos sin formato con el widget `monetary`) y total desde
+  `amount_total`. La fila "Retención" sigue la regla de `totals_widget.js`: solo
+  `amount_total - tax_totals['total_amount_currency']` si no es cero. Las reparticiones 'R' ya
+  vienen dentro de los grupos de `tax_totals` (antes se imprimían además, y las filas no sumaban
+  el total). `test_totales_impresos_con_retencion_cuadran` lo prueba con IVA carnes (factura y
+  ticket) y retención total de IVA (compra 46). `dte_resolution_date` vacío ya no rompe el
+  informe. Arregla el 500 del PDF de un documento
   publicado y de la página `/boleta/<folio>` encontrada. `account.move.currency_format`: sin
   `monetary=` en `res.lang.format` y solo idiomas activos.
 - `views/account_move_view.xml`: el `account_id` de las líneas conserva `parent_field` (widget
@@ -245,6 +250,12 @@ nuevo (junta las fallas); el PDF real (wkhtmltopdf) de una factura 33 trae el fo
     retención (`amount_tax_retencion`, campos invisibles en el formulario), agrega la fila
     "Retención" con `amount_total - total_amount_currency` y el total pasa a `amount_total`.
     No hay prueba de navegador con un impuesto de retención.
+  - **Impuestos 'A' (anticipados, p. ej. `credec_venta`): una factura con uno de ellos no se
+    puede crear** ("The entry is not balanced"): `_compute_amount` (copia de 17.0) cambia
+    `amount_total` por la línea 'A', la cuota (`_compute_needed_terms`) se calcula desde ese
+    total y no cuadra con las líneas, que el motor de Odoo 20 calcula como un impuesto normal.
+    Viene de la Task 3; por eso la fila "Retención" ('A') del informe y del widget no tiene
+    prueba.
   - `report/action_manager_report.js` (informes xlsx): contexto desde `@web/core/user`.
   - `notify_manager.js`: reescrito como servicio que escucha
     `dte.caf.apicaf/display_notification` (avisos de apicaf) en el bus.

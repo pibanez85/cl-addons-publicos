@@ -54,7 +54,7 @@ sigue pendiente. Aquí se anota lo hecho y lo visto.
   `base.res_partner_view_form_private` (ya no existe); `report_file` quitado de `ir.actions.report`.
   `views/mail_dte.xml`: el dominio de `xml_id` comparaba `res_model` con `active_id` (nunca
   coincidía); ahora `res_id = id`.
-- `views/portal_my_details.xml` **desactivado** en el manifiesto (ver Task 4).
+- `views/portal_my_details.xml` **desactivado** en el manifiesto (quitado en la Task 4).
 - No instalar `l10n_cl` ni `l10n_latam*`: Odoo 20 instala `l10n_cl` al crear una compañía con país
   Chile (`res.company.install_l10n_modules`, fuera del modo de pruebas) porque `l10n_cl` tiene
   `auto_install: ['account']` y `countries: ['cl']`. Defensas:
@@ -192,8 +192,8 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
     el asiento y el XML en líneas con descuento.
   - El cálculo en el navegador (`account_tax.js`) no conoce `compute_factor` (impuesto fijo por
     unidad): la vista previa puede diferir hasta guardar.
-  - `tax_totals` es el estándar de Odoo 20 (sin `amount_retencion` ni grupos de retención): revisar
-    `totals_widget.js` en la Task 4.
+  - `tax_totals` es el estándar de Odoo 20 (sin `amount_retencion` ni grupos de retención);
+    `totals_widget.js` muestra la diferencia con `amount_total` (ver Task 4).
   - Cambiar solo un descuento/recargo global (sin tocar líneas) no recalcula las líneas de impuesto:
     `_sync_tax_lines` de Odoo 20 solo sigue las líneas producto/epd/redondeo.
   - En borrador, `amount_residual` sale de `tax_totals` (Odoo 20) y no descuenta las líneas `A`.
@@ -206,38 +206,75 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   con signo, VAT `12345678-5` → `CL123456785` si se guardó con el formato de Odoo, y las
   restricciones viejas `sii_document_letter_name`/`sii_responsability_name`/`_code` (quedan
   duplicadas, sin daño).
-- `views/export.xml`: `'data:image/png;base64,%s' % company.logo` → `image_data_uri(company.logo)`
-  (Odoo 20 entrega el logo en bruto) — Task 4.
 - Descuentos/recargos globales en un documento sin guardar: `_get_rounded_base_and_tax_lines`
   solo agrega las líneas `C`/`D`/`R` si `self.id` (un `NewId` es falso), así que en el formulario,
   antes de guardar, los totales e impuestos no incluyen los descuentos globales.
-- La página `/boleta/<folio>` con una boleta encontrada, y el PDF de un documento publicado
-  (`/boleta/<folio>/pdf`), fallan con 500 en `report_invoice_document_with_payments`
-  (`KeyError: 'groups_by_subtotal'`, `tax_totals` de Odoo 20) — Task 4. Las pruebas de la
-  consulta reemplazan solo `Boleta._get_report`.
 - `sale.order._amount_all` es código muerto (Odoo usa `_compute_amounts`); `dte_envio_mixin` y
   otros conservan imports de `base64` sin uso.
 - Siguen pendientes de la lista anterior: `partner_autocomplete` se auto-instala; la consulta de RUT a
-  `sre.cl` no está desactivada por defecto; accesos de `account.move.referencias`,
-  `sale.order.referencias`, `partner.activities`, `sii.activity.description`; ids con punto
-  (`access_sucursal.manager`); vistas con `firma_id` para usuarios sin acceso a `sii.firma`; avisos
+  `sre.cl` no está desactivada por defecto (ya no la consulta el portal); accesos de
+  `account.move.referencias`, `sale.order.referencias`, `partner.activities`,
+  `sii.activity.description`; ids con punto (`access_sucursal.manager`); otras vistas con
+  `firma_id` para usuarios sin acceso a `sii.firma` (apicaf resuelto en la Task 4); avisos
   de etiquetas duplicadas; revisar `_check_pre_init` + `excludes` al instalar `account` y
   `l10n_cl_fe` juntos en una base con compañía chilena.
 
-## Pendiente — Task 4 (vistas y JS)
+## Hecho en la Task 4 (vistas, informes y JS)
 
-- `views/portal_my_details.xml` desactivado: en Odoo 20 `portal.portal_my_details_fields` ya no
-  existe; el formulario de cuenta usa `portal.address_form_fields`. Rehacer los campos RUT, correo
-  DTE y comuna, y revisar `controllers/portal.py` y `static/src/js/portal_dte.js`.
+Prueba nueva: `tests/test_web.py` (`HttpCase` con Chrome headless): el cliente web carga la
+lista de facturas, el formulario de una factura con el widget de totales y el de un contacto con
+RUT; cada acción de ventana del módulo abre su vista por defecto y el formulario de un registro
+nuevo (junta las fallas); el PDF real (wkhtmltopdf) de una factura 33 trae el folio y el total.
+
+- Odoo 20 corre OWL 3 (`useProps`, `computed`, `this.totals()`), sin `t-esc` en QWeb (lo ignora
+  con un aviso): todo `t-esc` → `t-out`.
+- Informe DTE (`views/layout.xml`, factura y ticket): `tax_totals` de Odoo 18+
+  (`subtotals[].tax_groups[]`, montos sin formato con el widget `monetary`), fila "Retención"
+  (`amount_tax_retencion`) y total desde `amount_total`. Arregla el 500 del PDF de un documento
+  publicado y de la página `/boleta/<folio>` encontrada. `account.move.currency_format`: sin
+  `monetary=` en `res.lang.format` y solo idiomas activos.
+- `views/account_move_view.xml`: el `account_id` de las líneas conserva `parent_field` (widget
+  `m2o_cell_with_extra_fields`; sin él la lista de líneas fallaba en el navegador).
+  `<div class="oe_chatter">` → `<chatter/>`; sin `widget="one2many_list"` (no existe).
+  `views/export.xml`: logo con `image_data_uri`.
+- Libro de honorarios: el onchange filtraba por `account.move.sended` (ya no existe).
+- JS (`web.assets_backend`):
+  - `account_file_uploader_dte.js`: `AccountFileUploader` está en
+    `@account/components/account_file_uploader/account_file_uploader`.
+  - `totals_widget.js` (OWL 3): `formatData` devuelve los totales; si el documento tiene
+    retención (`amount_tax_retencion`, campos invisibles en el formulario), agrega la fila
+    "Retención" con `amount_total - total_amount_currency` y el total pasa a `amount_total`.
+    No hay prueba de navegador con un impuesto de retención.
+  - `report/action_manager_report.js` (informes xlsx): contexto desde `@web/core/user`.
+  - `notify_manager.js`: reescrito como servicio que escucha
+    `dte.caf.apicaf/display_notification` (avisos de apicaf) en el bus.
+  - Quitados: `upgrade_fields.js` y `xml/base.xml` (widget `upgrade_odoocoop_boolean` sin uso en
+    ninguna vista, plantilla `l10n_cl_fe.ProUpgrade` inexistente ya en 17.0, aviso comercial).
+  - `rut_lookup_field`, `dte_document_list` y `firma_alert_service` (nombrados en el plan) no
+    existen en este módulo.
+- Portal: se quitó el formulario propio de datos del portal (`views/portal_my_details.xml`,
+  `controllers/portal.py`, `static/src/js/portal_dte.js`). Odoo 20 reescribió el formulario
+  (`portal.address_form_fields`) y ya trae la comuna (`city_id` con `_enforce_city_choice`, que
+  incluye Chile si `res.country.enforce_cities` está activo) y el RUT (campo `vat`).
+  `/portal/partner_remote` era `auth="public"` y consultaba `sre.cl` con sudo y el token de la
+  compañía para cualquier anónimo. El correo DTE (`dte_email`) queda solo en el backend.
+  `res.country.state.get_website_sale_cities` queda (sin uso en el módulo).
+- apicaf: el asistente muestra `firma_opcion`, una selección calculada con sudo con el nombre de
+  las firmas vigentes en que el usuario está autorizado (sus compañías); `firma` se calcula desde
+  ella y solo acepta valores de esa lista (Odoo no valida selecciones dinámicas por RPC).
+  Un facturador sin lectura en `sii.firma` puede usarlo (`tests/test_accesos.py`).
+- Pruebas de `/boleta` sin reemplazar `Boleta._get_report`: PDF real del controlador (se fuerza
+  solo `force_report_rendering`, que Odoo omite en modo de pruebas), página encontrada completa y
+  control positivo de la factura 33 como boleta 39.
+
+## Pendiente tras la Task 4
+
 - `views/honorarios.xml` ya venía desactivado en upstream (campos obsoletos de 17).
-- Assets JS/Owl (`upgrade_fields.js`, `action_manager_report.js`, `totals_widget.js`,
-  `account_file_uploader_dte.js` y su XML) no se cargan en las pruebas de instalación: compilar el
-  bundle y probar en el navegador.
-- Kanban de `account.move` y formulario de contactos de `res.partner`: adaptados solo para validar;
-  revisar en pantalla (el formulario de contactos tipo `dte` oculta el bloque principal y
-  `other_info`).
-- `views/res_partner.xml`: el campo `vat` queda oculto y se agrega `document_number`; comprobar con
-  el formulario nuevo de Odoo 20.
+- Los asistentes (`target="new"`) no se abren en `test_web` (necesitan el contexto de su botón),
+  salvo apicaf con `Form` en `test_accesos`.
+- Kanban de `account.move`: cargan pero no se revisaron en pantalla.
+- `mail.message.dte` (procesar DTE recibidos) devuelve `self.env.ref(<vista>).read()[0]` como
+  acción para `create_po`/`create_move` (lee una vista, no una acción): código heredado de 17.0.
 - `uom` `Mensual`: en 17.0 tenía factor 1 respecto de la unidad de referencia (Días); se mantuvo
   (`relative_uom_id` = Días, factor 1). Probablemente debería ser 30 días.
 

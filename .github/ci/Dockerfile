@@ -1,5 +1,5 @@
 # Copia reducida de docker/Dockerfile del repo privado (sin CA/proxy).
-FROM odoo:20.0
+FROM odoo:20.0@sha256:6709a38456a588273462c83400a0b6dbe09038deefc05846a8d3d25231dbb82e
 
 USER root
 

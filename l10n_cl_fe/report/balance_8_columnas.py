@@ -36,10 +36,8 @@ class ReportBalance8Columnas(models.AbstractModel):
     @api.model
     def _get_report_values(self, docids, data=None):
         wizard = self._get_wizard(docids, data)
-        if not wizard.line_ids:
-            wizard.line_ids = [
-                (0, 0, vals) for vals in wizard._build_line_values()
-            ]
+        # Sin escribir en el asistente si no hay líneas: la ruta /report es de solo lectura.
+        wizard._ensure_lines()
         rows = self._serialize_lines(wizard)
         totals = {key: 0.0 for key in ("debit", "credit", "deudor", "acreedor",
                                        "activo", "pasivo", "perdida", "ganancia")}
@@ -83,10 +81,8 @@ class ReportBalance8ColumnasXlsx(models.AbstractModel):
 
     def generate_xlsx_report(self, workbook, data, objs):
         wizard = self._get_wizard(objs.ids if objs else None, data)
-        if not wizard.line_ids:
-            wizard.line_ids = [
-                (0, 0, vals) for vals in wizard._build_line_values()
-            ]
+        # Sin escribir en el asistente si no hay líneas: la ruta /report es de solo lectura.
+        wizard._ensure_lines()
         sheet = workbook.add_worksheet("Balance 8 Columnas")
         bold = workbook.add_format({"bold": True})
         title = workbook.add_format({"bold": True, "align": "center", "font_size": 14})

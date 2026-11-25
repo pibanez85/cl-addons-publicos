@@ -797,7 +797,9 @@ class UploadXMLWizard(models.TransientModel):
             data["move_type"] = "in_invoice"
             if self.type == "ventas":
                 data["move_type"] = "out_invoice"
-            if dc_id.es_nc() or dc_id.es_nd():
+            # Solo la nota de crédito rectifica; la nota de débito (55/56/111) aumenta la deuda y el
+            # IVA, como una factura (igual que en la emisión, donde la 56 es out_invoice).
+            if dc_id.es_nc():
                 data["move_type"] = "in_refund"
                 if self.type == "ventas":
                     data["move_type"] = "out_refund"

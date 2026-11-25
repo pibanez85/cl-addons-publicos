@@ -570,3 +570,14 @@ Pendiente / a revisar (Task 11):
   - Opciones: (a) aplicar 0.0001 solo donde el SII lo exige (p. ej. al armar el DTE de
     exportación, sin tocar `res.currency.rounding`); (b) dejar el CSV como `noupdate` o que no
     sobrescriba monedas existentes.
+
+## Revisión final del Plan 1
+
+- **Notas de débito recibidas (55/56/111) quedan como `in_invoice`** (`wizard/upload_xml.py`,
+  `_get_data`): antes, heredado de upstream, toda nota de crédito *o débito* recibida se registraba
+  como rectificativa (`in_refund`, y `out_refund` en la carga de ventas). La 56 aumenta la deuda y el
+  IVA crédito; como rectificativa el asiento tenía el signo contrario al del libro (que suma la 56:
+  solo 60/61/112 restan) y libro y contabilidad/F29 diferían en dos veces el IVA. La emisión ya
+  dejaba la 56 como `out_invoice`. Ahora solo `es_nc()` es rectificativa. Prueba:
+  `test_recepcion_dte.test_notas_de_debito_y_credito_del_proveedor` (33 + 56 - 61: libro y saldos
+  de IVA crédito y proveedor).

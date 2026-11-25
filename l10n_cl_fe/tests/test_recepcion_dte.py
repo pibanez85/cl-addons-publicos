@@ -24,7 +24,9 @@ from unittest.mock import patch
 
 from lxml import etree
 
+from odoo import fields
 from odoo.tools import file_open
+from odoo.tests import Form
 from odoo.tests.common import tagged
 
 from facturacion_electronica import facturacion_electronica as fe
@@ -102,6 +104,19 @@ class TestRecepcionDte(DteCase):
             contenido = contenido.replace(antes, despues)
         return contenido
 
+    def _como_tipo(self, codigo, folio):
+        """El DTE del fixture como otro tipo de documento (56 o 61) del mismo proveedor, mismos
+        montos y una referencia a la factura 33 folio 4521."""
+        contenido = self._variante(folio, [
+            (b"<TipoDTE>33</TipoDTE>", b"<TipoDTE>%d</TipoDTE>" % codigo),
+            (b'ID="T33F%d"' % folio, b'ID="T%dF%d"' % (codigo, folio)),
+            (b"<TD>33</TD><F>%d</F>" % FOLIO, b"<TD>%d</TD><F>%d</F>" % (codigo, folio)),
+            (b"  <TED version", b"  <Referencia><NroLinRef>1</NroLinRef><TpoDocRef>33</TpoDocRef>"
+                                b"<FolioRef>%d</FolioRef><FchRef>2026-11-25</FchRef><CodRef>3</CodRef>"
+                                b"<RazonRef>Ajuste de precio</RazonRef></Referencia>\n  <TED version" % FOLIO),
+        ])
+        return contenido
+
     def _envio_con_dos_dte(self):
         """EnvioDTE con el DTE del fixture y una copia con el folio 4522."""
         raiz = etree.fromstring(self.dte_33)
@@ -111,11 +126,11 @@ class TestRecepcionDte(DteCase):
         set_dte.append(copia)
         return etree.tostring(raiz, xml_declaration=True, encoding="ISO-8859-1")
 
-    def _facturas(self, folio=FOLIO):
+    def _facturas(self, folio=FOLIO, codigo=33):
         return self.env["account.move"].search([
             ("company_id", "=", self.company.id),
-            ("move_type", "=", "in_invoice"),
-            ("document_class_id", "=", self.clase_33.id),
+            ("move_type", "in", ("in_invoice", "in_refund")),
+            ("document_class_id", "=", self.clases[codigo].id),
             ("sii_document_number", "=", folio),
         ])
 
@@ -234,6 +249,46 @@ class TestRecepcionDte(DteCase):
             malo.message_ids.filtered(lambda m: "No se pudo procesar" in (m.body or "")),
             "el error del envío malformado debe quedar en su chatter",
         )
+
+    def test_notas_de_debito_y_credito_del_proveedor(self):
+        """Una nota de débito (56) del proveedor aumenta la deuda y el IVA crédito: es una factura
+        de proveedor (``in_invoice``); solo la nota de crédito (61) es ``in_refund``.
+
+        Factura 33 folio 4521, nota de débito 56 folio 4600 y nota de crédito 61 folio 4601, cada
+        una neto 55.901, IVA 10.621, total 66.522 (cifras del fixture). Libro de compras =
+        33 + 56 - 61 = neto 55.901, IVA 10.621, total 66.522. Contabilidad (saldo deudor):
+        IVA crédito = 10.621 + 10.621 - 10.621 = 10.621; proveedor = -66.522. Con la 56 como
+        rectificativa, la contabilidad daría IVA crédito -10.621 y proveedor 66.522 (el libro no
+        cambia: suma la 56 por su tipo de documento)."""
+        self._subir(self.dte_33)
+        self._subir(self._como_tipo(56, 4600), nombre="nd_56.xml")
+        self._subir(self._como_tipo(61, 4601), nombre="nc_61.xml")
+        factura, debito, credito = self._facturas(), self._facturas(4600, 56), self._facturas(4601, 61)
+        self.assertEqual(
+            [(m.move_type, m.state, m.amount_total) for m in (factura, debito, credito)],
+            [("in_invoice", "draft", 66522), ("in_invoice", "draft", 66522), ("in_refund", "draft", 66522)],
+        )
+        self.assertEqual(debito.partner_id, factura.partner_id)
+        movimientos = factura | debito | credito
+        movimientos.action_post()
+
+        with Form(self.env["account.move.book"]) as f:
+            f.tipo_operacion = "COMPRA"
+            f.periodo_tributario = fields.Date.to_string(factura.invoice_date)[:7]
+        libro = f.record
+        self.assertEqual(libro.move_ids, movimientos)
+        self.assertEqual(
+            (libro.total_afecto, libro.total_iva, libro.total_exento, libro.total), (55901, 10621, 0, 66522))
+
+        lineas = movimientos.line_ids
+        iva = lineas.filtered(lambda l: l.tax_line_id.amount == 19)
+        self.assertEqual(iva.account_id.mapped("code"), [iva.account_id[:1].code])
+        self.assertEqual(sum(iva.mapped("balance")), 10621, "IVA crédito: 33 + 56 - 61")
+        self.assertEqual(sum(debito.line_ids.filtered(lambda l: l.tax_line_id).mapped("balance")), 10621)
+        self.assertEqual(sum(credito.line_ids.filtered(lambda l: l.tax_line_id).mapped("balance")), -10621)
+        por_pagar = lineas.filtered(lambda l: l.account_id.account_type == "liability_payable")
+        self.assertEqual(sum(por_pagar.mapped("balance")), -66522, "deuda con el proveedor: 33 + 56 - 61")
+        self.assertEqual(sum(lineas.mapped("balance")), 0)
 
     def test_respuestas_xsd(self):
         import facturacion_electronica

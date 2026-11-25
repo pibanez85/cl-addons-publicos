@@ -150,6 +150,16 @@ class TestAccesos(TransactionCase):
         intruso.conectar_api()
         self.assertIn("no tiene firma electrónica autorizada", intruso.message)
 
+    def test_apicaf_portal_no_ve_firmas_del_admin(self):
+        # fields_get no revisa los ACL del modelo: un usuario portal o público no debe recibir
+        # por la selección los nombres de las firmas del admin.
+        self._firma([self.env.ref("base.user_admin")])
+        publico = self.env.ref("base.public_user")
+        for usuario in (self.portal, publico):
+            with self.subTest(usuario=usuario.login):
+                Wizard = self.env["dte.caf.apicaf"].with_user(usuario)
+                self.assertEqual(list(Wizard.fields_get(["firma_opcion"])["firma_opcion"]["selection"]), [])
+
     # Cola de envío: se procesa con sudo (cron y botón) usando su firma_id, así que un usuario
     # sin sudo solo puede dejar en una cola documentos que se firmarán con una firma que él mismo
     # puede usar. El respaldo de la firma del admin queda solo para el modo sudo (cron).

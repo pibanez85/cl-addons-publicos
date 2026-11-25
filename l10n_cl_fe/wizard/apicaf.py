@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 
-from odoo import SUPERUSER_ID, api, fields, models
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
@@ -53,16 +53,18 @@ class APICAF(models.TransientModel):
 
     @api.model
     def _selection_firmas(self):
-        """Firmas que el usuario actual puede usar (mismas reglas que
-        ``sii.firma._firma_autorizada``) en sus compañías permitidas.
+        """Firmas vigentes del usuario interno actual (está en ``user_ids``) en sus compañías
+        permitidas; vacío para usuarios portal o públicos.
 
         ``sii.firma`` no es legible para quien no es contador (clave, llave privada): el
         asistente no muestra un many2one al modelo, sino esta lista con solo el nombre de las
         firmas propias del usuario. La firma se vuelve a validar en ``conectar_api``.
         """
         user = self.env.user
-        if user.id == SUPERUSER_ID or user.has_group("base.group_portal"):
-            user = self.env.ref("base.user_admin")
+        # Sin el reemplazo por el admin de _firma_autorizada: fields_get no revisa los ACL del
+        # modelo, y un usuario portal o público recibiría los nombres de las firmas del admin.
+        if not user._is_internal():
+            return []
         firmas = self.env["sii.firma"].sudo().search([
             ("user_ids", "=", user.id),
             ("company_ids", "in", self.env.companies.ids),

@@ -211,8 +211,8 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   antes de guardar, los totales e impuestos no incluyen los descuentos globales.
 - `sale.order._amount_all` es código muerto (Odoo usa `_compute_amounts`); `dte_envio_mixin` y
   otros conservan imports de `base64` sin uso.
-- Siguen pendientes de la lista anterior: `partner_autocomplete` se auto-instala; la consulta de RUT a
-  `sre.cl` no está desactivada por defecto (ya no la consulta el portal); accesos de
+- Siguen pendientes de la lista anterior (`partner_autocomplete` y `sre.cl`: resueltos en la
+  Task 5): accesos de
   `account.move.referencias`, `sale.order.referencias`, `partner.activities`,
   `sii.activity.description`; ids con punto (`access_sucursal.manager`); otras vistas con
   `firma_id` para usuarios sin acceso a `sii.firma` (apicaf resuelto en la Task 4); avisos
@@ -289,7 +289,56 @@ nuevo (junta las fallas); el PDF real (wkhtmltopdf) de una factura 33 trae el fo
 - `uom` `Mensual`: en 17.0 tenía factor 1 respecto de la unidad de referencia (Días); se mantuvo
   (`relative_uom_id` = Días, factor 1). Probablemente debería ser 30 días.
 
+## Hecho en la Task 5 (privacidad por defecto y RUT)
+
+Pruebas nuevas: `tests/test_privacidad.py` y `tests/test_rut.py`.
+
+- Ningún dato de clientes sale a un servicio externo sin que la compañía lo habilite:
+  - `sre.cl`: `res.company.sync_remote_partners` ("Consultar y sincronizar contactos con sre.cl")
+    viene **apagado** y gobierna toda llamada: la consulta del RUT al escribir un contacto
+    (`fill_partner`/`get_remote_user_data`, onchange), `_sre_post` (lanza `UserError`) y el cron
+    `_check_need_update`. Antes solo controlaba el envío de datos; la consulta salía siempre
+    (URL y token públicos por defecto).
+  - `apicaf.cl` (recibe la llave privada de la firma y el RUT): nuevo `res.company.use_apicaf`,
+    apagado. Sin él, `default_get`/`create` del asistente lanzan `UserError` (no se abre),
+    `conectar_api`, `delist` y todo envío (`_apicaf_post`) lo exigen, `ir.sequence.solicitar_caf`
+    falla con el aviso, `caf_bajo_pedido` no pide folios y los crons de reposición
+    (`check_cafs`) y anulación automática (`dte.caf.auto_anular`) se saltan esa compañía.
+  - En Ajustes, la URL y el token de cada servicio se muestran solo con el interruptor activo.
+  - Una base 17 que se actualice conserva `sync_remote_partners` como estaba (antes `True`):
+    sigue consultando sre.cl hasta que se apague. Los scripts de migración lo deben decidir.
+  - Ya eran opt-in: trafquin (crons solo con `token_trafquin`, sin valor por defecto) y CMF (sin
+    clave API no consulta). MEPCO (`account_tax.py`) lee páginas públicas del Diario Oficial y del
+    SII y no envía datos de clientes.
+  - `test_sin_llamadas_externas_al_crear_contacto` parchea `requests` (`Session.request`,
+    `api.request`, `HTTPAdapter.send`), `urllib3` (`PoolManager.request/urlopen`,
+    `HTTPConnectionPool.urlopen`), `urllib.request.urlopen`, `http.client.HTTPConnection.request`
+    y `socket.socket.connect/connect_ex`/`socket.create_connection`; cada intento queda en una
+    lista que debe quedar vacía (el código heredado tiene `except:` que tragaría la excepción).
+    `test_sre_habilitado_si_consulta` es el control positivo: con sre.cl habilitado el mismo flujo
+    sí queda registrado.
+- `partner_autocomplete` (IAP de Odoo: envía nombre y VAT de los contactos al escribirlos y los
+  datos de la compañía al iniciar sesión) se auto-instala con `iap_mail`. **l10n_cl_fe no puede
+  impedirlo**: Odoo lo marca en el mismo `button_install` que a l10n_cl_fe, antes de cargar su
+  código; con `excludes` la instalación de l10n_cl_fe falla ("Modules ... are incompatible",
+  comprobado); desinstalarlo en el `post_init_hook` funciona, pero recarga el registro y Odoo ya
+  no corre las pruebas `post_install` de esa instalación ("0 tests"). Por eso se bloquea en el
+  despliegue: la imagen de `erp-chile` lo borra (`docker/Dockerfile`). Si quedó instalado, el
+  `post_init_hook` deja un WARNING. `test_modulos_que_envian_datos_no_instalados` falla en un
+  despliegue que no lo bloquee.
+- RUT: `document_number` (RUT/RUN) se guarda al crear y al escribir en una sola forma,
+  `_formatear_rut`: puntos de miles, guion, dígito verificador en mayúscula y sin ceros a la
+  izquierda (`76.086.428-5`, `10.000.013-K`, `1.234.567-4`). Es la forma que ya dejaban el
+  onchange y que usan las pruebas de upstream; el XML del DTE no la usa tal cual: `rut()` y
+  `formatear_rut` de facturacion_electronica la reducen a `76086428-5`. Cambio: un RUT de menos de
+  10 millones ya no queda como `01.234.567-4` (onchange y `_rut_formateado`). La validación del
+  dígito verificador (`_check_document_number_cl` con `check_vat_cl`) ya existía. El `vat`
+  (`CL` + 9 dígitos) no se completa desde `document_number` al crear por ORM (solo el onchange).
+
 ## Repositorio privado (`erp-chile`)
 
 - `scripts/test.sh` usa `--without-demo=all`; Odoo 20 avisa "since 19.0, invalid boolean value:
   'all', assume True" (funciona, solo es un aviso).
+- `docker/Dockerfile` borra `partner_autocomplete` y `pos_partner_autocomplete` de la imagen (en
+  `odoo/addons` y en la copia parcial de `dist-packages/addons`): ver la Task 5. Un módulo con el
+  mismo nombre en `/mnt/addons` no sirve para taparlo (`odoo/addons` va primero en la búsqueda).

@@ -271,3 +271,18 @@ class TestAccesos(TransactionCase):
                 de_otra.with_user(self.facturador).action_procesar()
             with self.assertRaises(AccessError):
                 propia.with_user(self.interno).action_procesar()
+
+    def test_cola_ajena_no_se_puede_desfirmar_ni_tocar(self):
+        ajena = self._firma([self.contador])
+        propia = self._firma([self.facturador])
+        factura = self._factura()
+        cola_ajena = self._cola(ajena, document_ids=[(6, 0, factura.ids)])
+        with self.assertRaises(ValidationError):
+            cola_ajena.with_user(self.facturador).write({"firma_id": False})
+        # Tampoco reemplazarla por la propia (la firma ajena ya firmaba esos documentos).
+        with self.assertRaises(ValidationError):
+            cola_ajena.with_user(self.facturador).write({"firma_id": propia.id})
+        with self.assertRaises(ValidationError):
+            cola_ajena.with_user(self.facturador).write({"document_ids": [(3, factura.id)]})
+        self.assertEqual(cola_ajena.firma_id, ajena)
+        self.assertEqual(cola_ajena.document_ids, factura)

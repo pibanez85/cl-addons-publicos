@@ -119,15 +119,19 @@ class ColaEnvio(models.Model):
         return colas
 
     def write(self, vals):
+        revisar = not self.env.su and self._CAMPOS_FIRMA.intersection(vals)
+        if revisar:
+            # La firma actual: sin esto se podría quitar (firma_id False) o vaciar la cola de otro.
+            self._check_firma_autorizada()
         res = super().write(vals)
-        if not self.env.su and self._CAMPOS_FIRMA.intersection(vals):
+        if revisar:
             self._check_firma_autorizada()
         return res
 
     def _check_firma_autorizada(self):
         """La cola se procesa con sudo (cron y botón) con la firma de firma_id: sin sudo solo se
         puede asignar una firma, o agregar documentos a una cola con firma, si el usuario puede
-        usar esa firma en la compañía.
+        usar esa firma en la compañía; write también lo exige para la firma que la cola ya tiene.
         El respaldo de la firma del admin es solo del cron (ver _validar_firma).
 
         Se llama desde create/write y no con @api.constrains: Odoo 20 corre las restricciones

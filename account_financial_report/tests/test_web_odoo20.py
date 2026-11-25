@@ -18,7 +18,12 @@ class TestReportActionWebClient(AccountTestInvoicingCommon, HttpCase):
             {
                 "company_ids": [(4, cls.env.company.id)],
                 "company_id": cls.env.company.id,
-                "group_ids": [(4, cls.env.ref("account.group_account_manager").id)],
+                # Full accounting (group_account_user) as in a database with the
+                # Accounting app; the account manager group alone only implies Invoicing.
+                "group_ids": [
+                    (4, cls.env.ref("account.group_account_user").id),
+                    (4, cls.env.ref("account.group_account_manager").id),
+                ],
             }
         )
         cls.init_invoice(
@@ -94,3 +99,32 @@ class TestReportActionWebClient(AccountTestInvoicingCommon, HttpCase):
             ready="odoo.isReady",
             login="admin",
         )
+
+    def test_wizards_and_configuration_views(self):
+        prefix = "/odoo/action-account_financial_report"
+        for action in (
+            "action_general_ledger_wizard",
+            "action_journal_ledger_wizard",
+            "action_trial_balance_wizard",
+            "action_open_items_wizard",
+            "action_aged_partner_balance_wizard",
+            "action_vat_report_wizard",
+        ):
+            self._open(f"{prefix}.{action}", ".modal .o_form_view")
+        self._open(f"{prefix}.action_aged_partner_report_configuration", ".o_list_view")
+        self._open(f"{prefix}.action_account_group_tree", ".o_list_view")
+
+    def _open(self, url, selector):
+        code = """
+            (async () => {
+                const start = Date.now();
+                while (!document.querySelector(%(sel)r)) {
+                    if (Date.now() - start > 30000) {
+                        throw new Error("timeout waiting for " + %(sel)r);
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                }
+                console.log("test successful");
+            })();
+        """ % {"sel": selector}
+        self.browser_js(url, code, ready="odoo.isReady", login="admin")

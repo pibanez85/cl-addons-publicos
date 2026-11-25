@@ -7,7 +7,9 @@ USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa \
     && rm -rf /var/lib/apt/lists/*
-RUN pip3 install --no-cache-dir --break-system-packages \
+# Versiones fijas en constraints.txt (igual a docker/constraints.txt del repo privado).
+COPY constraints.txt /tmp/constraints.txt
+RUN pip3 install --no-cache-dir --break-system-packages -c /tmp/constraints.txt \
         "facturacion_electronica>=0.25.0" num2words xlsxwriter pillow \
         "PyMuPDF>=1.21.1" "pytesseract>=0.3.10" lxml cryptography \
         websocket-client

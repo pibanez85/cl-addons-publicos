@@ -625,3 +625,9 @@ Pendiente / a revisar (Task 11):
     contacto: ambos creaban varios contactos con el mismo RUT.
   - Bases existentes con contactos creados por ORM sin `vat`: no se migran (no hay datos en
     producción); un `write` del RUT los completa.
+- **Paquetes Python con versión fija**: `.github/ci/constraints.txt` (igual a
+  `docker/constraints.txt` del repo privado; CI del privado verifica que sean iguales) fija
+  `facturacion_electronica==0.25.0` (genera y firma el XML), PyMuPDF, numpy, etc. y sus
+  dependencias, con las versiones de la imagen del 2026-11-25. Antes solo la imagen base estaba
+  fijada por digest y `facturacion_electronica>=0.25.0` flotaba. Los Dockerfiles instalan con
+  `pip install -c constraints.txt`.

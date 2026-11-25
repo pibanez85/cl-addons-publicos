@@ -1,3 +1,5 @@
+import json
+
 import pymupdf
 
 from odoo.tests.common import HttpCase, tagged
@@ -26,7 +28,7 @@ class TestWeb(HttpCase):
                           (4, cls.env.ref("account.group_account_manager").id)],
         })
         cls.env = cls.env(context=dict(cls.env.context, allowed_company_ids=cls.company.ids))
-        cliente = cls.env["res.partner"].create({
+        cls.cliente = cliente = cls.env["res.partner"].create({
             "name": "Cliente Web", "document_number": "11.111.111-1", "is_company": True,
         })
         iva = cls.env["account.chart.template"].with_company(cls.company).ref("IVAV_19")
@@ -44,33 +46,74 @@ class TestWeb(HttpCase):
     def _browser(self, url, code="console.log('test successful')"):
         self.browser_js(url, code, ready="odoo.isReady", login="admin")
 
+    def _esperar(self, url, selector):
+        """Abre ``url`` y espera a que la vista muestre ``selector`` (sin errores de JS)."""
+        code = """
+            (async () => {
+                const inicio = Date.now();
+                while (!document.querySelector(%(sel)r)) {
+                    if (Date.now() - inicio > 20000) {
+                        console.error("no apareció " + %(sel)r);
+                        return;
+                    }
+                    await new Promise((resolve) => setTimeout(resolve, 100));
+                }
+                console.log("test successful");
+            })();
+        """ % {"sel": selector}
+        self._browser(url, code)
+
     def test_cliente_web_carga(self):
-        self._browser("/odoo/action-account.action_move_out_invoice_type")
+        self._esperar("/odoo/action-account.action_move_out_invoice_type", ".o_list_view .o_data_row")
 
     def test_formulario_de_factura_carga(self):
-        # Formulario con el widget de totales (tax_totals) y las pestañas del DTE.
-        self._browser("/odoo/action-account.action_move_out_invoice_type/%s" % self.factura.id)
+        # Formulario con el widget de totales (tax_totals, parche de totals_widget.js).
+        self._esperar("/odoo/action-account.action_move_out_invoice_type/%s" % self.factura.id,
+                      ".o_form_view .o_field_account-tax-totals-field span[name=amount_total]")
+
+    def test_formulario_de_contacto_carga(self):
+        # Formulario de contactos con RUT (document_number) del módulo.
+        self._esperar("/odoo/action-contacts.action_contacts/%s" % self.cliente.id,
+                      ".o_form_view .o_field_widget[name=document_number]")
 
     def test_vistas_del_modulo_cargan(self):
-        """Abre en el cliente web cada acción de ventana del módulo (vista por defecto)."""
+        """Abre en el cliente web cada acción de ventana del módulo: su vista por defecto y, si
+        tiene, el formulario de un registro nuevo."""
         acciones = self.env["ir.model.data"].search([
             ("module", "=", "l10n_cl_fe"), ("model", "=", "ir.actions.act_window"),
         ])
         acciones = self.env["ir.actions.act_window"].browse(acciones.mapped("res_id")).filtered(
             lambda a: a.target != "new")
         self.assertTrue(acciones)
+        pasos = [[a.id, "form" in (a.view_mode or "").split(",")] for a in acciones]
         code = """
             (async () => {
                 const { App } = odoo.loader.modules.get("@odoo/owl");
                 const env = [...App.apps][0].env;
-                for (const id of %s) {
-                    console.log("abriendo acción " + id);
-                    await env.services.action.doAction(id, { clearBreadcrumbs: true });
-                    await new Promise((resolve) => setTimeout(resolve, 200));
+                const esperar = () => new Promise((resolve) => setTimeout(resolve, 200));
+                const fallas = [];
+                const abrir = async (id, opciones, que) => {
+                    try {
+                        await env.services.action.doAction(id, { clearBreadcrumbs: true, ...opciones });
+                        await esperar();
+                    } catch (error) {
+                        const detalle = (error.data && error.data.message) || error.message || error;
+                        fallas.push(`acción ${id} (${que}): ${detalle}`);
+                    }
+                };
+                for (const [id, conFormulario] of %s) {
+                    await abrir(id, {}, "vista por defecto");
+                    if (conFormulario) {
+                        await abrir(id, { viewType: "form" }, "formulario nuevo");
+                    }
                 }
-                console.log("test successful");
+                if (fallas.length) {
+                    console.error("Fallan " + fallas.length + " vistas:\\n" + fallas.join("\\n"));
+                } else {
+                    console.log("test successful");
+                }
             })();
-        """ % acciones.ids
+        """ % json.dumps(pasos)
         self._browser("/odoo", code)
 
     def test_pdf_factura(self):

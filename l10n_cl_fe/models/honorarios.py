@@ -48,11 +48,13 @@ class Honorarios(models.Model):
 
     @api.onchange("periodo_tributario", "company_id")
     def set_movimientos(self):
+        if not self.periodo_tributario:
+            return
         current = datetime.strptime(self.periodo_tributario + "-01", "%Y-%m-%d")
         next_month = current + relativedelta.relativedelta(months=1)
+        # account.move.sended ya no existe (tampoco lo usa el libro de compra/venta).
         query = [
             ("company_id", "=", self.company_id.id),
-            ("sended", "=", False),
             ("date", "<", next_month.strftime("%Y-%m-%d")),
             ("document_class_id.sii_code", "in", [70, 71]),
         ]

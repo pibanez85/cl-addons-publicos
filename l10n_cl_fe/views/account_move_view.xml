@@ -276,9 +276,10 @@
                     <field name="ticket" readonly="state != 'draft'"/>
                     <field name="ind_servicio" readonly="state != 'draft'"/>
                 </group>
-                <field name="account_id" position="attributes">
-                    <attribute name="options">{'no_create': True}</attribute>
-                </field>
+                <!-- Odoo 20: conservar parent_field (widget m2o_cell_with_extra_fields) -->
+                <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='account_id']" position="attributes">
+                    <attribute name="options">{'no_quick_create': True, 'no_create': True, 'no_open': True, 'parent_field': 'invoice_line_ids'}</attribute>
+                </xpath>
                 <notebook>
                     <page
                         string="Electronic Invoice"

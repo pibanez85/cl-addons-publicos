@@ -1,7 +1,10 @@
 import urllib
 
 from odoo import http
+from odoo.addons.portal.controllers.portal import CustomerPortal
+from odoo.exceptions import AccessError, MissingError
 from odoo.http import request
+from odoo.http.stream import content_disposition
 from odoo.tools.misc import formatLang
 
 
@@ -46,16 +49,20 @@ class Boleta(http.Controller):
         return request.env["ir.actions.report"].sudo()._render_qweb_pdf("account.account_invoices", [document.id])[0]
 
     @http.route(["/download/boleta"], type="http", auth="public", website=True)
-    def download_boleta(self, **post):
-        document = request.env[post["model"]].sudo().browse(int(post["model_id"]))
-        if hasattr(document, "_get_report_base_filename"):
-            file_name = document._get_report_base_filename()
-        else:
-            file_name = document._get_printed_report_name()
+    def download_boleta(self, model="account.move", model_id=None, access_token=None, **post):
+        """PDF de una factura/boleta. Público para la consulta de boletas (/boleta), pero solo
+        para quien puede leer el documento o trae su access_token (control de acceso del portal)."""
+        if model != "account.move":
+            raise request.not_found()
+        try:
+            document = CustomerPortal()._document_check_access("account.move", int(model_id), access_token)
+        except (AccessError, MissingError, TypeError, ValueError):
+            raise request.not_found()
+        file_name = document._get_report_base_filename()
         pdf = self._get_report(document)
         pdfhttpheaders = [
             ("Content-Type", "application/pdf"),
             ("Content-Length", len(pdf)),
-            ("Content-Disposition", "attachment; filename=%s.pdf;" % file_name),
+            ("Content-Disposition", content_disposition("%s.pdf" % file_name)),
         ]
         return request.make_response(pdf, headers=pdfhttpheaders)

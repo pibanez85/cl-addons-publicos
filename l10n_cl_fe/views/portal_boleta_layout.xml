@@ -18,7 +18,7 @@
             <a class="btn btn-primary btn-lg fa fa-search" href="/boleta">Buscar
 				nuevamente
 			</a>
-            <t t-set="report_url" t-value="'/download/boleta?model=%s&amp;model_id=%s' % (docs[0]._name, docs[0].id)" />
+            <t t-set="report_url" t-value="'/download/boleta?model_id=%s&amp;access_token=%s' % (docs[0].id, docs[0]._portal_ensure_token())" />
             <a class="btn btn-primary btn-lg fa fa-download" t-att-href="report_url">Descargar
 				PDF
 			</a>

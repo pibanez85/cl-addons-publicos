@@ -5,9 +5,11 @@ from collections import defaultdict
 from odoo import api, fields, models, tools, Command
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
-from odoo.tools import SQL, frozendict
+from odoo.tools import SQL, float_compare, frozendict
 from odoo.tools.misc import formatLang
 from contextlib import ExitStack, contextmanager
+
+from .currency import float_round_custom
 
 _logger = logging.getLogger(__name__)
 
@@ -702,6 +704,44 @@ class AccountMove(models.Model):
         ]
         return stack, update_containers
 
+    def _prepare_product_base_line_for_taxes_computation(self, product_line):
+        base_line = super()._prepare_product_base_line_for_taxes_computation(product_line)
+        self._base_line_neto_sii(base_line)
+        return base_line
+
+    def _base_line_neto_sii(self, base_line):
+        """En pesos, la base de la línea es el neto del SII: bruto redondeado menos el descuento
+        redondeado a pesos (como ``discount_amount`` y el XML), no el subtotal sin redondear de Odoo.
+
+        Así, con redondeo global, el IVA del asiento es round(MntNeto x tasa), la fórmula con que
+        el SII valida el IVA (Odoo lo calculaba sobre las bases sin redondear: 205 - 50% = 102,5
+        daba neto 103 e IVA 19 en vez de 20), y el subtotal de la línea es el MontoItem del XML.
+        Solo líneas de facturas en CLP con impuestos del SII sin precio incluido; el resto queda
+        como lo calcula Odoo. Ajusta el descuento (o, sin descuento, el precio) solo en la línea de
+        cálculo, no en el registro.
+        """
+        currency = base_line['currency_id']
+        taxes = base_line['tax_ids']
+        if (not self.is_invoice(include_receipts=True)
+                or currency != self.env.ref('base.CLP')
+                or base_line['special_mode'] or base_line['special_type']
+                or not taxes or not any(t.sii_code for t in taxes)
+                or any(t.price_include for t in taxes)):
+            return
+        quantity = base_line['quantity']
+        price_unit = base_line['price_unit']
+        discount = base_line['discount'] or 0.0
+        if not quantity or not price_unit:
+            return
+        bruto = currency.round(quantity * price_unit)
+        neto = bruto - float_round_custom(bruto * discount / 100.0, precision_digits=0)
+        if float_compare(quantity * price_unit * (1 - discount / 100.0), neto, precision_digits=6) == 0:
+            return
+        if discount:
+            base_line['discount'] = (1 - neto / (quantity * price_unit)) * 100.0
+        else:
+            base_line['price_unit'] = neto / quantity
+
     def _prepare_gdr_base_line_for_taxes_computation(self, line):
         """Línea de descuento/recargo global ('D'/'R') o comisión ('C') como base line del motor
         de impuestos de Odoo 20 (igual que las líneas de redondeo: monto ya sin impuestos)."""
@@ -1374,9 +1414,9 @@ class AccountMove(models.Model):
             if disc_pct and self.currency_id == self.currency_base():
                 # En pesos, el descuento (o recargo) del XML es la diferencia entre el bruto de la
                 # línea y el MontoItem del asiento: así MontoItem = PrcItem x QtyItem - DescuentoMonto
-                # y los totales del XML son los del asiento peso por peso. (El SII redondea el
-                # descuento a pesos; Odoo redondea el subtotal: difieren en 1 peso cuando el
-                # descuento termina en ,5.)
+                # y los totales del XML son los del asiento peso por peso. Con impuestos del SII sin
+                # precio incluido el asiento ya usa el descuento redondeado del SII
+                # (_base_line_neto_sii), así que es el mismo DescuentoMonto que pide el SII.
                 bruto = self.currency_id.round(line.quantity * price_unit)
                 descuento_amount = abs(bruto - MontoItem)
             elif disc_pct:

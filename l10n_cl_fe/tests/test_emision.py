@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from decimal import ROUND_HALF_UP, Decimal
 from unittest.mock import patch
 
 from odoo.exceptions import UserError
@@ -7,6 +8,11 @@ from odoo.tests.common import tagged
 from odoo.addons.l10n_cl_fe.models import dte_mixin
 
 from .common_dte import NS, DteCase
+
+
+def iva_sii(neto, tasa=19):
+    """IVA como lo valida el SII: MntNeto x TasaIVA / 100, redondeado a pesos (mitad hacia arriba)."""
+    return int((Decimal(neto) * tasa / 100).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 @tagged("post_install", "-at_install")
@@ -125,6 +131,40 @@ class TestEmision(DteCase):
         self.assertEqual(exento, totales["MntExe"])
         self.assertEqual(sorted(int(m.text) for m in xml.iterfind(".//sii:Detalle/sii:MontoItem", NS)),
                          sorted(int(l.price_subtotal) for l in lineas))
+
+    def _assert_iva_sii(self, lineas):
+        factura = self._publicar(self.factura(lineas))
+        totales = self.totales(self.assertXsd(factura))
+        self.assertEqual(totales["IVA"], iva_sii(totales["MntNeto"]),
+                         "IVA %s != MntNeto %s x 19%%" % (totales["IVA"], totales["MntNeto"]))
+        self.assertEqual(totales["MntTotal"], factura.amount_total)
+        self.assertEqual(totales["IVA"], factura.amount_tax)
+        self.assertEqual(totales["MntNeto"] + totales["IVA"] + totales.get("MntExe", 0), totales["MntTotal"])
+        return factura, totales
+
+    def test_iva_consistente_con_neto(self):
+        """El SII valida IVA = MntNeto x 19% redondeado: el asiento debe dar ese IVA (no el de la base
+        sin redondear) y el XML, los montos del asiento."""
+        self.caf(33, 1, 10)
+        # 205 - 50%: el SII redondea el descuento (102,5 -> 103), neto 102, IVA 19,38 -> 19.
+        # (Antes: neto 103 con el subtotal de Odoo e IVA 19 sobre 102,5.)
+        _factura, totales = self._assert_iva_sii([(self.producto, 1, 205, 50)])
+        self.assertEqual((totales["MntNeto"], totales["IVA"], totales["MntTotal"]), (102, 19, 121))
+        # Precio con decimales sin descuento: neto 103, IVA 19,57 -> 20 (sobre 102,5 sería 19).
+        _factura, totales = self._assert_iva_sii([(self.producto, 1, 102.5)])
+        self.assertEqual((totales["MntNeto"], totales["IVA"], totales["MntTotal"]), (103, 20, 123))
+
+    def test_iva_consistente_con_neto_varias_lineas(self):
+        self.caf(33, 1, 10)
+        # Netos del SII 102 + 52 + 103 + 1.000 = 1.257 (IVA 238,83 -> 239) y exento 499.
+        _factura, totales = self._assert_iva_sii([
+            (self.producto, 1, 205, 50),
+            (self.producto, 1, 105, 50),
+            (self.producto, 1, 102.5),
+            (self.producto, 1, 1000),
+            (self.producto_exento, 1, 499),
+        ])
+        self.assertEqual((totales["MntNeto"], totales["IVA"], totales["MntExe"]), (1257, 239, 499))
 
     def test_numeracion_sin_documento_en_diario_con_documentos(self):
         """Un movimiento sin documento del SII en el diario de ventas sigue la numeración de Odoo:

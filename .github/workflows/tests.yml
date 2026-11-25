@@ -1,0 +1,33 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  odoo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar dependencias OCA (commits fijados)
+        run: .github/ci/fetch-oca.sh
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construir imagen de Odoo
+        uses: docker/build-push-action@v6
+        with:
+          context: .github/ci
+          file: .github/ci/Dockerfile
+          tags: cl-addons-ci-odoo:20.0
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pruebas de los módulos públicos
+        run: .github/ci/test.sh l10n_cl_fe,account_financial_report,account_asset_management
+
+      - name: Pruebas de l10n_cl_fe_informes_test
+        run: .github/ci/test.sh l10n_cl_fe_informes_test

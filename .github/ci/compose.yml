@@ -1,0 +1,32 @@
+name: cl-addons-ci
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  odoo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cl-addons-ci-odoo:20.0
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../../:/mnt/publicos:ro
+      - ./oca/server-ux:/mnt/oca/server-ux:ro
+      - ./oca/reporting-engine:/mnt/oca/reporting-engine:ro
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+      - odoo-data:/var/lib/odoo
+
+volumes:
+  odoo-data:

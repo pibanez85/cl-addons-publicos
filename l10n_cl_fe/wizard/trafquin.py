@@ -359,7 +359,7 @@ class TrafquinXmlWizard(models.TransientModel):
         clave_sii = clave and company.sudo().sii_clave_tributaria
         if clave_sii and company._clave_sii_rechazada():
             raise UserError(_("La clave SII de %s fue rechazada: revísela en Ajustes") % company.name)
-        datos = dict(datos, rut=company.partner_id.rut(), entorno="produccion", token=company.token_trafquin or "")
+        datos = dict(datos, rut=company.partner_id.rut(), entorno="produccion", token=company.sudo().token_trafquin or "")
         if clave_sii:
             datos.update(rut=company._rut_ingreso_sii(), clave_tributaria=clave_sii)
         else:
@@ -459,11 +459,12 @@ class TrafquinXmlWizard(models.TransientModel):
     @api.model
     def _cron_xml_recibidos(self, dias=3):
         hoy = fields.Date.context_today(self)
-        companies = self.env["res.company"].search([
+        # token_trafquin es solo para administradores: se filtra con sudo, se procesa sin sudo.
+        companies = self.env["res.company"].browse(self.env["res.company"].sudo().search([
             ("url_trafquin", "!=", False),
             ("token_trafquin", "!=", False),
             ("dte_service_provider", "=", "SII"),
-        ])
+        ]).ids)
         for company in companies:
             try:
                 with self.env.cr.savepoint():

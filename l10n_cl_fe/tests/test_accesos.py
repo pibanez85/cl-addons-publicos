@@ -46,6 +46,27 @@ class TestAccesos(TransactionCase):
         with self.assertRaises(AccessError):
             self.env["sii.activity.description"].with_user(self.portal).create({"name": "Prueba"})
 
+    def test_tokens_de_servicios_solo_para_administradores(self):
+        """Los tokens de trafquin, apicaf.cl y sre.cl (en ``res.company``) no los lee un usuario
+        interno ni uno de portal: ``res.company`` es legible por todos para su propia compañía."""
+        tokens = ("token_trafquin", "token_apicaf", "token_remote_partners")
+        compania = self.env.company
+        compania.write({c: "secreto-%s" % c for c in tokens})
+        for usuario in (self.interno, self.portal, self.contador):
+            for campo in tokens:
+                with self.subTest(usuario=usuario.login, campo=campo):
+                    with self.assertRaises(AccessError):
+                        compania.with_user(usuario)[campo]
+                    with self.assertRaises(AccessError):
+                        compania.with_user(usuario).read([campo])
+                    # Por RPC el campo ni siquiera se ofrece (fields_get filtra por grupos).
+                    self.assertNotIn(campo, compania.with_user(usuario).fields_get())
+        admin = self.env.ref("base.user_admin")
+        self.assertEqual(compania.with_user(admin).token_trafquin, "secreto-token_trafquin")
+        for campo in tokens:
+            self.assertIn("base.group_system", self.env["res.company"]._fields[campo].groups or "", campo)
+            self.assertIn("base.group_system", self.env["res.config.settings"]._fields[campo].groups or "", campo)
+
     def test_portal_lee_catalogos(self):
         for modelo in ("sii.document_class", "sii.document_type", "sii.document_letter",
                        "sii.responsability", "sii.regional.offices", "res.country.state.provincia",

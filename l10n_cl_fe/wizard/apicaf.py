@@ -125,7 +125,7 @@ class APICAF(models.TransientModel):
         if not firma:
             motivo = "el usuario %s no tiene firma electrónica autorizada para %s" % (
                 self.env.user.name, self.company_id.name)
-        elif not self.company_id.url_apicaf or not self.company_id.token_apicaf:
+        elif not self.company_id.url_apicaf or not self.company_id.sudo().token_apicaf:
             motivo = "falta la URL o el token de apicaf.cl en la configuración de %s" % (
                 self.company_id.name)
         if motivo:
@@ -133,7 +133,7 @@ class APICAF(models.TransientModel):
             _logger.warning("No se pudo conectar con apicaf.cl: %s", motivo)
             return
         url = self.company_id.url_apicaf
-        token = self.company_id.token_apicaf
+        token = self.company_id.sudo().token_apicaf
         etapa = "conectar"
         if self.operacion == "reobtener":
             etapa = "reob_conectar"
@@ -299,7 +299,7 @@ class APICAF(models.TransientModel):
             etapa = "an_" + etapa
             self.an_etapa = etapa
         url = self.company_id.url_apicaf
-        token = self.company_id.token_apicaf
+        token = self.company_id.sudo().token_apicaf
         params = {
             "token": token,
             "etapa": etapa,
@@ -334,7 +334,7 @@ class APICAF(models.TransientModel):
         if not self.id_peticion:
             return
         url = self.company_id.url_apicaf
-        token = self.company_id.token_apicaf
+        token = self.company_id.sudo().token_apicaf
         self.etapa = "disponibles"
         etapa = "disponibles"
         if self.operacion == "reobtener":
@@ -420,7 +420,7 @@ class APICAF(models.TransientModel):
         if not self.id_peticion:
             return
         url = self.company_id.url_apicaf
-        token = self.company_id.token_apicaf
+        token = self.company_id.sudo().token_apicaf
         peticion = {
             "token": token,
             "id_peticion": self.id_peticion,
@@ -481,7 +481,7 @@ class APICAF(models.TransientModel):
         if not self.id_peticion:
             return
         url = self.company_id.url_apicaf
-        token = self.company_id.token_apicaf
+        token = self.company_id.sudo().token_apicaf
         peticion = {
             "token": token,
             "id_peticion": self.id_peticion,
@@ -586,7 +586,7 @@ class APICAF(models.TransientModel):
     def delist(self):
         self._check_apicaf_habilitado(self.company_id)
         url = self.company_id.url_apicaf.rsplit("/", 1)[0] + "/delist"
-        token = self.company_id.token_apicaf
+        token = self.company_id.sudo().token_apicaf
         peticion = {
             "token": token,
         }

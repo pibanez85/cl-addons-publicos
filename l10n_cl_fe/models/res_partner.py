@@ -389,8 +389,8 @@ class ResPartner(models.Model):
     def _sre_post(self, company, body):
         if not company.sync_remote_partners:
             raise UserError(_("La consulta a sre.cl no está habilitada para %s") % company.name)
-        clave = (company.url_remote_partners, company.token_remote_partners)
-        body = dict(body, token=company.token_remote_partners)
+        clave = (company.url_remote_partners, company.sudo().token_remote_partners)
+        body = dict(body, token=company.sudo().token_remote_partners)
         if SRE_SESIONES.get(clave):
             body["sesion"] = SRE_SESIONES[clave]
         resp = pool.request(
@@ -410,7 +410,7 @@ class ResPartner(models.Model):
     def get_remote_user_data(self, to_check, process_data=True):
         company = self.company_id or self.env.company
         url = company.url_remote_partners
-        token = company.token_remote_partners
+        token = company.sudo().token_remote_partners
         # Privacidad: el RUT del contacto sale a sre.cl solo si la compañía lo habilitó.
         if not company.sync_remote_partners or not url or not token:
             return
@@ -486,7 +486,7 @@ class ResPartner(models.Model):
         for r in recs:
             company = r.company_id or self.env.company
             url = company.url_remote_partners
-            token = company.token_remote_partners
+            token = company.sudo().token_remote_partners
             if not company.sync_remote_partners or not url or not token:
                 continue
             to_sync.setdefault((url, token, i), {

@@ -168,17 +168,16 @@ stamp to be legally valid.""",
         string="Url Remote Partners",
         default="https://sre.cl/api/company_info"
     )
-    token_remote_partners = fields.Char(
-        string="Token Remote Partners",
-        default="token_publico",
-    )
     cf_autosend = fields.Boolean(
         string="AutoEnviar Consumo de Folios",
         default=False,
     )
+    # Tokens de servicios externos: solo administradores (res.company lo lee cualquier usuario de
+    # la compañía, incluso de portal). El código los lee con sudo().
     token_remote_partners = fields.Char(
         string="Token Remote Partners",
         default="token_publico",
+        groups="base.group_system",
     )
     # Privacidad: los servicios externos que reciben datos de contactos o de la compañía
     # (sre.cl, apicaf.cl) quedan apagados hasta que la compañía los habilite.
@@ -202,9 +201,10 @@ stamp to be legally valid.""",
     token_apicaf = fields.Char(
         string="Token APICAF",
         default='token_publico',
+        groups="base.group_system",
     )
     url_trafquin = fields.Char(string="URL trafquin", default="https://trafquin.cl")
-    token_trafquin = fields.Char(string="Token trafquin")
+    token_trafquin = fields.Char(string="Token trafquin", groups="base.group_system")
     sii_clave_tributaria = fields.Char(string="Clave tributaria SII", groups="base.group_system", copy=False)
     sii_clave_rechazada = fields.Char(groups="base.group_system", copy=False)
     sii_clave_rechazo_fecha = fields.Datetime(groups="base.group_system", copy=False)

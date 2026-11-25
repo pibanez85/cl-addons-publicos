@@ -1105,11 +1105,12 @@ class SiiRevisionPeriodo(models.Model):
 
     @api.model
     def _companias_trafquin(self):
-        return self.env["res.company"].search([
+        # token_trafquin es solo para administradores: se filtra con sudo, se devuelve sin sudo.
+        return self.env["res.company"].browse(self.env["res.company"].sudo().search([
             ("url_trafquin", "!=", False),
             ("token_trafquin", "!=", False),
             ("dte_service_provider", "=", "SII"),
-        ])
+        ]).ids)
 
     @api.model
     def _revision_de(self, company, periodo):

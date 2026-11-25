@@ -597,3 +597,12 @@ Pendiente / a revisar (Task 11):
   `ResultadoDTE` sale con `EstadoDTE` 0. Y `mail.message.dte.document.set_dte_claim` busca la clave
   dos veces en la respuesta del SII (`[key]` y luego `.get(key)`), así que nunca marca `claim` en el
   documento recibido tras ingresar el reclamo.
+- **Tokens de servicios externos solo para administradores**: `token_trafquin`, `token_apicaf` y
+  `token_remote_partners` de `res.company` (y sus `related` en `res.config.settings`) llevan
+  `groups="base.group_system"`. `res.company` es legible por cualquier usuario para su propia
+  compañía (incluso de portal, regla `res_company_rule_public`): por RPC se podían leer. El código
+  que los usa (`wizard/trafquin.py`, `wizard/apicaf.py`, `models/res_partner.py`,
+  `sii.revision._companias_trafquin`) los lee con `sudo()`; las búsquedas por `token_trafquin`
+  filtran con `sudo()` y siguen sin `sudo`. Se quitó la definición duplicada de
+  `token_remote_partners`. Prueba: `test_accesos.test_tokens_de_servicios_solo_para_administradores`
+  (interno, portal y contador: `AccessError` y el campo fuera de `fields_get`).

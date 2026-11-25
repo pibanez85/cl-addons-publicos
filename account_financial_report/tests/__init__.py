@@ -9,3 +9,4 @@ from . import test_trial_balance
 from . import test_vat_report
 from . import test_age_report_configuration
 from . import test_render_odoo20
+from . import test_web_odoo20

@@ -1,4 +1,5 @@
 import base64
+from unittest.mock import patch
 
 from dateutil.relativedelta import relativedelta
 
@@ -167,15 +168,21 @@ class TestAccesos(TransactionCase):
         # En modo sudo (cron) sí.
         self.assertEqual(self._cola(del_admin).firma_id, del_admin)
 
-    def test_respaldo_de_la_firma_del_admin_solo_con_sudo(self):
+    def test_respaldo_de_la_firma_del_admin_solo_si_se_pide(self):
         del_admin = self._firma([self.env.ref("base.user_admin")])
         propia = self._firma([self.facturador])
         company = self.env.company
         Move = self.env["account.move"]
         self.assertEqual(Move.with_user(self.facturador)._resolve_cola_firma(company), propia)
         self.assertFalse(Move.with_user(self.facturador_sin_firma)._resolve_cola_firma(company))
-        self.assertEqual(Move.with_user(self.facturador_sin_firma).sudo()._resolve_cola_firma(company),
-                         del_admin)
+        # sudo solo (el botón Procesar corre con sudo) no da la firma del admin.
+        self.assertFalse(Move.with_user(self.facturador_sin_firma).sudo()._resolve_cola_firma(company))
+        # El respaldo es explícito (lo pide el cron, ver _validar_firma).
+        self.assertEqual(
+            Move.with_user(self.facturador_sin_firma)._resolve_cola_firma(company, respaldo_admin=True),
+            del_admin)
+        self.assertEqual(
+            Move.with_user(self.facturador)._resolve_cola_firma(company, respaldo_admin=True), propia)
 
     def test_encolar_con_firma_propia_y_sin_firma(self):
         del_admin = self._firma([self.env.ref("base.user_admin")])
@@ -194,10 +201,73 @@ class TestAccesos(TransactionCase):
         self.assertNotEqual(cola_sin, cola)
         self.assertFalse(cola_sin.firma_id)
         self.assertEqual(cola_sin.document_ids, factura)
-        self.assertTrue(cola_sin.sudo()._validar_firma())
+        # sudo sin el contexto del cron (p. ej. el botón Procesar) no usa la firma del admin.
+        self.assertFalse(cola_sin.with_user(self.facturador_sin_firma).sudo()._validar_firma())
+        self.assertFalse(cola_sin.firma_id)
+        # El cron sí.
+        procesadas = []
+
+        def procesar(cola):
+            procesadas.append(cola.id)
+            cola._validar_firma()
+
+        Cola = type(self.env["sii.cola_envio"])
+        with patch.object(Cola, "_procesar_tipo_trabajo", procesar):
+            self.env["sii.cola_envio"].with_user(self.facturador_sin_firma)._cron_procesar_cola()
+        self.assertIn(cola_sin.id, procesadas)
         self.assertEqual(cola_sin.firma_id, del_admin)
 
     def test_encolar_sin_ninguna_firma_disponible(self):
         vals = {"company_id": self.env.company.id, "tipo_trabajo": "envio", "es_boleta": False}
         with self.assertRaises(UserError):
             self._factura().with_user(self.facturador_sin_firma)._enqueue_uniform(vals)
+
+    def _sin_procesar(self):
+        """Evita el envío real al SII al probar action_procesar."""
+        return patch.object(type(self.env["sii.cola_envio"]), "_procesar_tipo_trabajo", lambda cola: None)
+
+    def test_procesar_sin_firma_propia_no_usa_la_del_admin(self):
+        self._firma([self.env.ref("base.user_admin")])
+        cola = self.env["sii.cola_envio"].sudo().create({
+            "company_id": self.env.company.id, "tipo_trabajo": "envio",
+            "document_ids": [(6, 0, self._factura().ids)],
+        })
+        with self._sin_procesar(), self.assertRaises(UserError):
+            cola.with_user(self.facturador_sin_firma).action_procesar()
+        self.assertFalse(cola.firma_id)
+        # Tampoco con el contexto del cron en la llamada (p. ej. por RPC).
+        procesadas = []
+
+        def procesar(c):
+            procesadas.append(c.id)
+            c._validar_firma()
+
+        Cola = type(self.env["sii.cola_envio"])
+        with patch.object(Cola, "_procesar_tipo_trabajo", procesar), self.assertRaises(UserError):
+            cola.with_user(self.facturador_sin_firma).with_context(cola_cron=True).action_procesar()
+        self.assertFalse(procesadas)
+        self.assertFalse(cola.firma_id)
+
+    def test_procesar_asigna_la_firma_propia(self):
+        self._firma([self.env.ref("base.user_admin")])
+        propia = self._firma([self.facturador])
+        cola = self.env["sii.cola_envio"].sudo().create({
+            "company_id": self.env.company.id, "tipo_trabajo": "envio",
+            "document_ids": [(6, 0, self._factura().ids)],
+        })
+        with self._sin_procesar():
+            cola.with_user(self.facturador).action_procesar()
+        self.assertEqual(cola.firma_id, propia)
+
+    def test_procesar_requiere_escribir_la_cola(self):
+        otra = self.env["res.company"].create({"name": "Otra compañía cola"})
+        self._firma([self.facturador])
+        de_otra = self.env["sii.cola_envio"].sudo().create({"company_id": otra.id, "tipo_trabajo": "envio"})
+        propia = self.env["sii.cola_envio"].sudo().create({
+            "company_id": self.env.company.id, "tipo_trabajo": "envio",
+        })
+        with self._sin_procesar():
+            with self.assertRaises(AccessError):
+                de_otra.with_user(self.facturador).action_procesar()
+            with self.assertRaises(AccessError):
+                propia.with_user(self.interno).action_procesar()

@@ -155,32 +155,33 @@ class DteEnvioMixin(models.AbstractModel):
         return len(self.sii_xml_request[self._dte_xml_envio_field]) == 1
 
     @api.model
-    def _resolve_cola_firma(self, company):
-        """Firma para una cola de envío: la del usuario; en modo sudo (cron), si no tiene, la del
-        admin. Sin sudo no hay respaldo: la cola se procesa con sudo y un usuario no puede
-        disponer de la firma del admin (ver sii.cola_envio._check_firma_autorizada)."""
+    def _resolve_cola_firma(self, company, respaldo_admin=False):
+        """Firma para una cola de envío: la del usuario y, solo con ``respaldo_admin`` (el cron,
+        ver sii.cola_envio._validar_firma), la del admin si el usuario no tiene. No depende de
+        env.su: el botón Procesar también corre con sudo y no puede disponer de la firma del admin
+        (ver sii.cola_envio._check_firma_autorizada)."""
         if not company:
             return self.env['sii.firma']
         user = self.env.user
         firma = user.sudo().get_digital_signature(company)
-        if not firma and self.env.su:
+        if not firma and respaldo_admin:
             admin = self.env.ref('base.user_admin', raise_if_not_found=False)
             if admin and admin.id != user.id:
                 firma = admin.sudo().get_digital_signature(company)
         return firma or self.env['sii.firma']
 
     def _set_cola_firma(self, vals):
-        """Completa vals['firma_id'] de una cola nueva con _resolve_cola_firma.
+        """Completa vals['firma_id'] de una cola nueva con la firma del usuario.
 
-        Un usuario sin firma propia deja la cola sin firma: el proceso (sudo) le asigna la del
-        admin (sii.cola_envio._validar_firma). Si tampoco hay esa, falla al encolar."""
+        Un usuario sin firma propia deja la cola sin firma: el cron le asigna la del admin
+        (sii.cola_envio._validar_firma). Si tampoco hay esa, falla al encolar."""
         if 'firma_id' in vals or not vals.get('company_id'):
             return
         company = self.env['res.company'].browse(vals['company_id'])
         firma = self._resolve_cola_firma(company)
         if firma:
             vals['firma_id'] = firma.id
-        elif self.env.su or not self.sudo()._resolve_cola_firma(company):
+        elif not self._resolve_cola_firma(company, respaldo_admin=True):
             raise UserError(_(
                 "No hay firma electrónica disponible para la compañía '%s'. "
                 "Asigne una firma al usuario o al admin."

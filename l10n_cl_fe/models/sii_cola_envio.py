@@ -127,8 +127,8 @@ class ColaEnvio(models.Model):
     def _check_firma_autorizada(self):
         """La cola se procesa con sudo (cron y botón) con la firma de firma_id: sin sudo solo se
         puede asignar una firma, o agregar documentos a una cola con firma, si el usuario puede
-        usar esa firma en la compañía. El respaldo de la firma del admin es solo del modo sudo
-        (ver _resolve_cola_firma y _validar_firma).
+        usar esa firma en la compañía.
+        El respaldo de la firma del admin es solo del cron (ver _validar_firma).
 
         Se llama desde create/write y no con @api.constrains: Odoo 20 corre las restricciones
         con sudo y ahí no se distingue al usuario del proceso interno."""
@@ -141,11 +141,24 @@ class ColaEnvio(models.Model):
                 ) % (self.env.user.name, cola.company_id.name))
 
     def action_procesar(self):
-        """Procesa manualmente el registro actual.
+        """Procesa manualmente las colas.
 
-        Con sudo, como el cron: la firma de la cola (firma_id, validada al asignarla) se pasa en
-        el contexto y _resolve_firma solo la acepta de un usuario autorizado o en modo sudo."""
-        self.sudo()._procesar_tipo_trabajo()
+        Corre con sudo, como el cron, porque la firma de la cola se pasa en el contexto y
+        _resolve_firma solo la acepta de un usuario autorizado o en modo sudo. Antes, como el
+        usuario: debe poder escribir la cola (accesos y regla por compañía) y una cola sin firma
+        toma la firma propia del usuario (nunca la del admin, que es solo del cron)."""
+        self.check_access("write")
+        for cola in self.filtered(lambda c: not c.firma_id):
+            firma = self.env["account.move"]._resolve_cola_firma(cola.company_id)
+            if not firma:
+                raise UserError(_(
+                    "El usuario '%s' no tiene firma electrónica para la compañía '%s'. "
+                    "Asígnele una firma o espere el proceso automático."
+                ) % (self.env.user.name, cola.company_id.name))
+            cola.firma_id = firma
+        for cola in self:
+            # Sin cola_cron aunque venga en el contexto de la llamada: el respaldo es del cron.
+            cola.sudo().with_context(cola_cron=False)._procesar_tipo_trabajo()
         return True
 
     def action_asignar_firma_actual(self):
@@ -490,10 +503,11 @@ class ColaEnvio(models.Model):
     def _validar_firma(self):
         """Valida que la cola tenga firma electrónica asignada.
 
-        En modo sudo (cron o botón Procesar) una cola sin firma (la dejó un usuario sin firma
-        propia) toma la del usuario o, como respaldo, la del admin."""
-        if not self.firma_id and self.env.su:
-            firma = self.env["account.move"]._resolve_cola_firma(self.company_id)
+        En el cron (contexto ``cola_cron``, que solo pone _cron_procesar_cola) una cola sin firma
+        (la dejó un usuario sin firma propia) toma la del admin. No basta env.su: el botón
+        Procesar también corre con sudo."""
+        if not self.firma_id and self.env.su and self.env.context.get("cola_cron"):
+            firma = self.env["account.move"]._resolve_cola_firma(self.company_id, respaldo_admin=True)
             if firma:
                 self.firma_id = firma
         if not self.firma_id:
@@ -801,8 +815,9 @@ class ColaEnvio(models.Model):
 
     @api.model
     def _cron_procesar_cola(self):
-        # Proceso interno: usa la firma guardada en cada cola (ver _check_firma_autorizada).
-        self = self.sudo()
+        # Proceso interno: usa la firma guardada en cada cola (ver _check_firma_autorizada) y,
+        # en las colas sin firma, la del admin (cola_cron, ver _validar_firma).
+        self = self.sudo().with_context(cola_cron=True)
         self.reset_intentos()
         self._autopack()
         query = [

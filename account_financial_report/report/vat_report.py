@@ -234,6 +234,10 @@ class VATReport(models.AbstractModel):
                 "based_on": data["based_on"],
                 "tax_detail": data["tax_detail"],
                 "vat_report": vat_report,
+                # The template used request.env, unbound outside an HTTP request.
+                "tax_exigible_domain": list(
+                    self.env["account.move.line"]._get_tax_exigible_domain()
+                ),
             }
         )
         return res

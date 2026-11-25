@@ -14,7 +14,9 @@ _logger = logging.getLogger(__name__)
 GRUPOS_SECRETOS = "account.group_account_manager,base.group_system"
 try:
     from facturacion_electronica.firma import Firma
-    from facturacion_electronica.signature_cert import SignatureCert
+    # Alias: el modelo de abajo también se llama SignatureCert y tapaba la clase de la biblioteca
+    # (action_process instanciaba el modelo de Odoo y no se podía cargar ningún .p12).
+    from facturacion_electronica.signature_cert import SignatureCert as FeSignatureCert
 except ImportError:
     _logger.warning("Problema a cargar facturacion_electronica")
 
@@ -255,7 +257,7 @@ class SignatureCert(models.Model):
     def action_process(self):
         if self.subject_serial_number:
             return self.check_signature()
-        firma = SignatureCert({
+        firma = FeSignatureCert({
             "string_firma": self.file_content.to_base64(),
             "string_password": self.password or None,
             "init_signature": True,
@@ -292,6 +294,9 @@ class SignatureCert(models.Model):
             }
         )
         self.set_state()
+        # Deja la firma vigente (o vencida) de inmediato: antes quedaba "unverified" hasta
+        # volver a pulsar el botón y get_digital_signature no la encontraba.
+        self.check_signature()
 
     def parametros_firma(self):
         return {

@@ -5,10 +5,9 @@ from collections import defaultdict
 from odoo import api, fields, models, tools, Command
 from odoo.exceptions import UserError
 from odoo.tools.translate import _
-from odoo.tools import frozendict
+from odoo.tools import SQL, frozendict
 from odoo.tools.misc import formatLang
 from contextlib import ExitStack, contextmanager
-import re
 
 _logger = logging.getLogger(__name__)
 
@@ -373,59 +372,15 @@ class AccountMove(models.Model):
             invoice.needed_terms = list(needed_terms.items())
 
     def _get_last_sequence_domain(self, relaxed=False):
-        self.ensure_one()
+        # Odoo 18+ devuelve una condición SQL (antes una tupla (where_string, param)). La de Odoo
+        # (diario, período, rectificativas, pagos) más el tipo de documento del SII: cada tipo
+        # (33, 34, 56, 61...) lleva su propia numeración en el mismo diario.
+        condition = super()._get_last_sequence_domain(relaxed)
         if not self.journal_id.use_documents:
-            return super()._get_last_sequence_domain(relaxed)
-        if not self.date or not self.journal_id:
-            return "WHERE FALSE", {}
-        where_string = "WHERE journal_id = %(journal_id)s AND name != '/'"
-        param = {'journal_id': self.journal_id.id}
-        is_payment = self.origin_payment_id or self.env.context.get('is_payment')
-
-        if not relaxed:
-            domain = [('journal_id', '=', self.journal_id.id), ('id', '!=', self.id or self._origin.id), ('name', 'not in', ('/', '', False)), ('use_documents', '=', self.use_documents)]
-            if self.use_documents and self.document_class_id.dte:
-                domain += [('document_class_id', '=', self.document_class_id.id)]
-            if self.journal_id.refund_sequence:
-                refund_types = ('out_refund', 'in_refund')
-                domain += [('move_type', 'in' if self.move_type in refund_types else 'not in', refund_types)]
-            if self.journal_id.payment_sequence:
-                domain += [('origin_payment_id', '!=' if is_payment else '=', False)]
-            reference_move_name = self.search(domain + [('date', '<=', self.date)], order='date desc', limit=1).name
-            if not reference_move_name:
-                reference_move_name = self.search(domain, order='date asc', limit=1).name
-            sequence_number_reset = self._deduce_sequence_number_reset(reference_move_name)
-            if sequence_number_reset == 'year':
-                where_string += " AND date_trunc('year', date::timestamp without time zone) = date_trunc('year', %(date)s) "
-                param['date'] = self.date
-                param['anti_regex'] = re.sub(r"\?P<\w+>", "?:", self._sequence_monthly_regex.split('(?P<seq>')[0]) + '$'
-            elif sequence_number_reset == 'month':
-                where_string += " AND date_trunc('month', date::timestamp without time zone) = date_trunc('month', %(date)s) "
-                param['date'] = self.date
-            else:
-                param['anti_regex'] = re.sub(r"\?P<\w+>", "?:", self._sequence_yearly_regex.split('(?P<seq>')[0]) + '$'
-
-            if param.get('anti_regex') and not self.journal_id.sequence_override_regex:
-                where_string += " AND sequence_prefix !~ %(anti_regex)s "
-
-        if self.journal_id.refund_sequence:
-            if self.move_type in ('out_refund', 'in_refund'):
-                where_string += " AND move_type IN ('out_refund', 'in_refund') "
-            else:
-                where_string += " AND move_type NOT IN ('out_refund', 'in_refund') "
-        elif self.journal_id.payment_sequence:
-            if is_payment:
-                where_string += " AND origin_payment_id IS NOT NULL "
-            else:
-                where_string += " AND origin_payment_id IS NULL "
-
+            return condition
         if self.use_documents and self.document_class_id.dte:
-            where_string += " AND use_documents AND document_class_id = %(document_class_id)s "
-            param['document_class_id'] = self.document_class_id.id
-        else:
-            where_string += " AND (use_documents = FALSE OR use_documents is NULL) "
-
-        return where_string, param
+            return SQL("%s AND use_documents AND document_class_id = %s", condition, self.document_class_id.id)
+        return SQL("%s AND (use_documents = FALSE OR use_documents IS NULL)", condition)
 
     def _set_next_sequence(self):
         self.ensure_one()
@@ -874,7 +829,30 @@ class AccountMove(models.Model):
         for r in self:
             r.document_class_id = r.journal_document_class_id.sii_document_class_id
 
+    def _dte_compania_emisora(self):
+        return self.company_id.parent_id or self.company_id
+
+    def _validar_requisitos_emisor(self, company=None):
+        """Datos de la compañía que exige el DTE (RUT, giro, resolución del SII): UserError claro
+        antes de armar y firmar el XML (sin fecha de resolución, _emisor fallaba con
+        AttributeError)."""
+        company = company or self._dte_compania_emisora()
+        faltan = []
+        if company.partner_id.rut() == "66666666-6":
+            faltan.append(_("RUT"))
+        if not company.activity_description:
+            faltan.append(_("giro (glosa de la actividad)"))
+        if not company.dte_resolution_number:
+            faltan.append(_("número de resolución del SII"))
+        if not company.dte_resolution_date:
+            faltan.append(_("fecha de resolución del SII"))
+        if faltan:
+            raise UserError(_(
+                "No se puede emitir el documento %(doc)s: a la compañía %(company)s le falta %(faltan)s."
+            ) % {"doc": self.display_name, "company": company.name, "faltan": ", ".join(faltan)})
+
     def _validaciones_uso_dte(self):
+        self._validar_requisitos_emisor()
         super()._validaciones_uso_dte()
         if self.move_type in ["out_refund", "in_refund"] and not self.es_nc():
             raise UserError(_(
@@ -1118,7 +1096,8 @@ class AccountMove(models.Model):
             Emisor["GiroEmis"] = self._acortar_str(company.activity_description.name, 80)
             if company.phone:
                 Emisor["Telefono"] = self._acortar_str(company.phone, 20)
-            Emisor["CorreoEmisor"] = company.dte_email_id.display_name
+            if company.dte_email_id:
+                Emisor["CorreoEmisor"] = company.dte_email_id.display_name
             Emisor["Actecos"] = self._actecos_emisor()
         dir_origen = company
         if self.journal_id.sucursal_id:
@@ -1133,6 +1112,7 @@ class AccountMove(models.Model):
             raise UserError("Debe ingresar la Ciudad de compañía emisora")
         Emisor["CiudadOrigen"] = company.city
         Emisor["Modo"] = "produccion" if company.dte_service_provider == "SII" else "certificacion"
+        self._validar_requisitos_emisor(company)
         Emisor["NroResol"] = company.dte_resolution_number
         Emisor["FchResol"] = company.dte_resolution_date.strftime("%Y-%m-%d")
         Emisor["ValorIva"] = 19
@@ -1353,7 +1333,15 @@ class AccountMove(models.Model):
             MontoItem = line.price_total if tax_include else line.price_subtotal
             descuento_amount = 0
             disc_pct = line.discount or 0
-            if disc_pct:
+            if disc_pct and self.currency_id == self.currency_base():
+                # En pesos, el descuento (o recargo) del XML es la diferencia entre el bruto de la
+                # línea y el MontoItem del asiento: así MontoItem = PrcItem x QtyItem - DescuentoMonto
+                # y los totales del XML son los del asiento peso por peso. (El SII redondea el
+                # descuento a pesos; Odoo redondea el subtotal: difieren en 1 peso cuando el
+                # descuento termina en ,5.)
+                bruto = self.currency_id.round(line.quantity * price_unit)
+                descuento_amount = abs(bruto - MontoItem)
+            elif disc_pct:
                 base_amt = line.discount_amount if disc_pct > 0 else line.discount_amount * -1
                 if details.get('desglose'):
                     taxes_res = line._get_price_total_and_subtotal_model(

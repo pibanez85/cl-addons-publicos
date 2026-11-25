@@ -1097,10 +1097,10 @@ class DteMixin(models.AbstractModel):
                     ) % ref_doc.display_name)
         if not self.env.user.get_digital_signature(self.company_id):
             raise UserError(_(
-                "Usuario no autorizado a usar firma electrónica para esta compañia. "
-                "Por favor solicitar autorización en la ficha de compañia del documento "
-                "por alguien con los permisos suficientes de administrador"
-            ))
+                "No hay un certificado digital (firma electrónica) vigente que el usuario %(user)s "
+                "pueda usar en la compañía %(company)s. Cargue el certificado o pida autorización "
+                "en la ficha de la firma a un administrador."
+            ) % {"user": self.env.user.name, "company": self.company_id.name})
         if not self.env.ref("base.lang_es_CL").active:
             raise UserError(_("Lang es_CL must be enabled"))
         if not self.env.ref("base.CLP").active:
@@ -1163,6 +1163,11 @@ class DteMixin(models.AbstractModel):
         for doc in self:
             folio = doc.get_folio()
             caf = doc._get_caf(folio)
+            if not caf:
+                raise UserError(_(
+                    "No hay un CAF para el folio %(folio)s de %(doc)s: suba el CAF del SII que "
+                    "autoriza ese folio."
+                ) % {"folio": folio, "doc": doc.document_class_id.name})
             doc._validaciones_caf(caf)
             tipo = doc.document_class_id.sii_code
             bucket = grupos.setdefault(tipo, {'caf_files': [], 'documentos': [], 'records': []})

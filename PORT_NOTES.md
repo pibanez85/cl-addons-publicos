@@ -463,3 +463,13 @@ prueba (válido contra `EnvioDTE_v10.xsd`). `envio_malformado.xml`: el mismo arc
 - `docker/Dockerfile` borra `partner_autocomplete` y `pos_partner_autocomplete` de la imagen (en
   `odoo/addons` y en la copia parcial de `dist-packages/addons`): ver la Task 5. Un módulo con el
   mismo nombre en `/mnt/addons` no sirve para taparlo (`odoo/addons` va primero en la búsqueda).
+
+## Task 8: libro de compras y ventas
+
+- `account.move.book.set_resumen` era un compute almacenado sin `@api.depends` (solo `onchange`): los
+  totales (`total_afecto/exento/iva/otros_imps/total`) quedaban en 0 al crear el libro y, además,
+  las notas de crédito sumaban. Ahora tiene `depends` y las notas (60, 61, 112) restan.
+  `totales_por_movimiento` sigue sin signo (lo usan la revisión F29 y el xlsx).
+- Efecto: F29 (`sii_revision`) lee `total_iva` del libro; antes siempre 0 con movimientos reales.
+- Pruebas `tests/test_libro.py`: libro del mes (2x33, 61, compra 33) con cifras a mano y XML del libro
+  contra `LibroCV_v10.xsd`. Una compra recibida es `in_invoice` con `use_documents=False` (no se timbra).

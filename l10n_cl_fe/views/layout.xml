@@ -539,9 +539,8 @@
     </template>
 
     <template id="invoice_cedible">
-        <t t-call="account.report_invoice">
-            <t t-set="cedible" t-value="True" />
-        </t>
+        <!-- Odoo 20: los t-set del cuerpo de un t-call no llegan a la plantilla llamada. -->
+        <t t-call="account.report_invoice" cedible="True" />
     </template>
     <template id="report_invoice_and_cedible">
         <t t-call="account.report_invoice_with_payments" />

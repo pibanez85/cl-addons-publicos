@@ -375,7 +375,7 @@ class TestRevisionSii(RevisionBase):
         def movimiento(codigo, iva, neto):
             clase = type("Clase", (), {"sii_code": codigo})()
             return type("Mov", (), {"document_class_id": clase, "env": self.env, "_get_move_imps": lambda self: {},
-                                    "totales_por_movimiento": lambda self: {"iva": iva, "neto": neto, "exento": 0}})()
+                                    "totales_por_movimiento": lambda self: {"iva": iva, "neto": neto, "exento": 0, "otros_imps": 0}})()
 
         movimientos = [movimiento(33, 1900, 10000), movimiento(56, 190, 1000), movimiento(61, 380, 2000)]
         propuesta = self._propuesta([{"codigo": 502, "valor": 1900, "glosa": "", "signo": "+", "grupo": "debitos"}])

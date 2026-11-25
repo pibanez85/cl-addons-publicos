@@ -70,6 +70,9 @@ allowed_docs = [
     501,
 ]
 
+# Notas de crédito: restan en el resumen del libro (60 papel, 61 electrónica, 112 exportación).
+NOTAS_DE_CREDITO = (60, 61, 112)
+
 
 class Libro(models.Model):
     _name = "account.move.book"
@@ -338,16 +341,28 @@ class Libro(models.Model):
                     imp[key]["debit"] += i["debit"]
         return imp
 
-    @api.onchange("move_ids")
+    @api.depends(
+        "move_ids.amount_total", "move_ids.state", "move_ids.sii_document_number",
+        "move_ids.document_class_id", "move_ids.line_ids.credit",
+        "move_ids.line_ids.debit", "tipo_libro",
+    )
     def set_resumen(self):
+        """Totales del libro: las notas de crédito (60, 61 y 112) restan."""
         for book in self:
+            afecto = exento = iva = otros = total = 0
             for mov in book._get_moves():
+                signo = -1 if mov.document_class_id.sii_code in NOTAS_DE_CREDITO else 1
                 totales = mov.totales_por_movimiento()
-                book.total_afecto += totales["neto"]
-                book.total_exento += totales["exento"]
-                book.total_iva += totales["iva"]
-                book.total_otros_imps += totales["otros_imps"]
-                book.total += mov.amount_total
+                afecto += signo * totales["neto"]
+                exento += signo * totales["exento"]
+                iva += signo * totales["iva"]
+                otros += signo * totales["otros_imps"]
+                total += signo * (totales["neto"] + totales["exento"] + totales["iva"] + totales["otros_imps"])
+            book.total_afecto = afecto
+            book.total_exento = exento
+            book.total_iva = iva
+            book.total_otros_imps = otros
+            book.total = total
 
     @api.onchange("move_ids")
     def compute_taxes(self):

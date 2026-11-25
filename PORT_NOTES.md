@@ -177,7 +177,8 @@ pasan `setUpClass`; antes 75 pruebas con 1 falla y 16 errores).
   `tests/test_controladores.py`.
 - Pruebas upstream: solo se adaptó el *setup* (ver el commit `test(l10n_cl_fe): adaptar el setup…`):
   `company_id` → `company_ids` en cuentas, `xml_file` como base64 `str`, y `TestBoletaSoloIva`
-  pone la compañía en CLP (la base sin demo queda en USD con redondeo 0,0001).
+  pone la compañía en CLP (la base sin demo queda en USD con redondeo 0,0001; el redondeo de
+  monedas es global, ver "Redondeo global de monedas extranjeras" en la Task 11).
 
 ## Pendiente tras la Task 3
 
@@ -547,7 +548,25 @@ Pendiente / a revisar:
   - `l10n_cl_fe` deja el USD con redondeo 0.0001 (`data/res.currency.csv`, 4 decimales como
     admite el SII). La compañía de prueba de `account_asset_management` usa USD y el cuadro de
     depreciación salía con 4 decimales (`166.6663 != 166.63`). La prueba fija el redondeo de su
-    moneda en 0.01 en `setUpClass`; las aserciones de OCA no cambian. En producción la compañía
-    lleva CLP (redondeo 1).
+    moneda en 0.01 en `setUpClass`; las aserciones de OCA no cambian. Que la compañía lleve CLP
+    (redondeo 1) no evita el efecto: el cambio es global para las monedas extranjeras (ver
+    "Redondeo global de monedas extranjeras", Task 11).
 - Las suites deben correr juntas (`l10n_cl_fe,account_financial_report,account_asset_management`):
   por separado no aparecen estas interacciones.
+
+Pendiente / a revisar (Task 11):
+
+- **Redondeo global de monedas extranjeras.** `l10n_cl_fe/data/res.currency.csv` fija
+  `rounding = 0.0001` para USD, ARS, BOB, BRL, CAD y otras. El archivo está en `data` del
+  manifest (no en `demo`) y el CSV no es `noupdate`: se aplica al instalar y se vuelve a
+  aplicar en cada actualización del módulo, pisando el redondeo de monedas ya existentes.
+  - El módulo cambia el redondeo contable de las monedas extranjeras en toda la base, no solo
+    en los montos de los DTE.
+  - Efecto: cualquier compañía que use USD (compras, activos) obtiene importes contables con 4
+    decimales (visto como `166.6663` en las pruebas de activos) y posibles diferencias de
+    redondeo entre documento y libro mayor.
+  - El SII solo exige 4 decimales para montos en moneda extranjera de los documentos de
+    exportación.
+  - Opciones: (a) aplicar 0.0001 solo donde el SII lo exige (p. ej. al armar el DTE de
+    exportación, sin tocar `res.currency.rounding`); (b) dejar el CSV como `noupdate` o que no
+    sobrescriba monedas existentes.

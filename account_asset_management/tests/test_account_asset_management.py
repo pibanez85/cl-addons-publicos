@@ -20,6 +20,12 @@ class TestAssetManagement(AccountTestInvoicingCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # Port Odoo 20: las cifras esperadas suponen una moneda de 2 decimales.
+        # Si l10n_cl_fe está instalado en la misma base, deja el USD (moneda de
+        # la compañía de prueba) en 0.0001, como lo admite el SII para moneda
+        # extranjera, y el cuadro de depreciación se redondea a 4 decimales
+        # (p. ej. 166.6663 en vez de 166.63).
+        cls.company_data["currency"].rounding = 0.01
         # ENVIRONMENTS
         cls.asset_model = cls.env["account.asset"]
         cls.asset_profile_model = cls.env["account.asset.profile"]

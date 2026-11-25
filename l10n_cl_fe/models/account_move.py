@@ -1713,12 +1713,13 @@ class AccountMove(models.Model):
 
 
     def currency_format(self, val, application='Product Price'):
-        code = self.env.context.get('lang') or self.partner_id.lang
-        lang = self.env['res.lang'].search([('code', '=', code)])
+        Lang = self.env['res.lang']
+        # Odoo 20: res.lang.format() sin `monetary`; solo idiomas activos (_lang_get).
+        lang = (Lang._lang_get(self.env.context.get('lang') or self.partner_id.lang or '')
+                or Lang._lang_get(self.env.lang or '') or Lang._lang_get('en_US'))
         precision = self.env['decimal.precision'].precision_get(application)
         string_digits = '%.{}f'.format(precision)
-        res = lang.format(string_digits, val
-                          ,grouping=True, monetary=True)
+        res = lang.format(string_digits, val, grouping=True)
         if self.currency_id.symbol:
             if self.currency_id.position == 'after':
                 res = '%s %s' % (res, self.currency_id.symbol)

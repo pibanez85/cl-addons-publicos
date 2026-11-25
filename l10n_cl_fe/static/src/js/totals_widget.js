@@ -1,35 +1,25 @@
-/** @odoo-module */
 import { TaxTotalsComponent } from "@account/components/tax_totals/tax_totals";
-import { formatMonetary } from "@web/views/fields/formatters";
 import { patch } from "@web/core/utils/patch";
 
-function _retencion(totals) {
-    let r = 0;
-    for (const name of Object.keys(totals.groups_by_subtotal || {})) {
-        for (const g of totals.groups_by_subtotal[name]) {
-            r += g.tax_group_amount_retencion || 0;
-        }
-    }
-    return r;
-}
-
+/**
+ * Odoo 20: ``tax_totals`` es el estándar (subtotals[].tax_groups[]) y no trae la retención.
+ * ``account.move.amount_total`` sí la descuenta (impuestos ``sii_type`` R/A, ver
+ * ``_compute_amount``): si el documento tiene retención, se muestra la fila "Retención" con la
+ * diferencia y el total pasa a ser ``amount_total``, igual que en 17.0.
+ */
 patch(TaxTotalsComponent.prototype, {
     formatData(props) {
-        super.formatData(...arguments);
-        const totals = this.totals;
-        if (!totals || !totals.groups_by_subtotal) {
-            return;
+        const totals = super.formatData(...arguments);
+        const data = props.record.data;
+        if (!totals || !data.amount_tax_retencion || typeof data.amount_total !== "number") {
+            return totals;
         }
-        const ret = _retencion(totals);
-        if (!ret) {
-            return;
+        const ajuste = data.amount_total - totals.total_amount_currency;
+        if (Math.abs(ajuste) < 1e-9) {
+            return totals;
         }
-        const currencyFmtOpts = {
-            currencyId: props.record.data.currency_id && props.record.data.currency_id[0],
-        };
-        totals.amount_tax_retencion = ret;
-        totals.formatted_amount_retencion = formatMonetary(-ret, currencyFmtOpts);
-        totals.amount_total = totals.amount_total - ret;
-        totals.formatted_amount_total = formatMonetary(totals.amount_total, currencyFmtOpts);
+        totals.l10n_cl_retencion_amount_currency = ajuste;
+        totals.total_amount_currency = data.amount_total;
+        return totals;
     },
 });

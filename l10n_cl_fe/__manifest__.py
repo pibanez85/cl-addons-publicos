@@ -135,10 +135,10 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
     ],
     'assets': {
         'web.assets_backend': [
-            "l10n_cl_fe/static/src/js/upgrade_fields.js",
-            #"l10n_cl_fe/static/src/js/notify_manager.js",
+            "l10n_cl_fe/static/src/js/notify_manager.js",
             "l10n_cl_fe/static/src/js/report/action_manager_report.js",
             "l10n_cl_fe/static/src/js/totals_widget.js",
+            "l10n_cl_fe/static/src/components/tax_totals.xml",
             "l10n_cl_fe/static/src/js/account_file_uploader_dte.js",
             "l10n_cl_fe/static/src/components/account_file_uploader_dte.xml",
             "l10n_cl_fe/static/src/css/**/*",

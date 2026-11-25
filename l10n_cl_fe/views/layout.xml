@@ -35,7 +35,7 @@
                       <div class="col-7 center-text">
                           <img t-if="logo" t-att-src="image_data_uri(logo)" class="logo-img"/>
                           <h4 class="company-name">
-                              <t t-esc="company.name"/>
+                              <t t-out="company.name"/>
                           </h4>
                           <p class="company-details">
                               <span t-field="company.activity_description.name"/><br/>
@@ -67,7 +67,7 @@
                                   <span t-field="o.document_class_id.name"/>
                               </h6>
                               <h6 t-if="o.sii_document_number" class="sii-doc-number">
-                                  N° <span t-esc="o.sii_document_number"/>
+                                  N° <span t-out="o.sii_document_number"/>
                               </h6>
                               <br />
                           </div>
@@ -79,7 +79,7 @@
                           <t t-set="documento_origen" t-value="('invoice_origin' in o and o.invoice_origin) or ('origin' in o and o.origin)"/>
                           <div t-if="documento_origen" class="row center-text" style="text-align: center !important;">
                               <div class="col-12" style="text-align: center; color: black; font-size: 12px; margin-top: 5px;">
-                                  Documento de Origen: <t t-esc="documento_origen"/>
+                                  Documento de Origen: <t t-out="documento_origen"/>
                               </div>
                           </div>
                       </div>
@@ -208,7 +208,7 @@
                                                 </td>
                                                 <td name="reference" class="table-cell-ref">
                                                     <t t-if="l.cod_ref">
-                                                      <span t-esc="l.cod_ref[0]"/>
+                                                      <span t-out="l.cod_ref[0]"/>
                                                       <span t-field="l.cod_ref"/>:
                                                     </t>
                                                     <span t-if="l.motivo" t-field="l.motivo"/>
@@ -242,9 +242,9 @@
                                             <td class="table-cell-ref"><span t-field="o.transport_type"/></td>
                                             <td class="table-cell-ref"><span t-field="o.patente"/></td>
                                             <td class="table-cell-ref"><span t-field="o.patente_carro"/></td>
-                                            <td class="table-cell-ref"><t t-esc="'DIFERIDO' if o.transportista_por_confirmar else (o.transportista_id.document_number or (o.transport_type in ('2', '3') and o.company_id.partner_id.document_number) or '')"/></td>
+                                            <td class="table-cell-ref"><t t-out="'DIFERIDO' if o.transportista_por_confirmar else (o.transportista_id.document_number or (o.transport_type in ('2', '3') and o.company_id.partner_id.document_number) or '')"/></td>
                                             <td class="table-cell-ref"><t t-if="o.chofer"><span t-field="o.chofer.name"/> <span t-field="o.chofer.document_number"/></t></td>
-                                            <td class="table-cell-ref"><t t-esc="' '.join([x for x in [dest.street, dest.street2, dest.city_id.name, dest.city] if x])"/></td>
+                                            <td class="table-cell-ref"><t t-out="' '.join([x for x in [dest.street, dest.street2, dest.city_id.name, dest.city] if x])"/></td>
                                             <td class="table-cell-ref"><span t-field="o.fecha_salida"/></td>
                                             <td class="table-cell-ref"><span t-field="o.fecha_llegada"/></td>
                                         </tr>
@@ -340,7 +340,7 @@
                                         <span t-field="l.name"/>
                                     </td>
                                     <td class="text-left invoice-line-cell">
-                                        <span t-esc="o.currency_format(l.price_unit, 'Product Price')"/>
+                                        <span t-out="o.currency_format(l.price_unit, 'Product Price')"/>
                                     </td>
                                     <td name="td_discount" t-if="display_discount" t-attf-class="text-end {{ 'd-none d-md-table-cell' if report_type == 'html' else '' }}">
                                         <span t-field="l.discount"/>
@@ -364,9 +364,9 @@
                                         <p class="center-text" style="font-size:8px; color:red; text-align:center;">
                                           Timbre Electrónico SII
                                           <br />
-                                          Resolución <t t-esc="o.company_id.dte_resolution_number"/> de <t t-esc="o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl
+                                          Resolución <t t-out="o.company_id.dte_resolution_number"/> de <t t-out="o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl
                                           <t t-if="o.es_boleta()">
-                                            o en <t t-esc="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/>
+                                            o en <t t-out="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/>
                                           </t>
                                         </p>
                                     </div>
@@ -388,7 +388,7 @@
                                                 <strong>Descuento o Recargo Global</strong>
                                             </td>
                                             <td class="text-end">
-                                                <span t-esc="gdr.valor if gdr.gdr_type=='amount' else gdr.amount_untaxed"
+                                                <span t-out="gdr.valor if gdr.gdr_type=='amount' else gdr.amount_untaxed"
                                                       t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                             </td>
                                         </tr>
@@ -404,7 +404,7 @@
                                     <tr t-if="display_liquidacion" class="border-black">
                                         <td>Comisiones y Otros Cargos</td>
                                         <td class="text-end">
-                                            <span t-esc="o.comisiones()"/>
+                                            <span t-out="o.comisiones()"/>
                                         </td>
                                     </tr>
                                     <tr name="discount" t-if="display_discount" class="border-black">
@@ -412,34 +412,39 @@
                                             <strong>Descuento</strong>
                                         </td>
                                         <td class="text-end">
-                                            <span t-esc="o.getTotalDiscount()"
+                                            <span t-out="o.getTotalDiscount()"
                                                   t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                         </td>
                                     </tr>
                                     <t t-set="tax_totals" t-value="o.tax_totals"/>
+                                    <!-- Odoo 18+: tax_totals trae subtotals[].tax_groups[] con montos sin formato -->
                                     <t t-foreach="tax_totals['subtotals']" t-as="subtotal">
-                                      <t t-set="subtotal_to_show" t-value="subtotal['name']"/>
-                                      <t t-foreach="tax_totals['groups_by_subtotal'][subtotal_to_show]" t-as="amount_by_group">
-                                          <tr>
-                                              <td><span class="text-nowrap" t-esc="amount_by_group['tax_group_name']"/></td>
-                                              <td class="text-end o_price_total">
-                                                  <span class="text-nowrap" t-esc="amount_by_group['formatted_tax_group_amount']"/>
-                                              </td>
-                                          </tr>
-                                      </t>
+                                        <tr t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                            <td><span class="text-nowrap" t-out="tax_group['group_name']"/></td>
+                                            <td class="text-end o_price_total">
+                                                <span class="text-nowrap" t-out="tax_group['tax_amount_currency']"
+                                                      t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                            </td>
+                                        </tr>
                                     </t>
-                                    <t t-set="has_rounding" t-value="'formatted_amount_total_rounded' in tax_totals"/>
-                                    <tr class="border-black">
-                                        <t t-if="has_rounding"><td>Total</td></t>
-                                        <t t-else=""><td><strong>Total</strong></td></t>
+                                    <tr t-if="o.amount_tax_retencion">
+                                        <td>Retención</td>
                                         <td class="text-end">
-                                            <span t-esc="tax_totals['formatted_amount_total']"/>
+                                            <span class="text-nowrap" t-out="o.amount_tax_retencion"
+                                                  t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                         </td>
                                     </tr>
-                                    <tr t-if="has_rounding">
-                                        <td><strong>Total Redondeado</strong></td>
+                                    <tr t-if="'cash_rounding_base_amount_currency' in tax_totals">
+                                        <td>Redondeo</td>
                                         <td class="text-end">
-                                            <span t-esc="tax_totals['formatted_amount_total_rounded']"/>
+                                            <span t-out="tax_totals['cash_rounding_base_amount_currency']"
+                                                  t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                        </td>
+                                    </tr>
+                                    <tr class="border-black">
+                                        <td><strong>Total</strong></td>
+                                        <td class="text-end">
+                                            <span t-field="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                         </td>
                                     </tr>
                                     <t t-if="print_with_payments">
@@ -448,10 +453,10 @@
                                             <t t-foreach="payments_vals" t-as="payment_vals">
                                                 <tr t-if="payment_vals['is_exchange'] == 0">
                                                     <td>
-                                                        <i class="oe_form_field text-end oe_payment_label">Paid on <t t-esc="payment_vals['date']" t-options='{"widget": "date"}'/></i>
+                                                        <i class="oe_form_field text-end oe_payment_label">Paid on <t t-out="payment_vals['date']" t-options='{"widget": "date"}'/></i>
                                                     </td>
                                                     <td class="text-end">
-                                                        <span t-esc="payment_vals['amount']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                                        <span t-out="payment_vals['amount']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
                                                     </td>
                                                 </tr>
                                             </t>
@@ -575,7 +580,7 @@
                 </div>
                 <div class="row">
                     <div class="col-12">
-                      <strong><span t-esc="o.company_id.partner_id.name"/></strong>
+                      <strong><span t-out="o.company_id.partner_id.name"/></strong>
                     </div>
                 </div>
                 <div class="row">
@@ -593,7 +598,7 @@
                               </t>
                           </t>
                         </t>
-                        <span>Cajero: <t t-esc="o.user_id.name"/><br/></span>
+                        <span>Cajero: <t t-out="o.user_id.name"/><br/></span>
                     </div>
                 </div>
 
@@ -645,7 +650,7 @@
                                           <span t-if="l.ref_id" t-field="l.ref_id.name"/>
                                       </td>
                                       <td style="border-top:0px !important;padding:0px !important;">
-                                          <t t-if="l.cod_ref"><span t-esc="l.cod_ref[0]"/> <span t-field="l.cod_ref"/>: </t>
+                                          <t t-if="l.cod_ref"><span t-out="l.cod_ref[0]"/> <span t-field="l.cod_ref"/>: </t>
                                           <span t-if="l.motivo" t-field="l.motivo"/>
                                       </td>
                                       <td style="border-top: 0px !important; padding:0px 5px !important;">
@@ -661,9 +666,9 @@
                           <t t-set="dest" t-value="o.partner_shipping_id or o.partner_id"/>
                           Tipo de Despacho: <strong><span t-field="o.transport_type"/></strong><br/>
                           Patente: <strong><span t-field="o.patente"/></strong><t t-if="o.patente_carro"> Carro: <strong><span t-field="o.patente_carro"/></strong></t><br/>
-                          RUT Transportista: <strong><t t-esc="'DIFERIDO' if o.transportista_por_confirmar else (o.transportista_id.document_number or (o.transport_type in ('2', '3') and o.company_id.partner_id.document_number) or '')"/></strong><br/>
+                          RUT Transportista: <strong><t t-out="'DIFERIDO' if o.transportista_por_confirmar else (o.transportista_id.document_number or (o.transport_type in ('2', '3') and o.company_id.partner_id.document_number) or '')"/></strong><br/>
                           <t t-if="o.chofer">Chofer: <strong><span t-field="o.chofer.name"/> <span t-field="o.chofer.document_number"/></strong><br/></t>
-                          Destino: <strong><t t-esc="' '.join([x for x in [dest.street, dest.street2, dest.city_id.name, dest.city] if x])"/></strong><br/>
+                          Destino: <strong><t t-out="' '.join([x for x in [dest.street, dest.street2, dest.city_id.name, dest.city] if x])"/></strong><br/>
                           <t t-if="o.fecha_salida">Salida: <strong><span t-field="o.fecha_salida"/></strong><br/></t>
                           <t t-if="o.fecha_llegada">Llegada: <strong><span t-field="o.fecha_llegada"/></strong><br/></t>
                       </div>
@@ -710,7 +715,7 @@
                                     </td>
                                     <td class="text-end">
                                         <span
-                                            t-esc="gdr.valor if gdr.gdr_type=='amount' else gdr.amount_untaxed"
+                                            t-out="gdr.valor if gdr.gdr_type=='amount' else gdr.amount_untaxed"
                                             t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
                                         />
                                     </td>
@@ -734,7 +739,7 @@
                             <tr t-if="display_liquidacion" class="border-black" style="max-height:12px; font-size:12px !important;">
                                 <td>Comisiones y Otros Cargos</td>
                                 <td class="text-right">
-                                    <span t-esc="o.comisiones()"/>
+                                    <span t-out="o.comisiones()"/>
                                 </td>
                             </tr>
                             <tr
@@ -748,35 +753,40 @@
                                 </td>
                                 <td class="text-end">
                                     <span
-                                        t-esc="o.getTotalDiscount()"
+                                        t-out="o.getTotalDiscount()"
                                         t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"
                                     />
                                 </td>
                             </tr>
                             <t t-set="tax_totals" t-value="o.tax_totals"/>
+                            <!-- Odoo 18+: tax_totals trae subtotals[].tax_groups[] con montos sin formato -->
                             <t t-foreach="tax_totals['subtotals']" t-as="subtotal">
-                              <t t-set="subtotal_to_show" t-value="subtotal['name']"/>
-                              <t t-foreach="tax_totals['groups_by_subtotal'][subtotal_to_show]" t-as="amount_by_group">
-                                  <tr>
-                                      <td><span class="text-nowrap" t-esc="amount_by_group['tax_group_name']"/></td>
-                                      <td class="text-end o_price_total">
-                                          <span class="text-nowrap" t-esc="amount_by_group['formatted_tax_group_amount']" />
-                                      </td>
-                                  </tr>
-                              </t>
+                                <tr t-foreach="subtotal['tax_groups']" t-as="tax_group">
+                                    <td><span class="text-nowrap" t-out="tax_group['group_name']"/></td>
+                                    <td class="text-end o_price_total">
+                                        <span class="text-nowrap" t-out="tax_group['tax_amount_currency']"
+                                              t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                    </td>
+                                </tr>
                             </t>
-                            <t t-set="has_rounding" t-value="'formatted_amount_total_rounded' in tax_totals"/>
-                            <tr class="border-black" style="max-height:12px; font-size:12px !important;">
-                                <t t-if="has_rounding"><td>Total</td></t>
-                                <t t-else=""><td><strong>Total</strong></td></t>
+                            <tr t-if="o.amount_tax_retencion">
+                                <td>Retención</td>
                                 <td class="text-end">
-                                    <span t-esc="tax_totals['formatted_amount_total']"/>
+                                    <span class="text-nowrap" t-out="o.amount_tax_retencion"
+                                          t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
-                            <tr t-if="has_rounding">
-                                <td><strong>Total Redondeado</strong></td>
+                            <tr t-if="'cash_rounding_base_amount_currency' in tax_totals">
+                                <td>Redondeo</td>
                                 <td class="text-end">
-                                    <span t-esc="tax_totals['formatted_amount_total_rounded']"/>
+                                    <span t-out="tax_totals['cash_rounding_base_amount_currency']"
+                                          t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                </td>
+                            </tr>
+                            <tr class="border-black" style="max-height:12px; font-size:12px !important;">
+                                <td><strong>Total</strong></td>
+                                <td class="text-end">
+                                    <span t-field="o.amount_total" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                 </td>
                             </tr>
                         </table>
@@ -794,26 +804,26 @@
                           <t t-set="pedidos_pdv" t-value="'pos_order_ids' in o._fields and o.sudo().pos_order_ids"/>
                           <t t-if="pedidos_pdv">
                               <tr t-foreach="pedidos_pdv.payment_ids.filtered(lambda p: not p.is_change)" t-as="pago_pdv">
-                                  <td class="text-right"><t t-esc="pago_pdv.payment_method_id.name"/></td>
+                                  <td class="text-right"><t t-out="pago_pdv.payment_method_id.name"/></td>
                                   <td class="text-right">
-                                      <span t-esc="pago_pdv.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                      <span t-out="pago_pdv.amount" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                   </td>
                               </tr>
                               <tr t-if="sum(pedidos_pdv.mapped('amount_return'))">
                                   <td class="text-right">Vuelto</td>
                                   <td class="text-right">
-                                      <span t-esc="sum(pedidos_pdv.mapped('amount_return'))" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                      <span t-out="sum(pedidos_pdv.mapped('amount_return'))" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                                   </td>
                               </tr>
                           </t>
                           <t t-foreach="[] if pedidos_pdv else pagos" t-as="pago">
                           <tr t-if="not pago.get('is_exchange')">
                               <td class="text-right">
-                                  <t t-esc="pago.get('pos_payment_name') or pago.get('payment_method_name') or pago.get('journal_name')"/>
-                                  <small t-if="pago.get('date')"> (<t t-esc="pago['date']" t-options="{'widget': 'date'}"/>)</small>
+                                  <t t-out="pago.get('pos_payment_name') or pago.get('payment_method_name') or pago.get('journal_name')"/>
+                                  <small t-if="pago.get('date')"> (<t t-out="pago['date']" t-options="{'widget': 'date'}"/>)</small>
                               </td>
                               <td class="text-right">
-                                  <span t-esc="pago['amount']" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
+                                  <span t-out="pago['amount']" t-options="{'widget': 'monetary', 'display_currency': o.currency_id}"/>
                               </td>
                           </tr>
                           </t>
@@ -835,7 +845,7 @@
                         <p style="text-align:center;color:red; font-size:9px;!important">
                         Timbre Electrónico SII
                         <br/>
-                        Resolución <t t-esc="o.company_id.dte_resolution_number"/> de <t t-esc="o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl <t t-if="not o.es_boleta()">o en <t t-esc="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/></t>
+                        Resolución <t t-out="o.company_id.dte_resolution_number"/> de <t t-out="o.company_id.dte_resolution_date.year"/> Verifique documento en: www.sii.cl <t t-if="not o.es_boleta()">o en <t t-out="'%s/boleta/%s' % (o.company_id.website, o.sii_document_number)"/></t>
                          </p>
                     </div>
                 </div>

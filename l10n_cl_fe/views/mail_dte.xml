@@ -193,7 +193,6 @@
                             </field>
                             <field
                                 name="global_descuentos_recargos"
-                                widget="one2many_list"
                                 mode="list"
                                 context="{'default_move_id': id}"
                             >

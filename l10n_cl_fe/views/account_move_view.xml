@@ -72,6 +72,9 @@
                 <form>
                     <field name="document_class_ids" invisible="True" />
                     <field name="sii_code" invisible="True" />
+                    <!-- totals_widget.js: total del documento con la retención descontada -->
+                    <field name="amount_total" invisible="True" />
+                    <field name="amount_tax_retencion" invisible="True" />
                 </form>
                 <button name="preview_invoice" position="after">
                     <button string="Imprimir Copia y Cedible" type="object" name="print_copy_cedible" />
@@ -179,7 +182,6 @@
                 <xpath expr="//group[hasclass('oe_invoice_lines_tab')]" position="after">
                     <field
                         name="global_descuentos_recargos"
-                        widget="one2many_list"
                         mode="list"
                         context="{'default_move_id': id}"
                         nolabel="1"

@@ -1,7 +1,6 @@
-/** @odoo-module **/
 
 import { patch } from "@web/core/utils/patch";
-import { AccountFileUploader } from "@account/components/bills_upload/bills_upload";
+import { AccountFileUploader } from "@account/components/account_file_uploader/account_file_uploader";
 
 const SII_DTE_RE = /<\s*(?:EnvioDTE|SetDTE|DTE)\b/;
 

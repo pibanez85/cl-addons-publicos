@@ -100,7 +100,6 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         "views/res_config_settings.xml",
         "views/portal_boleta_layout.xml",
         "views/portal_invoice.xml",
-        # "views/portal_my_details.xml",  # TODO(Task 4): portal.portal_my_details_fields no existe en Odoo 20 (formulario de dirección reescrito)
         "views/sale_order.xml",
         "views/uom_uom.xml",
         "views/account_tax_repartition_line.xml",
@@ -146,9 +145,6 @@ Facturación Electrónica para Chile. Mayor información en https://globalrespon
         ],
         'web.report_assets_pdf': [
             "l10n_cl_fe/static/src/css/styles_pdf_layout.css",
-        ],
-        'web.assets_frontend': [
-            "l10n_cl_fe/static/src/js/portal_dte.js",
         ],
     },
     "post_init_hook": "_set_default_configs",

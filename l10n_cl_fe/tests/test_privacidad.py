@@ -99,8 +99,10 @@ class TestPrivacidad(TransactionCase):
                 Form(Wizard, view="l10n_cl_fe.view_dte_caf_apicaf")
             with self.assertRaises(UserError):
                 Wizard.create({"company_id": company.id})
-            asistente = Wizard.new({"company_id": company.id, "operacion": "obtener", "id_peticion": 1})
             for metodo in ("conectar_api", "listar", "get_disp", "confirmar", "delist"):
+                # Un registro nuevo por método: assertRaises invalida la caché, que es donde vive
+                # un registro new() (sin ella, id_peticion vuelve a 0 y el método sale antes).
+                asistente = Wizard.new({"company_id": company.id, "operacion": "obtener", "id_peticion": 1})
                 with self.subTest(metodo=metodo), self.assertRaises(UserError):
                     getattr(asistente, metodo)()
             secuencia = self.env["ir.sequence"].create({
@@ -118,6 +120,39 @@ class TestPrivacidad(TransactionCase):
                     patch.object(Secuencia, "solicitar_caf", autospec=True) as solicitar:
                 self.env["ir.sequence"].check_cafs()
             self.assertFalse(solicitar.called)
+        self.assertEqual(intentos, [])
+
+    def test_apicaf_revisa_la_compania_del_asistente(self):
+        # Multi-compañía: solo B habilitó apicaf y la compañía actual es A. Se revisa la compañía
+        # del asistente (la que viene en create), no la del usuario.
+        compania_a = self.env.company
+        compania_b = self.env["res.company"].create({
+            "name": "Compañía B apicaf", "use_apicaf": True, "url_apicaf": False})
+        self.env.user.company_ids |= compania_b
+        self.assertEqual(self.env.company, compania_a)
+        self.assertFalse(compania_a.use_apicaf)
+        Wizard = self.env["dte.caf.apicaf"]
+        clase_33 = self.env["sii.document_class"].search([("sii_code", "=", 33)], limit=1)
+        secuencias = {
+            compania: self.env["ir.sequence"].create({
+                "name": "Secuencia %s" % compania.name, "company_id": compania.id, "is_dte": True,
+                "sii_document_class_id": clase_33.id,
+            })
+            for compania in (compania_a, compania_b)
+        }
+        with sin_red() as intentos:
+            asistente = Wizard.create({"company_id": compania_b.id})
+            self.assertEqual(asistente.company_id, compania_b)
+            # B: no se rechaza (se detiene sin URL ni firma, antes de la red).
+            secuencias[compania_b].solicitar_caf()
+            with self.assertRaises(UserError):
+                Wizard.create({"company_id": compania_a.id})
+            with self.assertRaises(UserError):
+                secuencias[compania_a].solicitar_caf()
+            # La compañía por defecto del asistente (la actual, A) también se revisa.
+            with self.assertRaises(UserError):
+                Wizard.create({})
+            self.assertEqual(Wizard.with_company(compania_b).create({}).company_id, compania_b)
         self.assertEqual(intentos, [])
 
     def test_apicaf_habilitado_abre_el_asistente(self):

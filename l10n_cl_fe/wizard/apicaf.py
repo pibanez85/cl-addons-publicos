@@ -96,10 +96,20 @@ class APICAF(models.TransientModel):
 
     @api.model
     def default_get(self, fields):
+        # Abrir el asistente (onchange de un registro nuevo) o crearlo sin compañía: se revisa la
+        # compañía por defecto. Si create recibe company_id, Odoo no la pide aquí: ver create.
         res = super().default_get(fields)
-        company = self.env["res.company"].browse(res.get("company_id")) if res.get("company_id") else self.env.company
-        self._check_apicaf_habilitado(company)
+        if "company_id" in fields:
+            self._check_apicaf_habilitado(self.env["res.company"].browse(res.get("company_id")))
         return res
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        Company = self.env["res.company"]
+        for vals in vals_list:
+            if "company_id" in vals:
+                self._check_apicaf_habilitado(Company.browse(vals["company_id"]))
+        return super().create(vals_list)
 
     def _apicaf_post(self, url, datos):
         self._check_apicaf_habilitado(self.company_id)

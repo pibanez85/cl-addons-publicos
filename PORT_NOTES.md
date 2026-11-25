@@ -476,3 +476,54 @@ prueba (válido contra `EnvioDTE_v10.xsd`). `envio_malformado.xml`: el mismo arc
   `libro.create` (por eso el `Mov` falso de test_trafquin necesita `otros_imps`).
 - Pruebas `tests/test_libro.py`: libro del mes (2x33, 61, compra 33) con cifras a mano y XML del libro
   contra `LibroCV_v10.xsd`. Una compra recibida es `in_invoice` con `use_documents=False` (no se timbra).
+
+## Task 9: `account_financial_report` y `account_asset_management` (OCA 19.0 → 20)
+
+Origen y forma de importar: `UPSTREAM.md`. Las pruebas propias de OCA pasan sin cambiar sus
+aserciones (único cambio: el import de `test_reports`).
+
+Hecho en los dos módulos:
+
+- `security/ir.model.access.csv` → `security/ir.access.csv` (`operation` en `crud`); los
+  `ir.rule` globales de compañía → `ir.access` sin grupo (restricción).
+
+`account_financial_report`:
+
+- **Odoo 20 eliminó `account.group` y `account.account.group_id`** (la jerarquía nativa pasa a
+  ser cuentas padre, `account.account.parent_id`). El balance de comprobación agrupa por
+  prefijo de código, así que el modelo se mantiene en el módulo
+  (`models/account_group_base.py`, copia del de Odoo 19, LGPL-3) con `group_id` calculado por
+  prefijo, vistas, acción y menú (Contabilidad > Configuración > Account Groups), accesos y la
+  regla multi-compañía. No usa la jerarquía de cuentas padre de Odoo 20: los grupos se crean a
+  mano (el plan `cl` de `l10n_cl_fe` no trae grupos).
+- `ir.actions.report.report_file` eliminado: quitado de `reports.xml` (el nombre del XLSX sale
+  de `report.name`, como hace `report_xlsx` 20.0).
+- QWeb: Odoo 20 no pasa los `t-set` del cuerpo de un `t-call` a la plantilla llamada (el cuerpo
+  solo es el `0`); pasan a atributos del `t-call` (libro mayor, partidas abiertas, antigüedad).
+  Sin esto el libro mayor fallaba con `KeyError: 'account_or_group_item_object'`.
+- Informe de IVA: la plantilla usaba `request.env[...]._get_tax_exigible_domain()`; el dominio se
+  calcula en `_get_report_values` (`tax_exigible_domain`) para renderizar sin petición HTTP.
+- JS (Owl 3): `ReportAction` ya no tiene `this.iframe`; los enlaces `[res-model][domain]` se
+  agregan en `onIframeLoaded`. La plantilla usa `this.isAccountFinancialReport` y `this.export`.
+  Se quitó `useEnrichWithActionLinks` (sin uso, dependía de la API de Owl 2) y `report_file`
+  de la acción XLSX.
+- Pruebas nuevas: `tests/test_render_odoo20.py` (HTML, PDF y XLSX de los 6 informes, jerarquía
+  de `account.group`) y `tests/test_web_odoo20.py` (balance en el navegador: botón Exportar,
+  enlaces, descarga XLSX; asistentes y configuración abren sin errores de JS).
+- `test_aged_partner_balance.py`: `odoo.tools.test_reports` → `odoo.tests.reports`.
+
+`account_asset_management`: solo los accesos; el resto del código de 19.0 funciona en 20.
+`wiz_account_asset_report.xls_export` deja `report_file` en el contexto (sin efecto en 20.0,
+`report_xlsx` nombra el archivo con `report.name`). Prueba nueva `tests/test_web_odoo20.py`
+(vistas de activos, tabla de depreciación, perfiles, grupos, asistentes y análisis).
+
+`l10n_cl_fe_informes_test` (módulo de pruebas, sin datos): balance de comprobación del mes con
+el plan `cl` y las facturas del libro (Task 8): debe = haber = 32.927, IVA débito fiscal 210701
+haber 3.038, IVA crédito fiscal 110701 debe 1.900.
+
+Pendiente / a revisar:
+
+- Usuarios: el ACL de los activos es para `account.group_account_user` ("Show Full Accounting
+  Features"); el grupo Administrador de contabilidad no lo implica (igual que en Odoo 17-19).
+- Grupos de cuentas vs. cuentas padre de Odoo 20: decidir si el balance debe usar la jerarquía
+  nativa cuando OCA publique su port 20.0.

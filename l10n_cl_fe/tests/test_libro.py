@@ -53,21 +53,22 @@ class TestLibro(DteCase):
     def _nota_61(self, factura):
         return TestEmision._nota(self, factura, 61, "1")
 
-    def _compra(self, folio):
+    def _compra(self, folio, codigo=33, tipo="in_invoice", lineas=None):
         producto = self.producto
+        lineas = lineas or [(4, 2500, self.iva_compra)]
         compra = self.env["account.move"].create({
-            "move_type": "in_invoice",
+            "move_type": tipo,
             "partner_id": self.proveedor.id,
             "company_id": self.company.id,
             "journal_id": self.diario_compras.id,
             "invoice_date": fields.Date.context_today(self.env["res.company"]),
             "use_documents": False,  # como una factura recibida: el DTE es del proveedor, no se timbra
-            "document_class_id": self.clases[33].id,
+            "document_class_id": self.clases[codigo].id,
             "sii_document_number": folio,
             "invoice_line_ids": [(0, 0, {
-                "product_id": producto.id, "name": producto.name, "quantity": 4, "price_unit": 2500,
-                "tax_ids": [(6, 0, self.iva_compra.ids)],
-            })],
+                "product_id": producto.id, "name": producto.name, "quantity": cantidad,
+                "price_unit": precio, "tax_ids": [(6, 0, impuesto.ids)],
+            }) for cantidad, precio, impuesto in lineas],
         })
         compra.action_post()
         return compra
@@ -101,6 +102,25 @@ class TestLibro(DteCase):
         self.assertEqual(
             (compras.total_afecto, compras.total_iva, compras.total_exento, compras.total),
             (10000, 1900, 0, 11900),
+        )
+
+    def test_libro_compras_nota_de_credito_resta(self):
+        """En compras la nota 61 también resta (por clase de documento), con su exento.
+
+        33 de proveedor: 4 x 2.500 afecto (neto 10.000, IVA 1.900) + 3.000 exento = total 14.900.
+        61 de proveedor: 1 x 2.000 afecto (neto 2.000, IVA 380) + 500 exento = total 2.880.
+        Libro = neto 8.000, IVA 1.520, exento 2.500, total 12.020 (sumando la nota: 12.000 / 2.280 /
+        3.500 / 17.780)."""
+        exento = self.env["account.chart.template"].with_company(self.company).ref("exento_compra")
+        compra = self._compra(801, lineas=[(4, 2500, self.iva_compra), (1, 3000, exento)])
+        nota = self._compra(802, codigo=61, tipo="in_refund",
+                            lineas=[(1, 2000, self.iva_compra), (1, 500, exento)])
+        self.assertEqual((compra.amount_total, nota.amount_total), (14900, 2880))
+        libro = self._libro("COMPRA")
+        self.assertEqual(libro.move_ids, compra | nota)
+        self.assertEqual(
+            (libro.total_afecto, libro.total_iva, libro.total_exento, libro.total),
+            (8000, 1520, 2500, 12020),
         )
 
     def test_libro_xml_valido(self):

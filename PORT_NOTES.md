@@ -470,6 +470,9 @@ prueba (válido contra `EnvioDTE_v10.xsd`). `envio_malformado.xml`: el mismo arc
   totales (`total_afecto/exento/iva/otros_imps/total`) quedaban en 0 al crear el libro y, además,
   las notas de crédito sumaban. Ahora tiene `depends` y las notas (60, 61, 112) restan.
   `totales_por_movimiento` sigue sin signo (lo usan la revisión F29 y el xlsx).
-- Efecto: F29 (`sii_revision`) lee `total_iva` del libro; antes siempre 0 con movimientos reales.
+- F29 no depende de este cambio: `sii_revision` arma 509/510/563 y 511/514 por movimiento con
+  `totales_por_movimiento()` y `_get_moves()` (con su propio signo); la única lectura de `total_iva`
+  (líneas 757-760) es de vouchers de boletas. Único efecto: el compute almacenado ahora corre en
+  `libro.create` (por eso el `Mov` falso de test_trafquin necesita `otros_imps`).
 - Pruebas `tests/test_libro.py`: libro del mes (2x33, 61, compra 33) con cifras a mano y XML del libro
   contra `LibroCV_v10.xsd`. Una compra recibida es `in_invoice` con `use_documents=False` (no se timbra).

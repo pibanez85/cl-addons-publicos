@@ -144,6 +144,43 @@ class TestWeb(HttpCase):
         self.assertIn("4242", texto)
         self.assertIn("1.190", texto)  # total con IVA
 
+    # Texto del acuse de recibo (Ley 19.983) que solo trae el bloque cedible, en la factura y en el ticket.
+    ACUSE = "acuse de recibo que se declara en este acto"
+
+    def _html(self, report_ref, move):
+        contenido, _tipo = self.env["ir.actions.report"]._render_qweb_html(report_ref, move.ids)
+        return contenido.decode()
+
+    def test_informe_cedible(self):
+        """El informe cedible imprime el bloque de acuse de recibo y la leyenda CEDIBLE.
+        En Odoo 20 un ``t-set`` dentro del cuerpo de un ``t-call`` no llega a la plantilla
+        llamada: ``cedible`` tiene que ir como atributo del ``t-call``."""
+        html = self._html("l10n_cl_fe.action_print_cedible", self.factura)
+        self.assertIn("4242", html)
+        self.assertEqual(html.count(self.ACUSE), 1, html)
+        self.assertIn("cedible-row", html)
+        self.assertRegex(html, r">\s*CEDIBLE\s*<")
+
+    def test_factura_normal_sin_bloque_cedible(self):
+        html = self._html("account.account_invoices", self.factura)
+        self.assertIn("4242", html)
+        self.assertNotIn(self.ACUSE, html)
+        self.assertNotIn("cedible-row", html)
+
+    def test_informe_copia_y_cedible(self):
+        """Copia y cedible: dos ejemplares del documento, solo el segundo con el bloque cedible."""
+        html = self._html("l10n_cl_fe.action_print_copy_cedible", self.factura)
+        self.assertEqual(html.count('class="cl_invoice"'), 2, html)
+        self.assertEqual(html.count(self.ACUSE), 1, html)
+        self.assertLess(html.rindex('class="cl_invoice"'), html.index(self.ACUSE))
+
+    def test_ticket_cedible(self):
+        ticket = self._factura_con(5101, "IVAV_19", ticket=True)
+        self.assertNotIn(self.ACUSE, self._html("account.account_invoices", ticket))
+        html = self._html("l10n_cl_fe.action_print_cedible", ticket)
+        self.assertIn("5101", html)
+        self.assertEqual(html.count(self.ACUSE), 1, html)
+
     @staticmethod
     def _monto(texto):
         texto = texto.replace("\xa0", " ")

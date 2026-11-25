@@ -631,3 +631,30 @@ Pendiente / a revisar (Task 11):
   dependencias, con las versiones de la imagen del 2026-11-25. Antes solo la imagen base estaba
   fijada por digest y `facturacion_electronica>=0.25.0` flotaba. Los Dockerfiles instalan con
   `pip install -c constraints.txt`.
+
+## Informe cedible: `t-set` dentro del cuerpo de un `t-call` (QWeb Odoo 20)
+
+Mismo problema que en la Task 9: en Odoo 20 el cuerpo de un `t-call` se compila aparte y se
+renderiza con su propia copia de los valores (`_compile_directive_call`,
+`t_call_content_values = values.copy()`), solo como el contenido `0`. Sus `t-set` no llegan a la
+plantilla llamada; los parámetros van como atributos del `t-call`. Lo que sí recibe la plantilla
+llamada es la copia de los valores del llamador en ese punto más los atributos
+(`_render_iterall`), y eso se propaga a los `t-call` anidados.
+
+- `l10n_cl_fe.invoice_cedible` hacía `<t t-call="account.report_invoice"><t t-set="cedible"
+  t-value="True"/></t>`: `cedible` no llegaba a `dte_external_layout` ni a `report_ticket`, así
+  que "Imprimir Cedible" y "Imprimir Copia y Cedible" imprimían la factura normal, sin el acuse
+  de recibo (Ley 19.983) ni la leyenda CEDIBLE. Ahora es
+  `<t t-call="account.report_invoice" cedible="True"/>` (como `print_with_payments` en
+  `account.report_invoice_with_payments`). `account.report_invoice` → `web.html_container` →
+  `t-foreach docs` → `l10n_cl_fe.dte_external_layout` / `report_ticket` lo reenvía sin cambios.
+- Revisados los demás `t-call` con cuerpo del módulo (`layout.xml`: `dte_external_layout` y
+  `report_ticket` con `web.basic_layout`; `export.xml`: `layout_libro` con `web.basic_layout`;
+  `report_balance_8_columnas.xml`; `portal_boleta_layout.xml`): sus `t-set` (`company`, `o`,
+  `dest`, `tax_totals`, `pagos`, `totales`, …) solo se usan dentro del propio cuerpo.
+  `web.basic_layout`/`web.html_container`/`web.report_layout` solo leen `o`/`doc`, `lang`,
+  `title`, `full_width`, `body_classname` y `data_report_*`, que no se fijan en esos cuerpos
+  (`o` llega del llamador). Sin cambios.
+- Pruebas nuevas en `tests/test_web.py`: `test_informe_cedible`,
+  `test_factura_normal_sin_bloque_cedible`, `test_informe_copia_y_cedible` (dos ejemplares, el
+  bloque cedible solo en el segundo) y `test_ticket_cedible`.

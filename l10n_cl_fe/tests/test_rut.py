@@ -38,6 +38,21 @@ class TestRut(TransactionCase):
         with self.assertRaises(ValidationError):
             socio.document_number = "760864284"
 
+    def test_rut_sin_digitos_o_cero(self):
+        # Texto sin dígitos o con número 0 no es un RUT (antes quedaba como 000000000, con DV 0).
+        for rut in ("abc", "N/A", "0-0", "00000000-0", "0", "K"):
+            with self.subTest(rut=rut):
+                with self.assertRaisesRegex(ValidationError, "RUT inválido"):
+                    self._guardado(rut)
+        socio = self.env["res.partner"].create({"name": "Con RUT", "document_number": "76.086.428-5"})
+        with self.assertRaisesRegex(ValidationError, "RUT inválido"):
+            socio.document_number = "N/A"
+        # Sin RUT: el campo vacío, o el tipo "Sin identificación" con "0" (Consumidor Final
+        # Anónimo de data/partner.xml). El RUT genérico de boletas, 66.666.666-6, es válido.
+        self.env["res.partner"].create({"name": "Sin RUT"})
+        self.assertEqual(self.env.ref("l10n_cl_fe.par_cfa").document_number, "0")
+        self.assertEqual(self._guardado("66666666-6"), "66.666.666-6")
+
     def test_otros_documentos_no_se_tocan(self):
         sin_rut = self.env.ref("l10n_cl_fe.dt_Sigd")
         socio = self.env["res.partner"].create({

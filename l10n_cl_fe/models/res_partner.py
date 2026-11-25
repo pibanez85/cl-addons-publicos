@@ -269,10 +269,20 @@ class ResPartner(models.Model):
 
     @api.constrains("document_number", "document_type_id")
     def _check_document_number_cl(self):
-        tipos = (self.env.ref("l10n_cl_fe.dt_RUT", raise_if_not_found=False), self.env.ref("l10n_cl_fe.dt_RUN", raise_if_not_found=False))
+        # _formatear_rut exige un número distinto de 0 antes del dígito verificador: texto sin
+        # dígitos ("N/A") o ceros ("0-0") quedaban como 000000000, que tiene DV 0 y pasaba.
+        # Sin RUT se deja vacío o se usa el tipo "Sin identificación" (par_cfa guarda "0").
+        tipos = self._tipos_documento_rut()
         for r in self:
-            if r.document_number and r.document_type_id and r.document_type_id in tipos and not r.check_vat_cl(re.sub("[^0-9Kk]", "", r.document_number).zfill(9).upper()):
-                raise ValidationError(_("RUT inválido: %s") % r.document_number)
+            if not r.document_number or r.document_type_id not in tipos:
+                continue
+            rut = self._formatear_rut(r.document_number)
+            if not rut or not r.check_vat_cl(re.sub("[^0-9K]", "", rut).zfill(9)):
+                raise ValidationError(_(
+                    "RUT inválido: «%s». Ingrese el RUT con su dígito verificador, por ejemplo "
+                    "76.086.428-5, o deje el campo vacío si el contacto no tiene RUT.",
+                    r.document_number,
+                ))
 
     @api.constrains("vat", "commercial_partner_id")
     def _rut_unique(self):

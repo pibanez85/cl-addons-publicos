@@ -11,3 +11,4 @@ from . import test_rut
 from . import test_emision
 from . import test_recepcion_dte
 from . import test_libro
+from . import test_informes_xlsx

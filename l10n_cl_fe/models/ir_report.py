@@ -15,13 +15,20 @@ class ReportAction(models.Model):
     )
 
     @api.model
-    def _render_xlsx(self, docids, data):
-        report_model_name = "report.%s" % self.report_name
+    def _render_xlsx(self, report_ref, docids, data):
+        # Misma firma que report_xlsx (OCA). Si report_xlsx está instalado, se carga antes que
+        # l10n_cl_fe y este método lo sobrescribe: se le delega (guarda adjuntos, respeta
+        # report_xlsx_helper) para no romper sus informes (account_financial_report).
+        padre = getattr(super(), "_render_xlsx", None)
+        if padre is not None:
+            return padre(report_ref, docids, data)
+        report = self._get_report(report_ref)
+        report_model_name = "report.%s" % report.report_name
         report_model = self.env.get(report_model_name)
         if report_model is None:
             raise UserError(_("%s model was not found") % report_model_name)
         return report_model.with_context(
-            active_model=self.model
+            active_model=report.model
         ).create_xlsx_report(  # noqa
             docids, data
         )

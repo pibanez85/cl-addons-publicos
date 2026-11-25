@@ -243,6 +243,18 @@ stamp to be legally valid.""",
     f29_tesoreria_id = fields.Many2one("res.partner", string="Tesorería General de la República",
         groups="base.group_system", copy=False)
 
+    @api.model
+    def _buscar_por_rut(self, rut):
+        """Compañía con ese RUT (p. ej. el ``RUTRecep`` de un DTE recibido): por ``vat`` o por el RUT
+        de su contacto. La emisión usa ``document_number``, que puede estar sin ``vat`` si la compañía
+        se creó por ORM (el ``vat`` lo completa solo el onchange del formulario)."""
+        Partner = self.env["res.partner"]
+        vats = Partner._vats_busqueda(rut)
+        formateado = Partner._formatear_rut(rut)
+        if not formateado:
+            return self.browse()
+        return self.search(["|", ("vat", "in", vats), ("partner_id.document_number", "=", formateado)], limit=1)
+
     @api.onchange("document_number", "document_type_id")
     def onchange_document(self):
         if self.document_number and (self.document_type_id == self.env.ref("l10n_cl_fe.dt_RUT")

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from odoo import fields, models
+from odoo import _, fields, models
 from lxml import etree
 from .binario import contenido_binario
 import logging
+import re
 
 
 _logger = logging.getLogger(__name__)
@@ -23,9 +24,7 @@ class ProccessMail(models.Model):
 
     def _parse_xml(self, xml_string):
         string_xml = contenido_binario(xml_string).decode("ISO-8859-1")
-        xml = string_xml.replace('<?xml version="1.0" encoding="ISO-8859-1"?>', "").replace(
-            '<?xml version="1.0" encoding="ISO-8859-1" ?>', ""
-        )
+        xml = re.sub(r"^\s*<\?xml[^>]*\?>", "", string_xml)
         xml = xml.replace(' xmlns="http://www.sii.cl/SiiDte"', "")
         parser = etree.XMLParser(remove_blank_text=True)
         return etree.fromstring(xml, parser=parser)
@@ -52,8 +51,17 @@ class ProccessMail(models.Model):
                     "option": option,
                     "action": dte_receipt_method
                 }
-                val = self.env["sii.dte.upload_xml.wizard"].with_user(self.env.ref("base.user_admin").id).create(vals)
-                created.extend(val.confirm(ret=True))
+                # Cada envío por separado: uno con error queda registrado en su chatter y no
+                # detiene el resto del lote.
+                try:
+                    with self.env.cr.savepoint():
+                        val = self.env["sii.dte.upload_xml.wizard"].with_user(
+                            self.env.ref("base.user_admin").id).create(vals)
+                        created.extend(val.confirm(ret=True) or [])
+                except Exception as e:
+                    _logger.warning("Error al procesar el envío %s", r.name, exc_info=True)
+                    r.sudo().message_post(body=_(
+                        "No se pudo procesar el XML %(nombre)s: %(error)s", nombre=r.xml_id.name, error=e))
         if dte_receipt_method == "create_po":
             xml_id = "purchase.purchase_order_tree"
             target_model = "purchase.order"

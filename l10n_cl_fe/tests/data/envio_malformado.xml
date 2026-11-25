@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<EnvioDTE xmlns="http://www.sii.cl/SiiDte" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sii.cl/SiiDte EnvioDTE_v10.xsd" version="1.0">
+<SetDTE ID="SetDoc">
+<Caratula version="1.0">
+<RutEmisor>96806980-2</RutEmisor>
+<RutEnvia>11111111-1</RutEnvia>
+<RutReceptor>76086428-5</RutReceptor>
+<FchResol>2014-08-22</FchResol>
+<NroResol>0</NroResol>
+<TmstFirmaEnv>2026-11-24T23:53:24</TmstFirmaEnv>
+<SubTotDTE>
+<TpoDTE>33</TpoDTE>
+<NroDTE>1</NroDTE>
+</SubTotDTE>
+</Caratula>
+<DTE xmlns="http://www.sii.cl/SiiDte" version="1.0">
+<Documento ID="T33F4521">
+  <Encabezado>
+    <IdDoc>
+      <TipoDTE>33</TipoDTE>
+      <Folio>4521</Folio>
+      <FchEmis>2026-11-25</FchEmis>
+      <FmaPago>1</FmaPago>
+    </IdDoc>
+    <Emisor>
+      <RUTEmisor>96806980-2</RUTEmisor>
+      <RznSoc>Proveedora de Servicios del Sur SpA</RznSoc>
+      <GiroEmis>Servicios informáticos</GiroEmis>
+      <CorreoEmisor/>
+      
+        <Acteco>620200</Acteco>
+      
+      <DirOrigen>Av. Libertador Bernardo O'Higgins 1234 </DirOrigen>
+      <CmnaOrigen>Santiago</CmnaOrigen>
+      <CiudadOrigen>Santiago</CiudadOrigen>
+    </Emisor>
+    <Receptor>
+   

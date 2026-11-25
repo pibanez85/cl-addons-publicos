@@ -2,7 +2,7 @@ import logging
 
 from lxml import etree
 
-from odoo import api, models
+from odoo import _, api, models
 
 from .binario import contenido_binario
 
@@ -139,8 +139,7 @@ class ProcessMails(models.Model):
         if el is None:
             el = el_root.find("SetRecibos")
         caratula = el.find("Caratula")
-        rut_company = self._format_rut(caratula.find("RutRecibe").text)
-        company_id = self.env["res.company"].sudo().search([("vat", "=", rut_company),])
+        company_id = self.env["res.company"].sudo()._buscar_por_rut(caratula.find("RutRecibe").text)
         if el.tag == "Resultado":
             self._process_recepcion_envio(el, company_id, att)
         elif el.tag == "SetRecibo":
@@ -150,9 +149,15 @@ class ProcessMails(models.Model):
         el = self._parse_xml(att.raw)
         if el.tag == "EnvioDTE":
             if self.model == "mail.message.dte":
-                '''Se asume un .xml por correo, @TODO casos en que hay más '''
                 dte = self.env[self.model].sudo().browse(self.res_id)
-                dte.xml_id = att
+                if dte.xml_id and dte.xml_id != att:
+                    # Otro EnvioDTE en el mismo correo: va en su propio registro (los documentos
+                    # recibidos leen su XML desde el xml_id de su envío).
+                    dte = dte.create({
+                        "mail_id": self.id, "name": att.name, "xml_id": att.id, "company_id": dte.company_id.id,
+                    })
+                else:
+                    dte.xml_id = att
                 dte.process_message(pre=True)
                 return
             data = {
@@ -166,6 +171,14 @@ class ProcessMails(models.Model):
             self._proccess_respuesta(el, att)
 
 
+    def _registrar_error_xml(self, att, error):
+        """Deja el error de un XML adjunto en el chatter del registro al que llegó el correo."""
+        msg = _("No se pudo procesar el XML %(nombre)s: %(error)s", nombre=att.name, error=error)
+        if self.model and self.res_id and self.model in self.env:
+            registro = self.env[self.model].sudo().browse(self.res_id).exists()
+            if registro and hasattr(registro, "message_post"):
+                registro.message_post(body=msg)
+
     def process_mess(self):
         for att in self.attachment_ids:
             if not att.name:
@@ -173,7 +186,13 @@ class ProcessMails(models.Model):
             name = att.name.upper()
             if att.mimetype in ["text/plain"] and name.find(".XML") > -1:
                 if not self.env["mail.message.dte"].search([("name", "=", name)]):
-                    self._process_xml(att)
+                    # Cada adjunto por separado: un XML con error no impide procesar los demás.
+                    try:
+                        with self.env.cr.savepoint():
+                            self._process_xml(att)
+                    except Exception as e:
+                        _logger.warning("Error al procesar el XML %s", att.name, exc_info=True)
+                        self._registrar_error_xml(att, e)
 
     @api.model_create_multi
     def create(self, values_list):

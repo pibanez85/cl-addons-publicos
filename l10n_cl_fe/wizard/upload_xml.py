@@ -1,5 +1,6 @@
 import base64
 import logging
+import re
 
 from facturacion_electronica import facturacion_electronica as fe
 from lxml import etree
@@ -105,11 +106,20 @@ class UploadXMLWizard(models.TransientModel):
             if self.option == "reject":
                 self.do_reject()
                 return
+            recepcion_borrador = not self.document_id and self.action == "create_move" and self.option == "upload"
             if not self.document_id:
                 self.pre_process = True
                 self.crear_po = False
                 created_pre = self.do_create_pre()
-            if self.action != 'manual' and self.option == 'accept':
+            if recepcion_borrador:
+                # Recepción: cada DTE queda como factura de proveedor en borrador, sin aceptarla
+                # comercialmente (la aceptación o el reclamo se hacen después).
+                self.pre_process = False
+                self.crear_po = False
+                created = self.do_create_inv()
+                xml_id = "account.view_invoice_tree"
+                target_model = "account.move"
+            elif self.action != 'manual' and self.option == 'accept':
                 self.pre_process = False
                 if self.action in ["create_po", "both"]:
                     self.crear_po = True
@@ -121,7 +131,7 @@ class UploadXMLWizard(models.TransientModel):
                     created = self.do_create_inv()
                     xml_id = "account.view_invoice_tree"
                     target_model = "account.move"
-            if not self.document_id and self.action in ['manual', 'both', 'create_move']:
+            if not recepcion_borrador and not self.document_id and self.action in ['manual', 'both', 'create_move']:
                 created = created_pre
                 xml_id = "l10n_cl_fe.dte_document_view_tree"
                 target_model = "mail.message.dte.document"
@@ -154,17 +164,18 @@ class UploadXMLWizard(models.TransientModel):
         return self.filename or self.dte_id.name
 
     def _read_xml(self, mode="text", check=False):
-        xml = (
-            self._get_xml()
-            .replace('<?xml version="1.0" encoding="ISO-8859-1"?>', "")
-            .replace('<?xml version="1.0" encoding="ISO-8859-1" ?>', "")
-        )
+        # Cualquier declaración XML (comillas simples, "iso-8859-1" en minúsculas, etc.): lxml no
+        # acepta un str con declaración de encoding.
+        xml = re.sub(r"^\s*<\?xml[^>]*\?>", "", self._get_xml())
         if check:
             return xml
         xml = xml.replace('xmlns="http://www.sii.cl/SiiDte"', "")
         if mode == "etree":
             parser = etree.XMLParser(remove_blank_text=True)
-            return etree.fromstring(xml, parser=parser)
+            try:
+                return etree.fromstring(xml, parser=parser)
+            except etree.XMLSyntaxError as e:
+                raise UserError(_("El archivo %s no es un XML válido: %s") % (self._get_xml_name(), e))
         return xml
 
     def _resolve_firma(self, company_id):
@@ -215,9 +226,7 @@ class UploadXMLWizard(models.TransientModel):
         envio = self._read_xml("etree")
         if envio.find("SetDTE") is None or envio.find("SetDTE/Caratula") is None:
             return True
-        company_id = self.env["res.company"].search(
-            [("vat", "=", self.format_rut(envio.find("SetDTE/Caratula/RutReceptor").text))], limit=1
-        )
+        company_id = self.env["res.company"]._buscar_por_rut(envio.find("SetDTE/Caratula/RutReceptor").text)
         IdRespuesta = self.env.ref("l10n_cl_fe.response_sequence").next_by_id()
         try:
             vals = self._get_datos_empresa(company_id)
@@ -287,7 +296,7 @@ class UploadXMLWizard(models.TransientModel):
             giro = "Boleta"
         else:
             giro = el.text
-        giro_id = self.env["sii.activity.description"].search([("name", "=", giro)])
+        giro_id = self.env["sii.activity.description"].search([("name", "=", giro)], limit=1)
         if not giro_id:
             giro_id = self.env["sii.activity.description"].create({"name": giro,})
         type = "Emisor"
@@ -319,17 +328,10 @@ class UploadXMLWizard(models.TransientModel):
             "country_id": self.env.ref('base.cl').id,
             "es_mipyme": False,
         }
-        if data.find("CorreoEmisor") is not None or data.find("CorreoRecep") is not None:
-            partner.update(
-                {
-                    "email": data.find("CorreoEmisor").text
-                    if self.type == "compras"
-                    else data.find("CorreoRecep").text,
-                    "dte_email": data.find("CorreoEmisor").text
-                    if self.type == "compras"
-                    else data.find("CorreoRecep").text,
-                }
-            )
+        # CorreoEmisor/CorreoRecep pueden venir vacíos (<CorreoEmisor/> es válido contra el XSD).
+        correo = (data.findtext("CorreoEmisor" if self.type == "compras" else "CorreoRecep") or "").strip()
+        if correo:
+            partner.update({"email": correo, "dte_email": correo})
             if '@sii.cl' in partner['dte_email'].lower():
                 del partner['dte_email']
                 partner['es_mipyme'] = True
@@ -786,9 +788,7 @@ class UploadXMLWizard(models.TransientModel):
         Emisor = Encabezado.find(type)
         RUT = Emisor.find(rut_path).text
         data = {}
-        partner_id = self.env["res.partner"].search(
-            [("active", "=", True), ("parent_id", "=", False), ("vat", "=", self.format_rut(RUT))]
-        )
+        partner_id = self.env["res.partner"]._buscar_por_rut(RUT, [("active", "=", True), ("parent_id", "=", False)])
         if not partner_id:
             partner_id = self._create_partner(Encabezado.find("%s" % type))
         if self.crear_po and not partner_id:
@@ -890,7 +890,7 @@ class UploadXMLWizard(models.TransientModel):
         if not journal_id and not ignore_journal:
             raise UserError(
                 "No existe Diario para el tipo de documento %s, por favor añada uno primero, o ignore el documento"
-                % dc_id.name.encode("UTF-8")
+                % dc_id.name
             )
         return journal_id
 
@@ -1194,8 +1194,8 @@ class UploadXMLWizard(models.TransientModel):
         for dte in dtes:
             try:
                 documento = dte.find("Documento")
-                company_id = self.env["res.company"].search(
-                    [("vat", "=", self.format_rut(documento.find("Encabezado/Receptor/RUTRecep").text)),], limit=1,
+                company_id = self.env["res.company"]._buscar_por_rut(
+                    documento.find("Encabezado/Receptor/RUTRecep").text
                 )
                 if not company_id:
                     _logger.warning("No existe compañia para %s" % documento.find("Encabezado/Receptor/RUTRecep").text)
@@ -1232,90 +1232,99 @@ class UploadXMLWizard(models.TransientModel):
             claim = self.env["sii.dte.claim"].sudo().create(datos)
             claim.do_reject()
 
+    def _registrar_error(self, msg):
+        """Deja el error a la vista del usuario: en el chatter del documento recibido o del envío."""
+        destino = self.document_id or self.dte_id
+        if destino:
+            destino.sudo().message_post(body=msg)
+
+    def _ajustar_iva_xml(self, inv, Totales):
+        """Deja el IVA del borrador igual al del DTE (el documento legal), si difiere por redondeo."""
+        tasa = Totales.findtext("TasaIVA")
+        iva = Totales.findtext("IVA")
+        if tasa is None or iva is None:
+            return
+        lineas = inv.line_ids.filtered(lambda l: l.tax_line_id and l.tax_line_id.amount == float(tasa))
+        if len(lineas) != 1:
+            return
+        signo = -1 if lineas.amount_currency < 0 or (
+            not lineas.amount_currency and inv.move_type in ("out_invoice", "in_refund")) else 1
+        monto = signo * float(iva)
+        if inv.currency_id.compare_amounts(lineas.amount_currency, monto):
+            vals = {"amount_currency": monto}
+            if inv.currency_id == inv.company_currency_id:
+                vals["balance"] = monto
+            inv.write({"line_ids": [(1, lineas.id, vals)]})
+
+    def _crear_factura_dte(self, documento):
+        """Factura (o la ya registrada) de un DTE. Lanza una excepción si no se puede o no cuadra
+        con el DTE; quien llama la deshace con un savepoint."""
+        to_post = self.type == "ventas" or self.option == "accept"
+        path_rut = "Encabezado/Receptor/RUTRecep"
+        if self.type == "ventas":
+            path_rut = "Encabezado/Emisor/RUTEmisor"
+        rut = documento.find(path_rut).text
+        company_id = self.env["res.company"]._buscar_por_rut(rut)
+        if not company_id:
+            raise UserError(_("No existe compañia para el rut %s") % rut)
+        self_co = self.with_company(company_id)
+        existente = self_co._inv_exist(documento)[:1]
+        inv = existente or self_co._create_inv(documento, company_id)
+        if not inv:
+            raise UserError(
+                "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
+            )
+        if self.document_id:
+            self.document_id.move_id = inv.id
+        publicada_aqui = False
+        if to_post and inv.state == "draft":
+            inv = inv.with_company(company_id)
+            inv._onchange_partner_id()
+            inv._onchange_invoice_line_ids()
+            inv.with_context(purchase_to_done=self.purchase_to_done.id, restore_mode=True)._post()
+            publicada_aqui = True
+        Totales = documento.find("Encabezado/Totales")
+        monto_xml = float(Totales.find("MntTotal").text) + float(Totales.findtext("MontoNF") or 0)
+        if inv.amount_total == monto_xml:
+            return inv
+        if publicada_aqui:
+            inv.button_draft()
+        if inv.state == "draft":
+            self._ajustar_iva_xml(inv, Totales)
+            if publicada_aqui:
+                inv.with_context(restore_mode=True)._post()
+        if inv.amount_total == monto_xml:
+            return inv
+        mensaje = "No se pudo cuadrar %s-%s, %s != %s" % (
+            inv.document_class_id.name,
+            inv.sii_document_number,
+            inv.amount_total,
+            monto_xml)
+        if existente:
+            # Ya estaba registrada (quizá modificada por el usuario): se informa sin deshacerla.
+            self._registrar_error(mensaje)
+            return inv
+        raise UserError(mensaje)
+
     def do_create_inv(self):
         self = self._con_companias_del_usuario()
         created = []
         dtes = self._get_dtes()
         for dte in dtes:
+            documento = dte.find("Documento")
+            if self.type == "compras" and (len(dtes) > 1 or not self.document_id):
+                # Documento recibido de este DTE (en un envío con varios, el de la vuelta anterior no sirve).
+                self._dte_exist(documento)
             try:
-                to_post = self.type == "ventas" or self.option == "accept"
-                company_id = self.document_id.company_id
-                documento = dte.find("Documento")
-                path_rut = "Encabezado/Receptor/RUTRecep"
-                if self.type == "ventas":
-                    path_rut = "Encabezado/Emisor/RUTEmisor"
-                rut = documento.find(path_rut).text
-                company_id = self.env["res.company"].search(
-                    [("vat", "=", self.format_rut(rut)),], limit=1,
-                )
-                if not company_id:
-                    raise UserError(_(f"No existe compañia para el rut {rut}"))
-                self_co = self.with_company(company_id)
-                existente = self_co._inv_exist(documento)[:1]
-                inv = existente or self_co._create_inv(documento, company_id,)
-                if self.document_id:
-                    self.document_id.move_id = inv.id
-                if inv:
-                    created.append(inv.id)
-                if not inv:
-                    raise UserError(
-                        "El archivo XML no contiene documentos para alguna empresa registrada en Odoo, o ya ha sido procesado anteriormente "
-                    )
-                if to_post and inv.state=="draft":
-                    inv = inv.with_company(company_id)
-                    inv._onchange_partner_id()
-                    inv._onchange_invoice_line_ids()
-                    inv.with_context(purchase_to_done=self.purchase_to_done.id, restore_mode=True)._post()
-                Totales = documento.find("Encabezado/Totales")
-                monto_xml = float(Totales.find("MntTotal").text) + float(Totales.findtext("MontoNF") or 0)
-                self.env.cr.commit()
-                if inv.amount_total == monto_xml:
-                    continue
-                if to_post:
-                    inv.button_draft()
-                total_line = inv.line_ids.filtered(lambda a: a.name=='')
-                diff_amount_currency = diff_balance = 0
-                for line in inv.line_ids.filtered('tax_line_id'):
-                    if Totales.find("TasaIVA") is not None and line.tax_line_id.amount == float(Totales.find("TasaIVA").text):
-                        diff_amount_currency = diff_balance = float(Totales.find("IVA").text) - (line.balance if line.balance >0 else -line.balance)
-                        rounding_line_vals = {
-                            'price_unit': diff_amount_currency,
-                            'quantity': 1.0,
-                            'amount_currency': diff_amount_currency,
-                            'partner_id': inv.partner_id.id,
-                            'move_id': inv.id,
-                            'currency_id': inv.currency_id.id,
-                            'company_id': inv.company_id.id,
-                            'company_currency_id': inv.company_id.currency_id.id,
-                            'sequence': 9999,
-                            'name': _('%s (rounding)', line.name),
-                            'account_id': line.account_id.id,
-                        }
-                        rounding_line = self.env['account.move.line'].with_context(check_move_validity=False).create(rounding_line_vals)
-                if to_post:
-                    inv.with_context(restore_mode=True)._post()
-                if inv.amount_total == monto_xml:
-                    continue
-                mensaje = "No se pudo cuadrar %s-%s, %s != %s" % (
-                    inv.document_class_id.name,
-                    inv.sii_document_number,
-                    inv.amount_total,
-                    monto_xml)
-                if not existente:
-                    if inv.state == "posted":
-                        inv.button_draft()
-                    if self.document_id:
-                        self.document_id.move_id = False
-                    inv.with_context(force_delete=True).unlink()
-                    self.env.cr.commit()
-                    created.remove(inv.id)
-                raise UserError(mensaje)
+                # Un DTE con error no deja nada a medias ni detiene el resto del envío.
+                with self.env.cr.savepoint():
+                    inv = self._crear_factura_dte(documento)
+                created.append(inv.id)
             except Exception as e:
                 msg = "Error en crear 1 factura con error:  %s" % str(e)
                 _logger.warning(msg, exc_info=True)
                 _logger.warning(etree.tostring(dte))
-                if self.document_id:
-                    self.document_id.message_post(body=msg)
+                self._registrar_error(msg)
         if created and self.option not in [False, "upload"] and self.type == "compras"  and not self.env.context.get('create_only', False):
             datos = {
                 "move_ids": [(6, 0, created)],
@@ -1393,9 +1402,7 @@ class UploadXMLWizard(models.TransientModel):
         for dte in dtes:
             documento = dte.find("Documento")
             path_rut = "Encabezado/Receptor/RUTRecep"
-            company = self.env["res.company"].search(
-                [("vat", "=", self.format_rut(documento.find(path_rut).text)),], limit=1
-            )
+            company = self.env["res.company"]._buscar_por_rut(documento.find(path_rut).text)
             path_tpo_doc = "Encabezado/IdDoc/TipoDTE"
             dc_id = self.env["sii.document_class"].search([("sii_code", "=", documento.find(path_tpo_doc).text)])
             if dc_id.es_factura() or dc_id.es_nd() or dc_id.es_guia() or dc_id.es_boleta_afecta():

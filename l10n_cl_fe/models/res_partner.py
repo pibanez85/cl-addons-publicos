@@ -225,6 +225,16 @@ class ResPartner(models.Model):
         return self.browse()
 
     @api.model
+    def _buscar_por_rut(self, valor, dominio=None):
+        """Contacto con ese RUT: por ``vat`` (``CL`` + 9 dígitos) o, si no, por ``document_number``
+        (un contacto creado por ORM puede tener solo el RUT, sin ``vat``)."""
+        socio = self._buscar_por_vat(valor, dominio)
+        formateado = self._formatear_rut(valor)
+        if socio or not formateado:
+            return socio
+        return self.search([("document_number", "=", formateado)] + list(dominio or []), limit=1)
+
+    @api.model
     def _formatear_rut(self, valor):
         """Forma canónica con que se guarda un RUT/RUN en ``document_number``: puntos de miles,
         guion y dígito verificador en mayúscula, sin ceros a la izquierda (``76.086.428-5``,

@@ -161,6 +161,17 @@ class TestRecepcionDte(DteCase):
         self.assertEqual(len(documento), 1, "el documento recibido queda enlazado a la factura")
         self.assertEqual((documento.number, documento.amount), (str(FOLIO), TOTAL))
 
+    def test_subir_xml_arrastrando_devuelve_accion_completa(self):
+        """El cargador de la lista de facturas (arrastrar un XML) abre el asistente con la acción
+        que devuelve create_from_attachment: debe traer `views`, o el cliente web falla."""
+        accion = self.env["sii.dte.upload_xml.wizard"].create_from_attachment(
+            base64.b64encode(self.dte_33).decode(), "envio_dte_33.xml", self.diario_compras.id)
+        self.assertEqual(accion["type"], "ir.actions.act_window")
+        self.assertEqual(accion["views"], [(False, "form")])
+        self.assertEqual(accion["context"]["default_journal_id"], self.diario_compras.id)
+        asistente = self.env["sii.dte.upload_xml.wizard"].browse(accion["res_id"])
+        self.assertEqual(asistente.filename, "envio_dte_33.xml")
+
     def test_proveedor_existente_por_rut(self):
         # Creado por ORM/JSON-RPC solo con el RUT (document_number): el vat se completa.
         existente = self.env["res.partner"].create({

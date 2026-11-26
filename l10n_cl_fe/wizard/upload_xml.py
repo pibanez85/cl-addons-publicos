@@ -62,6 +62,9 @@ class UploadXMLWizard(models.TransientModel):
             "res_model": "sii.dte.upload_xml.wizard",
             "res_id": wiz.id,
             "view_mode": "form",
+            # Se llama con orm.call desde el cargador de archivos (no con call_button), así que
+            # el servidor no completa `views`: sin él, doAction del cliente web falla.
+            "views": [(False, "form")],
             "target": "new",
             "context": ctx,
         }
